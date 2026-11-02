@@ -249,7 +249,7 @@ Nama field final ditetapkan pada PB03 dan dicatat di sini.
 
 | Komponen | Teknologi | Catatan |
 | --- | --- | --- |
-| Aplikasi | Flutter / Dart → APK Android | Versi Flutter/Dart dikunci saat PB01 |
+| Aplikasi | Flutter 3.47.9 / Dart 3.13.7 → APK Android | Versi dikunci dengan FVM (`.fvmrc`); application ID `site.agam`; minSdk 24 (Android 7.0), targetSdk dan compileSdk 36 (default Flutter 3.47.9) |
 | Lokasi | Fused Location Provider (`geolocator`) + foreground service tipe `location` | Fallback LocationManager untuk perangkat tanpa Google Play Services |
 | Geofence | Logika in-app (haversine, dwell, cooldown, histeresis, filter akurasi) | Diuji unit |
 | Peta | Tile vektor OSM (PMTiles) dibundel + renderer Flutter | Lihat §14 |
@@ -262,7 +262,7 @@ Nama field final ditetapkan pada PB03 dan dicatat di sini.
 | Tools | Figma, GitHub, Flutter DevTools, `flutter_test`, `integration_test`, Android Emulator, perangkat Android fisik | |
 | AI development tools | ChatGPT/Codex, Claude/Claude Code, Gemini | Output ditinjau, diuji, dan dicatat tim |
 
-Hal yang **wajib diverifikasi** saat setup, bukan diasumsikan: versi Flutter/Dart, versi minimum Android (minSdk) yang didukung versi Flutter tersebut, versi package, kompatibilitas renderer tile vektor, serta ukuran akhir APK.
+Versi Flutter/Dart, application ID, dan SDK Android sudah ditetapkan saat PB01 (2 November 2026). Hal yang masih **wajib diverifikasi**, bukan diasumsikan: versi package yang ditambahkan, kompatibilitas renderer tile vektor, serta ukuran akhir APK.
 
 ## 18. Layar (Screen/State)
 

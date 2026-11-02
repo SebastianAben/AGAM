@@ -9,7 +9,7 @@
 | Pembagian kerja | Tiga track paralel: 1 developer frontend, 2 developer logic aplikasi (lihat §2) |
 | Desain layar | UI01–UI09 sudah selesai; frontend tinggal mengimplementasikan |
 | Backlog | PB01–PB20 dari PRD resmi; ID tidak boleh diubah atau dinomori ulang |
-| Current focus | Belum dimulai; langkah pertama adalah Sprint 1 Hari 1–2 (§5) |
+| Current focus | Sprint 1: kontrak v1.0 disepakati (§3); PB01 `in_progress` (menunggu CI dan uji perangkat); kerja paralel PB02–PB04 dapat dimulai |
 
 Dokumen ini menetapkan cara tim bekerja paralel, urutan pekerjaan per track, dependency, dan definition of done. Rencana bukan bukti implementasi.
 
@@ -61,7 +61,7 @@ Ketiga track hanya dapat bekerja paralel jika batas di antara mereka disepakati 
 
 ### 2.3 Kepemilikan folder
 
-Untuk menghindari konflik merge, setiap track hanya mengubah foldernya sendiri. Struktur final ditetapkan saat PB01; usulan awal:
+Untuk menghindari konflik merge, setiap track hanya mengubah foldernya sendiri. Struktur berikut sudah dibuat saat PB01; folder kosong berisi `.gitkeep`. Folder `assets/` belum didaftarkan di `pubspec.yaml`; track yang pertama kali menaruh aset di sebuah folder sekaligus mendaftarkannya.
 
 | Folder | Pemilik |
 | --- | --- |
@@ -83,13 +83,20 @@ Untuk menghindari konflik merge, setiap track hanya mengubah foldernya sendiri. 
 
 ### 2.5 Alur kerja per PBI
 
-Setiap developer mengikuti langkah yang sama untuk setiap bagian PBI:
+**Persiapan lingkungan (sekali per developer):**
+
+1. Pasang FVM lewat Homebrew: `brew install leoafarias/fvm/fvm`. Jika Homebrew menolak karena Command Line Tools usang, perbarui Command Line Tools terlebih dahulu.
+2. Di root repo, jalankan `fvm install`. FVM membaca `.fvmrc` dan memasang Flutter 3.47.9. Unduhan pertama dapat memakan waktu lama karena FVM menyimpan cache repository Flutter.
+3. Selalu gunakan `fvm flutter ...` dan `fvm dart ...`, bukan `flutter` global, agar versi sama dengan CI.
+4. Untuk build APK dan menjalankan aplikasi di perangkat, pasang Android SDK (melalui Android Studio) dan JDK 17. `flutter analyze` dan `flutter test` tidak membutuhkan Android SDK.
+
+**Langkah per PBI:**
 
 1. Tarik `main` terbaru.
 2. Baca `.agent/rules.md`, `.agent/sessionHandoff.md`, dan bagian PBI terkait di dokumen ini serta PRD.
 3. Buat branch dari `main` dengan pola `<jenis>/pbXX-<track>-<topik>`, misalnya `feat/pb05-la-geofence` atau `feat/pb07-fe-poi-card`.
 4. Kerjakan hanya di folder milik track sendiri (§2.3). Jika butuh perubahan kontrak, ikuti §2.4.
-5. Jalankan `flutter analyze` dan test yang relevan.
+5. Jalankan `fvm dart format lib test`, `fvm flutter analyze`, dan test yang relevan. CI menolak kode yang belum diformat.
 6. Buka PR ke `main` dengan deskripsi: PBI, apa yang berubah, cara menguji, dan keterbatasan.
 7. PR direview minimal oleh satu developer lain sebelum di-merge.
 8. Perbarui status PBI di dokumen ini dan catatan di `.agent/sessionHandoff.md`.
@@ -106,7 +113,31 @@ Pada hari terakhir setiap sprint:
 
 ## 3. Kontrak Awal
 
-Nama dan bentuk final ditetapkan pada Sprint 1 Hari 1–2 dan dicatat di sini. Daftar di bawah adalah titik awal.
+**Status: kontrak v1.0 disepakati ketiga track pada 2 November 2026.** Mulai saat ini, setiap perubahan pada `lib/contracts/` wajib mengikuti §2.4.
+
+Lokasi kode:
+
+| File | Isi |
+| --- | --- |
+| `lib/contracts/contracts.dart` | Satu import untuk semua model, antarmuka, dan `AppServices` |
+| `lib/contracts/constants.dart` | Nilai produk bersama: radius 15 m, akurasi 20 m, dwell 5 detik, cooldown 10 menit, reroute 25 m, tiba 15 m, auto-end 30 menit, margin kampus 200 m |
+| `lib/contracts/models/` | Model data (`AppSettings` di `models/settings.dart`) |
+| `lib/contracts/services/la_services.dart`, `lb_services.dart` | Antarmuka layanan per track |
+| `lib/contracts/fakes/` | Implementasi palsu dan data sintetis (`fake_data.dart`) |
+| `lib/contracts/app_services.dart` | `AppServices`: kumpulan semua layanan; `AppServices.fake()` merangkai seluruh fake |
+
+Pola yang dipakai semua layanan berstatus: getter `current` untuk nilai saat ini dan `Stream` untuk perubahan berikutnya (broadcast; tidak mengulang nilai lama).
+
+Perilaku fake yang perlu diketahui FE:
+
+- `FakeLocationService` mensimulasikan pengguna berjalan lurus antar-POI dalam urutan sintetis, 5 m per tick (default 1 detik), dan hanya berjalan selama ada listener.
+- `FakeSessionController` memicu setiap POI sekali per sesi saat posisi masuk radius; tanpa dwell/cooldown. Mode Navigasi menghasilkan respons `brief`.
+- `FakeMapConfig` memakai kotak pembungkus POI + 200 m dan `style.isPlaceholder == true` karena tile belum ada; FE menampilkan latar polos.
+- `FakeRoutingService` menghasilkan garis lurus; `FakeNavigationController` menyatakan tiba pada ≤15 m tanpa rerouting.
+- Teks POI berisi `PLACEHOLDER — menunggu tim konten`, `metadata.isPlaceholder == true`, dan media kosong. Fasilitas dan urutan trail berlabel sintetis.
+- `FakePermissionService.locationResult`, `FakePermissionService.batteryOptimized`, dan `FakeVoiceGuidance.available` dapat diubah untuk mencoba keadaan izin ditolak, optimasi baterai, atau suara tidak tersedia.
+
+Nama di tabel berikut sesuai kode kontrak v1.0.
 
 ### 3.1 Model data
 
@@ -118,24 +149,27 @@ Nama dan bentuk final ditetapkan pada Sprint 1 Hari 1–2 dan dicatat di sini. D
 | `Facility` | id, nama, kategori, posisi, gedung terkait, metadata | LA |
 | `SessionState` | mode (`none`, `explore`, `navigation`, `trail`), aktif/tidak, alasan berakhir | LA |
 | `PoiTriggerEvent` | id POI, mode saat trigger, jenis respons (penuh / ringkas tanpa audio) | LA |
-| `Route`, `RouteStep` | garis rute, jarak, ETA, langkah belokan | LB |
+| `WalkingRoute`, `RouteStep`, `NavigationTarget` | garis rute, jarak, ETA, langkah belokan; tujuan navigasi (POI/fasilitas) | LB |
 | `NavigationState` | di rute / menyimpang / rerouting / tiba, sisa jarak, langkah berikutnya | LB |
 | `SearchResult` | POI atau fasilitas, skor | LB |
 | `Recommendation` | 1–3 POI dan fasilitas terdekat | LB |
 | `TrailProgress` | urutan, POI dikunjungi, x/10, lencana | LB |
 | `AppSettings` | auto-play narasi, dsb. | LA |
+| `AudioClip`, `PlaybackState` | klip audio per POI (narasi/prompt/tiba), status pemutaran | LA |
+| `CampusArea`, `MapStyleSource` | poligon area layanan, sumber tile dan style | LB |
+| `ContentMetadata`, `PoiMedia`, `PoiEntrance`, `FacilityDistance` | metadata A02, path media, pintu masuk, fasilitas + jarak | LA / LB |
 
 ### 3.2 Antarmuka layanan
 
 | Antarmuka | Fungsi untuk FE | Pemilik |
 | --- | --- | --- |
-| `PermissionService` | Status dan permintaan izin lokasi akurat & notifikasi; deteksi izin perkiraan | LA |
+| `PermissionService` | Status dan permintaan izin lokasi akurat & notifikasi; deteksi izin perkiraan; status dan halaman pengaturan optimasi baterai | LA |
 | `LocationService` | Aliran posisi untuk mode peta biasa (hanya saat layar tampil) | LA |
 | `PoiRepository` | Daftar POI dan fasilitas (bawaan + Firestore + cache) | LA |
 | `SessionController` | Mulai/akhiri sesi per mode, aliran `SessionState` dan `PoiTriggerEvent`, auto-end 30 menit | LA |
 | `AudioService` | Putar/jeda/ulang narasi, prompt, pengumuman tiba; kontrol dari notifikasi | LA |
 | `VoiceGuidance` | Membacakan arahan navigasi (TTS `id-ID`), status ketersediaan suara | LA |
-| `SettingsStore` | Baca/simpan pengaturan; hapus progres lokal | LA |
+| `SettingsStore` | Baca/simpan pengaturan (progres trail dihapus lewat `TrailService.reset()`) | LA |
 | `MapConfig` | Sumber tile dan style, batas area kampus, cek di dalam/luar area | LB |
 | `RoutingService` | Hitung rute dari posisi ke tujuan | LB |
 | `NavigationController` | Mulai/berhenti navigasi, aliran `NavigationState`, reroute >25 m, tiba ≤15 m | LB |
@@ -144,7 +178,7 @@ Nama dan bentuk final ditetapkan pada Sprint 1 Hari 1–2 dan dicatat di sini. D
 | `TrailService` | Mulai trail, POI berikutnya, progres, lencana; check-in dari `PoiTriggerEvent` | LB |
 | `FacilityService` | Fasilitas terdekat per kategori | LB |
 
-Titik sambung antar-logic: `TrailService` (LB) mendengarkan `PoiTriggerEvent` dari `SessionController` (LA); `NavigationController` (LB) memakai posisi dari layanan lokasi LA; `VoiceGuidance` (LA) membacakan langkah dari `NavigationState` (LB).
+Titik sambung antar-logic: `TrailService` (LB) mendengarkan `PoiTriggerEvent` dari `SessionController` (LA); `NavigationController` (LB) memakai posisi dari layanan lokasi LA; `VoiceGuidance` (LA) membacakan langkah dari `NavigationState` (LB); auto-end 30 menit di `SessionController` (LA) memakai `MapConfig.isInsideCampus` (LB).
 
 ## 4. Milestone
 
@@ -160,7 +194,7 @@ Titik sambung antar-logic: `TrailService` (LB) mendengarkan `PoiTriggerEvent` da
 
 | Sprint | Sprint goal | PBI | Status |
 | --- | --- | --- | --- |
-| S1 — Week 10 | Kontrak, fondasi aplikasi, lokasi, peta | PB01, PB02, PB03, PB04 | `planned` |
+| S1 — Week 10 | Kontrak, fondasi aplikasi, lokasi, peta | PB01, PB02, PB03, PB04 | `in_progress` |
 | S2 — Week 11 | Geofence, sesi, trigger, kartu POI, audio | PB05, PB06, PB07, PB08, PB09 | `planned` |
 | S3 — Week 12 | Pencarian dan navigasi | PB10, PB11, PB12 | `planned` |
 | S4 — Week 13 | Eyes-free, rekomendasi, trail, fasilitas, offline; Feature Freeze | PB13, PB14, PB15, PB16, PB17 | `planned` |
@@ -168,7 +202,7 @@ Titik sambung antar-logic: `TrailService` (LB) mendengarkan `PoiTriggerEvent` da
 
 ## 5. Sprint 1 — Kontrak, Fondasi, Lokasi, dan Peta
 
-**Hari 1–2 (bersama, wajib sebelum kerja paralel):**
+**Hari 1–2 (bersama, wajib sebelum kerja paralel):** langkah 2–4 selesai (kontrak v1.0 disepakati 2 November 2026); langkah 1 menunggu CI dan uji perangkat.
 
 1. LA menginisialisasi project Flutter, mengunci versi Flutter/Dart, membuat struktur folder §2.3, lint, dan workflow CI build APK (PB01).
 2. Ketiga developer menyusun kontrak §3 di `lib/contracts/`, lalu merge sebagai satu PR.
@@ -188,9 +222,11 @@ Titik sambung antar-logic: `TrailService` (LB) mendengarkan `PoiTriggerEvent` da
 ### PB01 — Project Flutter, repository, pipeline build APK
 
 - **Track:** LA · **Requirement:** —
-- **Verifikasi saat setup:** versi Flutter/Dart, minSdk yang didukung, `targetSdk`.
+- **Sudah dibuat (2 November 2026, branch `chore/pb01-la-scaffolding`):** project Flutter 3.47.9 dikunci via `.fvmrc`; application ID `site.agam`, label "AGAM"; minSdk 24, targetSdk/compileSdk 36; struktur folder §2.3; kerangka `AgamApp` di `lib/ui/app.dart`; workflow `ci.yml` (format, analyze, test, build APK debug sebagai artifact) dan `release.yml` (tag `v*` → APK di GitHub Releases).
+- **Pemeriksaan lokal:** `dart format` tanpa perubahan, `flutter analyze` tanpa issue, `flutter test` 1 test lulus. Build APK **belum** dijalankan lokal karena Android SDK belum terpasang di mesin setup.
+- **Sisa:** workflow CI belum pernah berjalan di GitHub; APK belum dipasang di perangkat fisik; keystore rilis ditunda ke PB19 (sampai saat itu APK rilis ditandatangani debug key runner sehingga tidak dapat dipasang menimpa versi sebelumnya).
 - **Done:** APK debug terpasang dan dibuka tanpa crash di perangkat uji; workflow CI membangun APK dan mengunggahnya ke Releases.
-- **Status:** `planned`
+- **Status:** `in_progress`
 
 ### PB02 — Onboarding privasi, izin, dan pembacaan lokasi
 
@@ -290,8 +326,8 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
 | Track | Langkah |
 | --- | --- |
 | FE | 1. UI07 Rekomendasi setelah kartu ditutup/tiba, navigasi satu ketukan (PB14). 2. UI08 Orientation Trail: urutan, progres x/10, lencana (PB15). 3. UI09 Fasilitas & pengaturan: daftar fasilitas, auto-play, akhiri sesi, hapus progres (PB16). 4. Mode eyes-free: tombol besar dan alur tanpa membaca layar (PB13). 5. Keadaan offline yang jelas di semua layar (PB17). |
-| LA | 1. Kontrol eyes-free dari notifikasi dan lock screen; auto-play (PB13). 2. `SettingsStore` dan hapus progres lokal (PB16/A01). 3. Mode Trail di `SessionController` (PB15). 4. Uji offline: mode pesawat untuk data, media, trigger (PB17). |
-| LB | 1. `RecommendationService` (PB14). 2. `TrailService`: urutan, navigasi berantai, check-in dari `PoiTriggerEvent` termasuk di luar urutan, progres tersimpan, lencana (PB15). 3. `FacilityService` (PB16; bergantung pada dataset fasilitas). 4. Uji offline peta dan navigasi (PB17). |
+| LA | 1. Kontrol eyes-free dari notifikasi dan lock screen; auto-play (PB13). 2. `SettingsStore` untuk pengaturan (PB16). 3. Mode Trail di `SessionController` (PB15). 4. Uji offline: mode pesawat untuk data, media, trigger (PB17). |
+| LB | 1. `RecommendationService` (PB14). 2. `TrailService`: urutan, navigasi berantai, check-in dari `PoiTriggerEvent` termasuk di luar urutan, progres tersimpan, lencana, hapus progres lokal lewat `reset()` (PB15/A01). 3. `FacilityService` (PB16; bergantung pada dataset fasilitas). 4. Uji offline peta dan navigasi (PB17). |
 
 **Integrasi akhir sprint (Feature Freeze):** seluruh layar UI01–UI09 dan fitur F01–F08 terintegrasi tanpa fake. Setelah ini tidak ada fitur baru, hanya perbaikan.
 

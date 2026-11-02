@@ -1,45 +1,43 @@
 # Session Handoff — AGAM
 
-## Current — setup dokumentasi agent, 2 November 2026
+## Current — PB01 scaffolding dan kontrak v1.0, 2 November 2026
 
-**Tujuan sesi:** menyusun kontrak produk dan aturan kerja untuk tim dan coding agent sebelum pengembangan dimulai.
+**Tujuan sesi:** membuat scaffolding project Flutter (PB01) agar ketiga track dapat mulai bekerja.
 
-**Keadaan repository:**
+**Branch:** `chore/pb01-la-scaffolding` (dari `main` 3dff0f7). Perubahan belum di-commit.
 
-- Branch `main`, remote `git@github.com:SebastianAben/AGAM.git`.
-- Hanya berisi dokumentasi: `README.md`, `AGENTS.md`, dan `.agent/`.
-- `AGENTS.md` adalah satu-satunya file instruksi agent; dibaca otomatis oleh Codex, Claude Code (≥ v2.1.277), Cursor, GitHub Copilot, dan Antigravity. Jangan menambahkan `CLAUDE.md` karena akan membuat Claude Code mengabaikan `AGENTS.md`. Gemini CLI memerlukan `.gemini/settings.json` (`context.fileName`) jika dipakai.
-- **Belum ada kode aplikasi**, project Flutter, workflow CI, atau test. Seluruh PBI berstatus `planned`.
+**Yang dibuat:**
 
-**Keputusan yang dikunci sesi ini** (rincian di `.agent/PRD.md`):
+- Project Flutter khusus Android: application ID `site.agam`, label "AGAM", minSdk 24, targetSdk/compileSdk 36.
+- Flutter 3.47.9 / Dart 3.13.7 dikunci dengan FVM (`.fvmrc`). FVM dipasang lewat Homebrew; developer menjalankan `fvm install` lalu memakai `fvm flutter`.
+- Struktur folder per track (`.agent/implementationPhases.md` §2.3) dengan `.gitkeep`.
+- Kerangka aplikasi: `lib/main.dart` → `lib/ui/app.dart` (`AgamApp`, layar placeholder bertuliskan "AGAM"); test `test/ui/app_test.dart`.
+- `.github/workflows/ci.yml`: format, analyze, test, build APK debug (artifact) pada PR dan push ke `main`.
+- `.github/workflows/release.yml`: tag `v*` → build APK rilis → GitHub Releases.
+- `.gitignore` standar Flutter + `.fvm/`.
 
-- Radius trigger 15 m untuk semua POI; filter akurasi 20 m; dwell 5 detik; cooldown 10 menit.
-- Stack mengikuti presentasi PRD: Flutter, `geolocator`, OSM, Firestore, `flutter_tts`.
-- Semua POI memiliki narasi audio; video GKUB/GKUT masuk lingkup.
-- Empat mode: peta biasa, Explore, Navigasi, Orientation Trail; sesi berakhir manual atau otomatis 30 menit di luar area.
-- Semua perhitungan di perangkat; routing di perangkat dengan graf jalur kampus; lokasi tidak pernah dikirim.
-- Tile vektor OSM buatan sendiri dibundel di APK sejak Sprint 1.
-- Firestore hanya untuk data teks; media dibundel di APK.
-- Narasi/prompt/tiba = file audio; TTS runtime hanya untuk arahan navigasi.
-- Bahasa Indonesia saja; tanpa login; tanpa backend milik tim; distribusi via GitHub Releases.
+- Kontrak v1.0 di `lib/contracts/`: konstanta produk, model data, antarmuka layanan LA dan LB, fake yang saling terhubung, dan `AppServices.fake()`. Rincian di `.agent/implementationPhases.md` §3. **Disepakati ketiga track pada 2 November 2026**; perubahan berikutnya wajib mengikuti §2.4.
+- Test kontrak di `test/contracts/`: jarak haversine dengan nilai acuan yang dihitung terpisah (Python), poligon kampus, progres trail, serta alur fake (pencarian alias, trigger, check-in, respons ringkas saat Navigasi, tiba ≤15 m).
 
-**Tindakan PM yang tertunda:**
+**Pemeriksaan yang dijalankan (lokal, Flutter 3.47.9):** `dart format` tanpa perubahan; `flutter analyze` tanpa issue; `flutter test` 11 test lulus.
 
-- Mencatat perbedaan terhadap baseline W9 ([PRD §23](PRD.md#23-perbedaan-terhadap-prd-baseline-w9)) di Change Log PRD resmi.
+**Belum diverifikasi:**
 
-**Blocker / data yang belum tersedia** ([PRD §22](PRD.md#22-hal-tertunda-tbd)):
+- Build APK lokal: Android SDK belum terpasang di mesin setup (`flutter doctor`: "Unable to locate Android SDK"). JDK lokal adalah versi 27; CI memakai JDK 17.
+- Workflow CI dan rilis belum pernah berjalan di GitHub.
+- APK belum dipasang di perangkat fisik.
 
-- Project Firebase belum dibuat.
-- Konten P01–P10 belum tersedia.
-- Koordinat pintu masuk menunggu survei.
-- Urutan Orientation Trail belum ditetapkan.
-- Dataset fasilitas akan dikumpulkan.
-- Perangkat uji belum ditetapkan.
+**Keputusan sesi ini:** kontrak v1.0 disepakati ketiga track; application ID `site.agam`; Flutter 3.47.9 via FVM (Homebrew); keystore rilis ditunda ke PB19. Selama itu APK rilis memakai debug key runner CI yang berbeda setiap run, sehingga penguji harus uninstall sebelum memasang versi baru.
 
-**Hal yang wajib diverifikasi saat PB01** (jangan diasumsikan): versi Flutter/Dart terpasang, minSdk yang didukung, versi package, renderer tile vektor, ukuran APK.
+**Blocker / data yang belum tersedia** ([PRD §22](PRD.md#22-hal-tertunda-tbd)): project Firebase, konten P01–P10, koordinat pintu masuk, urutan trail, dataset fasilitas, perangkat uji.
 
-**Pemeriksaan yang dijalankan:** hanya pemeriksaan konsistensi dokumentasi. Tidak ada build atau test karena belum ada kode.
+**Tindakan PM yang tertunda:** mencatat perbedaan terhadap baseline W9 ([PRD §23](PRD.md#23-perbedaan-terhadap-prd-baseline-w9)) di Change Log PRD resmi.
 
-**Model kerja:** tiga track paralel dengan satu developer per track — FE (frontend), LA (lokasi/sesi/data/audio), LB (peta/rute/pencarian/trail). Track tidak terikat pada orang tertentu. Kerja paralel bergantung pada kontrak di `lib/contracts/` beserta fake; lihat `.agent/implementationPhases.md` §2–3. Desain layar UI01–UI09 sudah selesai.
+**Model kerja:** tiga track paralel dengan satu developer per track — FE (frontend), LA (lokasi/sesi/data/audio), LB (peta/rute/pencarian/trail). Track tidak terikat pada orang tertentu. `AGENTS.md` adalah satu-satunya file instruksi agent; jangan menambahkan `CLAUDE.md`.
 
-**Langkah berikutnya:** Sprint 1 Hari 1–2 — LA menginisialisasi project Flutter dan CI (PB01), lalu ketiga developer menyusun kontrak dan fake sebelum bekerja paralel.
+**Langkah berikutnya:**
+
+1. Commit dan push, buka PR, pastikan workflow CI lulus (termasuk build APK). Disarankan dua commit/PR terpisah: scaffolding PB01 dan kontrak v1.0.
+2. Pasang APK debug dari artifact CI di perangkat Android untuk menutup PB01.
+3. Kerja paralel Sprint 1 dimulai sesuai `.agent/implementationPhases.md` §5 (PB02–PB04).
+4. FE menyambungkan `AppServices.fake()` ke `AgamApp` (saat ini `lib/ui/app.dart` belum memakai layanan apa pun).
