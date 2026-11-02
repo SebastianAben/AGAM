@@ -57,10 +57,10 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
-  # To add assets to your application, add an assets section, like this:
-  # assets:
-  #   - images/a_dot_burr.jpeg
-  #   - images/a_dot_ham.jpeg
+  # Dataset POI bawaan (PB03, track LA). Dipakai saat pertama dibuka dan
+  # sebagai fallback offline — lihat .agent/PRD.md §15.2.
+  assets:
+    - assets/data/pois.json
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
