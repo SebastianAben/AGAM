@@ -40,4 +40,6 @@
 
 **Pemeriksaan yang dijalankan:** hanya pemeriksaan konsistensi dokumentasi. Tidak ada build atau test karena belum ada kode.
 
-**Langkah berikutnya:** PB01 — inisialisasi project Flutter, kunci versi, dan workflow GitHub Actions untuk build APK.
+**Model kerja:** tiga track paralel dengan satu developer per track — FE (frontend), LA (lokasi/sesi/data/audio), LB (peta/rute/pencarian/trail). Track tidak terikat pada orang tertentu. Kerja paralel bergantung pada kontrak di `lib/contracts/` beserta fake; lihat `.agent/implementationPhases.md` §2–3. Desain layar UI01–UI09 sudah selesai.
+
+**Langkah berikutnya:** Sprint 1 Hari 1–2 — LA menginisialisasi project Flutter dan CI (PB01), lalu ketiga developer menyusun kontrak dan fake sebelum bekerja paralel.

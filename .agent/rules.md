@@ -149,6 +149,8 @@ Jangan menulis riwayat percakapan ke PRD. Dokumentasi saja tidak menaikkan statu
 ## 8. Git dan Delivery
 
 - Periksa branch, diff, dan working tree sebelum mengedit. Pertahankan perubahan anggota tim lain.
+- Pekerjaan dibagi ke tiga track paralel (FE, LA, LB). Ikuti alur kerja, kepemilikan folder, dan aturan perubahan kontrak di `.agent/implementationPhases.md` §2. Jangan mengubah folder milik track lain atau `lib/contracts/` secara sepihak.
+- Setiap bagian PBI dikerjakan di branch sendiri (`<jenis>/pbXX-<track>-<topik>`) dan masuk ke `main` lewat PR yang direview minimal satu developer lain.
 - Dilarang commit, push, merge, membuat rilis, atau publish tanpa instruksi pengguna.
 - Hindari operasi Git destruktif (force push, reset hard, menghapus pekerjaan yang belum di-commit).
 - Stage hanya file yang terkait tugas.

@@ -7,8 +7,7 @@
 | Tanggal | 2 November 2026 |
 | Sumber resmi | Draft PRD W9 (`Kelompok 03_Draft PRD.docx.pdf`, bagian 1–4) dan presentasi PRD lengkap (`Transformasi Digital-PRD-Kel.Warung.pdf`, halaman 1–23). Keduanya berada di luar repository |
 | Mata kuliah | II4011 Transformasi Digital — Prof. Ir. Kridanto Surendro, M.Sc., Ph.D. |
-| Tim | Kelompok 03 / Warung |
-| Product owner / PM | Sebastian Albern Nugroho (Project Manager / Scrum Master) |
+| Tim | Kelompok 03 / Warung; keputusan produk dipegang Project Manager |
 | Platform | Aplikasi mobile Android (APK) |
 | Stack | Flutter / Dart, Fused Location Provider (`geolocator`), OpenStreetMap (tile vektor dibundel), Firebase Firestore + JSON bawaan, `flutter_tts` |
 
