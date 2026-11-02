@@ -226,10 +226,28 @@ Aturan konten:
 
 ### 15.3 Skema konseptual
 
-Nama field final ditetapkan pada PB03 dan dicatat di sini.
+Nama field final ditetapkan pada PB03 (2 November 2026). Bentuk ini dipakai sama untuk dokumen Firestore dan JSON bawaan `assets/data/pois.json`; parser dan validatornya di `lib/logic/data/poi_codec.dart`.
 
-- `pois/{id}`: `id`, `name`, `aliases[]`, `category`, `lat`, `lng`, `radiusM`, `entrances[]` (lat, lng, label — TBD), `description`, `function`, `facilities[]`, `trivia`, `media` (path aset di APK: foto, narasi, prompt, tiba, video), `trailOrder` (TBD), `metadata` (sumber, tanggal verifikasi, penanggung jawab, atribusi aset, status persetujuan).
-- `facilities/{id}`: `id`, `name`, `category` (toilet, musala, kantin, ATM, perpustakaan, layanan akademik), `lat`, `lng`, `buildingId` (opsional), `description`, `metadata`.
+- `pois/{id}`: `id`, `name`, `aliases[]`, `category`, `lat`, `lng`, `radiusM`, `entrances[]` (`lat`, `lng`, `label`), `description`, `function`, `facilities[]`, `trivia`, `media` (`photos[]`, `narrationAudio`, `promptAudio`, `arrivalAudio`, `video` — path aset di APK), `trailOrder`, `metadata`.
+- `facilities/{id}`: `id`, `name`, `category`, `lat`, `lng`, `buildingId` (opsional), `description`, `metadata`.
+- `metadata`: `sources[]`, `verifiedAt` (ISO 8601), `owner`, `assetAttribution[]`, `approved`, `isPlaceholder`.
+
+Nilai `category` ditulis persis seperti nama enum kontrak: POI `laboratoryAndLecture` atau `lecture`; fasilitas `toilet`, `musala`, `kantin`, `atm`, `perpustakaan`, `layananAkademik`.
+
+Aturan validasi (PB03, menerapkan [§15.2](#152-alur-sinkronisasi) butir 3):
+
+| Field | Aturan | Jika dilanggar |
+| --- | --- | --- |
+| `id`, `name` | Teks wajib, tidak kosong | Dokumen diabaikan |
+| `lat`, `lng` | Angka dalam rentang WGS84 (−90..90, −180..180) | Dokumen diabaikan |
+| `category` | Harus salah satu nilai enum di atas | Dokumen diabaikan |
+| `radiusM` | Angka > 0; jika tidak ada, memakai default 15 m | Dokumen diabaikan |
+| `entrances[]` | Daftar objek dengan `lat`/`lng` valid; kosong selama survei belum dilakukan | Dokumen diabaikan |
+| `trailOrder` | Boleh tidak ada; jika ada wajib bilangan bulat positif | Dokumen diabaikan |
+| `id` ganda dalam satu dataset | Hanya dokumen pertama dipakai | Duplikat diabaikan |
+| `metadata` tidak lengkap (tanpa `sources`, `owner`, atau `verifiedAt` yang valid) | Konten diperlakukan sebagai placeholder dan `approved` dipaksa `false` | Tidak siap rilis (A02) |
+
+Dokumen yang diabaikan tidak menggagalkan dataset lain. Dataset yang tidak menyisakan satu pun POI valid tidak dipakai; aplikasi tetap memakai salinan sebelumnya atau JSON bawaan.
 
 ### 15.4 Firestore
 

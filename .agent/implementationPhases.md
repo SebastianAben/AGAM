@@ -2,14 +2,14 @@
 
 | Atribut | Nilai |
 | --- | --- |
-| Status dokumen | Rencana awal; seluruh PBI `planned` |
-| Tanggal | 2 November 2026 |
+| Status dokumen | Aktif; status per PBI dicatat di bagian masing-masing |
+| Tanggal | 2 November 2026, diperbarui 3 November 2026 |
 | Kontrak produk | `.agent/PRD.md`; aturan kerja di `.agent/rules.md` |
 | Model kerja | 5 sprint × 1 minggu (Week 10–14), deliverable final Week 15 |
 | Pembagian kerja | Tiga track paralel: 1 developer frontend, 2 developer logic aplikasi (lihat §2) |
 | Desain layar | UI01–UI09 sudah selesai; frontend tinggal mengimplementasikan |
 | Backlog | PB01–PB20 dari PRD resmi; ID tidak boleh diubah atau dinomori ulang |
-| Current focus | Sprint 1: kontrak v1.0 disepakati (§3); PB01 `in_progress` (menunggu CI dan uji perangkat); kerja paralel PB02–PB04 dapat dimulai |
+| Current focus | Sprint 1: kontrak v1.0 disepakati (§3); PB01 `in_progress` (CI sukses; menunggu uji perangkat fisik); PB03 `in_progress` (JSON bawaan, validasi, cache selesai; Firestore `blocked`); PB02 dan PB04 belum dimulai |
 
 Dokumen ini menetapkan cara tim bekerja paralel, urutan pekerjaan per track, dependency, dan definition of done. Rencana bukan bukti implementasi.
 
@@ -223,8 +223,9 @@ Titik sambung antar-logic: `TrailService` (LB) mendengarkan `PoiTriggerEvent` da
 
 - **Track:** LA · **Requirement:** —
 - **Sudah dibuat (2 November 2026, branch `chore/pb01-la-scaffolding`):** project Flutter 3.47.9 dikunci via `.fvmrc`; application ID `site.agam`, label "AGAM"; minSdk 24, targetSdk/compileSdk 36; struktur folder §2.3; kerangka `AgamApp` di `lib/ui/app.dart`; workflow `ci.yml` (format, analyze, test, build APK debug sebagai artifact) dan `release.yml` (tag `v*` → APK di GitHub Releases).
-- **Pemeriksaan lokal:** `dart format` tanpa perubahan, `flutter analyze` tanpa issue, `flutter test` 1 test lulus. Build APK **belum** dijalankan lokal karena Android SDK belum terpasang di mesin setup.
-- **Sisa:** workflow CI belum pernah berjalan di GitHub; APK belum dipasang di perangkat fisik; keystore rilis ditunda ke PB19 (sampai saat itu APK rilis ditandatangani debug key runner sehingga tidak dapat dipasang menimpa versi sebelumnya).
+- **Pemeriksaan lokal:** `dart format` tanpa perubahan, `flutter analyze` tanpa issue, `flutter test` lulus (saat PB01 berisi 1 test; suite tumbuh seiring PBI berikutnya). Build APK **belum** dijalankan lokal karena Android SDK belum terpasang di mesin setup.
+- **CI (terverifikasi 3 November 2026):** workflow `ci.yml` sudah berjalan dan sukses — run 41424657609 (PR #1) dan 41424686250 (`main`), keduanya menghasilkan artifact `agam-debug-apk`. Peringatan deprecation: `actions/checkout@v4`, `actions/setup-java@v4`, `actions/upload-artifact@v4` dipaksa ke Node.js 24; `ubuntu-latest` pindah ke Ubuntu 26 pada 19 Oktober 2026.
+- **Sisa:** APK belum dipasang di perangkat fisik; workflow `release.yml` belum pernah berjalan; keystore rilis ditunda ke PB19 (sampai saat itu APK rilis ditandatangani debug key runner sehingga tidak dapat dipasang menimpa versi sebelumnya).
 - **Done:** APK debug terpasang dan dibuka tanpa crash di perangkat uji; workflow CI membangun APK dan mengunggahnya ke Releases.
 - **Status:** `in_progress`
 
@@ -240,8 +241,16 @@ Titik sambung antar-logic: `TrailService` (LB) mendengarkan `PoiTriggerEvent` da
 - **Track:** LA · **Requirement:** F01, F02, F05, A02
 - **Scope:** skema final (PRD §15.3); JSON bawaan; validasi dokumen; sinkronisasi Firestore → cache lokal; fallback ke salinan lokal.
 - **Dependency eksternal:** project Firebase (belum dibuat).
+- **Sudah dibuat (3 November 2026, branch `feat/pb03-la-poi-repository`):**
+  - Skema final dicatat di PRD §15.3, termasuk tabel aturan validasi dan nilai enum `category`.
+  - `assets/data/pois.json`: 10 POI dari PRD §9.1 (id, nama, alias, kategori, koordinat, radius 15 m). Teks dan media berlabel `PLACEHOLDER`, `entrances` kosong, `trailOrder` null, metadata belum disetujui. Didaftarkan di `pubspec.yaml`.
+  - `lib/logic/data/poi_codec.dart`: validasi per dokumen; dokumen tidak valid diabaikan satu per satu beserta alasannya (`PoiDecodeIssue`).
+  - `lib/logic/data/poi_sources.dart`: `BundledDataset`, `DatasetCache` (`FileDatasetCache` dan `InMemoryDatasetCache`), serta `RemoteDatasetSource` dengan `UnavailableRemoteSource` selama project Firebase belum ada.
+  - `lib/logic/data/poi_repository_impl.dart`: `PoiRepository` asli dengan urutan cache → bawaan, `refresh()` yang tidak pernah melempar, dan dataset tanpa POI valid tidak dipakai maupun di-cache.
+- **Pemeriksaan (lokal, Flutter 3.47.9 via FVM):** `dart format --set-exit-if-changed` tanpa perubahan; `flutter analyze` tanpa issue; `flutter test` 67 test lulus (56 baru + 11 test kontrak). Test dataset bawaan diverifikasi benar-benar menangkap kesalahan dengan sengaja mengubah satu koordinat, lalu dipulihkan.
+- **Sisa (`blocked`):** sinkronisasi Firestore belum dibuat (project Firebase belum ada, PRD §22); `cloud_firestore` belum ditambahkan ke `pubspec.yaml`. Direktori cache saat integrasi masih perlu package penyedia path yang versinya wajib diverifikasi. Belum diuji di perangkat fisik.
 - **Done:** data 10 POI terbaca dari server dan dari cache lokal; dokumen tidak valid diabaikan; aplikasi berjalan saat offline.
-- **Status:** `planned`
+- **Status:** `in_progress` — JSON bawaan, validasi, cache, dan fallback selesai dan teruji; bagian Firestore `blocked`, dan belum terintegrasi dengan UI.
 
 ### PB04 — Explore Map dengan tile vektor dibundel
 
