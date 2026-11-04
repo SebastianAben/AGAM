@@ -40,3 +40,7 @@ app.*.map.json
 
 # FVM Version Cache
 .fvm/
+
+# Cache pipeline tile (unduhan, JAR, scratch, log)
+/tools/tiles/.cache/
+/assets/map/.ganesha-build-*/

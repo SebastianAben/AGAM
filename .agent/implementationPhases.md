@@ -9,7 +9,7 @@
 | Pembagian kerja | Tiga track paralel: 1 developer frontend, 2 developer logic aplikasi (lihat §2) |
 | Desain layar | UI01–UI09 sudah selesai; frontend tinggal mengimplementasikan |
 | Backlog | PB01–PB20 dari PRD resmi; ID tidak boleh diubah atau dinomori ulang |
-| Current focus | Sprint 1: kontrak v1.0 disepakati (§3); PB01 `in_progress` (CI sukses; menunggu uji perangkat fisik); PB03 `in_progress` (JSON bawaan, validasi, cache selesai; Firestore `blocked`); PB02 dan PB04 belum dimulai. Bagian mandiri PB05-LA-01 juga tersedia dan teruji; PB05 `in_progress`, belum terintegrasi |
+| Current focus | Sprint 1: kontrak v1.0 disepakati (§3); PB01 `in_progress` (CI sukses; menunggu uji perangkat fisik); PB03 `in_progress` (JSON bawaan, validasi, cache selesai; Firestore `blocked`); PB02 belum dimulai; PB04 `in_progress` pada task pipeline LB-01. Bagian mandiri PB05-LA-01 juga tersedia dan teruji; PB05 `in_progress`, belum terintegrasi |
 
 Dokumen ini menetapkan cara tim bekerja paralel, urutan pekerjaan per track, dependency, dan definition of done. Rencana bukan bukti implementasi.
 
@@ -273,8 +273,12 @@ Titik sambung antar-logic: `TrailService` (LB) mendengarkan `PoiTriggerEvent` da
 ### PB04 — Explore Map dengan tile vektor dibundel
 
 - **Track:** LB (pipeline tile, style, `MapConfig`), FE (UI02) · **Requirement:** F01, A03
+- **Brief:** [PB04-LB-01 — pipeline OSM ke PMTiles](../task-implementation/backend/PB04-LB-01-tile-pipeline.md).
+- **Ada di source (4 November 2026):** pipeline PowerShell/Python di `tools/tiles/`, generator Planetiler v0.10.2 terverifikasi SHA-256, snapshot batas OSM `way/177629384`, coverage kampus + 200 m, validator arsip dan manifest. Tidak mengubah kontrak, UI, atau dependency Flutter.
+- **Verifikasi lokal:** 18 test tooling lulus; dua build data nyata/cache menghasilkan PMTiles identik (1.035.927 bytes, 13 tile zoom 12–16); validator penuh dan CLI resmi `pmtiles verify` lulus. Manifest di `assets/map/ganesha.manifest.json`; command, checksum, peringatan sumber, dan batas evidence di handoff.
+- **Sisa:** style AGAM, `MapConfig` asli, pendaftaran aset di APK, renderer bersama FE, serta uji offline/perangkat. Batas coverage tile tercatat di PRD §9.3; batas layanan belum diterapkan.
 - **Done:** peta tampil offline sejak instalasi; 10 POI dan posisi pengguna yang bergerak terlihat; script tile dapat dijalankan ulang; ukuran tile tercatat.
-- **Status:** `planned`
+- **Status:** `in_progress` — task pipeline LB-01 selesai secara teknis; PB04 belum terintegrasi
 
 ## 6. Sprint 2 — Geofence, Sesi, Trigger, Kartu POI, dan Audio
 
