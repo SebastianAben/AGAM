@@ -291,7 +291,7 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
 ### PB05 — Engine geofence in-app
 
 - **Track:** LA · **Requirement:** F02
-- **Brief:** [PB05-LA-01 — engine sinkron](tasks/PB05-LA-01-geofence-engine.md); tata cara brief di [tasks/README.md](tasks/README.md).
+- **Brief:** [PB05-LA-01 — engine sinkron](../task-implementation/backend/PB05-LA-01-geofence-engine.md); tata cara brief di [panduan brief](../task-implementation/README.md).
 - **Ada di source (4 November 2026):** `lib/logic/location/geofence_engine.dart`, API internal LA dan state machine sinkron; test deterministik di `test/logic/location/geofence_engine_test.dart`. Menggunakan model/konstanta existing tanpa mengubah kontrak, UI, GPS, Android, atau package.
 - **Parameter:** margin histeresis default 5 m dan jeda sampel maksimum 10 detik telah diterapkan, belum dikalibrasi; lihat PRD §9.2.
 - **Verifikasi lokal (4 November 2026):** SDK resmi tag Flutter 3.47.9 / Dart 3.13.7 dijalankan lewat path absolut setelah FVM awalnya tidak tersedia di PATH. Format: 31 file, 0 perubahan; analyze: tanpa issue; test geofence: 46 lulus; seluruh suite: 113 lulus (67 existing + 46 baru). Command/path dan catatan lingkungan ada di handoff; CI remote tidak dijalankan sesi ini.

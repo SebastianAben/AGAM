@@ -2,7 +2,7 @@
 
 **Wajib dibaca sebelum melakukan apa pun di repository ini.**
 
-AGAM (Aplikasi Ganesha Map) adalah aplikasi Android (Flutter) pemandu Kampus ITB Ganesha berbasis POI dan geofencing. Seluruh konteks, aturan, dan keputusan proyek ada di folder `.agent/`.
+AGAM (Aplikasi Ganesha Map) adalah aplikasi Android (Flutter) pemandu Kampus ITB Ganesha berbasis POI dan geofencing. Aturan, kontrak produk, backlog, dan handoff ada di folder `.agent/`. Brief implementasi ada di `task-implementation/`, sejajar dengan `.agent/`; brief logic LA/LB berada di `task-implementation/backend/`.
 
 Sebelum menulis kode, konten, atau dokumentasi, baca secara berurutan:
 

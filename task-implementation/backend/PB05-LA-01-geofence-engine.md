@@ -27,10 +27,10 @@ Kontrak existing menyediakan `Poi.id/position/radiusM`, `LocationFix.position/ac
 
 ## 3. Konteks wajib
 
-- [PRD §6](../PRD.md#6-mode-aplikasi-dan-sesi-lokasi): mode dan sesi.
-- [PRD §9.2](../PRD.md#92-logika-trigger): trigger.
-- [PRD §16](../PRD.md#16-privasi) dan [§22](../PRD.md#22-hal-tertunda-tbd): privasi dan TBD.
-- [Implementation phases](../implementationPhases.md): §2 ownership, PB05, PB06.
+- [PRD §6](../../.agent/PRD.md#6-mode-aplikasi-dan-sesi-lokasi): mode dan sesi.
+- [PRD §9.2](../../.agent/PRD.md#92-logika-trigger): trigger.
+- [PRD §16](../../.agent/PRD.md#16-privasi) dan [§22](../../.agent/PRD.md#22-hal-tertunda-tbd): privasi dan TBD.
+- [Implementation phases](../../.agent/implementationPhases.md): §2 ownership, PB05, PB06.
 - Kontrak: `lib/contracts/constants.dart`, model lokasi, geografi, POI, dan sesi.
 - `test/contracts/models_test.dart`: acuan haversine independen existing.
 

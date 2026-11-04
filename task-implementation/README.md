@@ -2,7 +2,9 @@
 
 ## Fungsi
 
-Brief memperinci pekerjaan developer/agent menjadi hasil yang dapat diimplementasikan, diperiksa, dan diintegrasikan. Brief tidak menggantikan [aturan](../rules.md), [PRD](../PRD.md), [implementation phases](../implementationPhases.md), atau kontrak pada `lib/contracts/`.
+Brief memperinci pekerjaan developer/agent menjadi hasil yang dapat diimplementasikan, diperiksa, dan diintegrasikan. Brief tidak menggantikan [aturan](../.agent/rules.md), [PRD](../.agent/PRD.md), [implementation phases](../.agent/implementationPhases.md), atau kontrak pada `lib/contracts/`.
+
+Folder `backend/` menampung brief logic LA/LB di dalam aplikasi, bukan server backend. Folder `task-implementation/` berada di root; `.agent/` tetap sumber kebenaran aturan, produk, backlog, dan handoff.
 
 ## Urutan baca
 
@@ -11,13 +13,13 @@ Brief memperinci pekerjaan developer/agent menjadi hasil yang dapat diimplementa
 3. Baca kontrak, source, dan test yang disebutkan brief.
 4. Periksa branch, working tree, serta perubahan yang sudah ada.
 
-Task dikerjakan pada branch tetap sesuai track (`LA`, `LB`, atau `FE`), bukan branch per task. PR integrasi ditujukan ke `dev`; versi stabil dipromosikan melalui PR `dev` ke `main`. Model branch lengkap mengikuti [implementation phases §2.5](../implementationPhases.md#25-alur-kerja-per-pbi). Nama file brief dan ID PBI tetap digunakan untuk scope serta pelacakan pekerjaan, bukan untuk membuat branch tambahan.
+Task dikerjakan pada branch tetap sesuai track (`LA`, `LB`, atau `FE`), bukan branch per task. PR integrasi ditujukan ke `dev`; versi stabil dipromosikan melalui PR `dev` ke `main`. Model branch lengkap mengikuti [implementation phases §2.5](../.agent/implementationPhases.md#25-alur-kerja-per-pbi). Nama file brief dan ID PBI tetap digunakan untuk scope serta pelacakan pekerjaan, bukan untuk membuat branch tambahan.
 
 Jangan menganggap kondisi source dalam brief selalu mutakhir. Jika ditemukan perbedaan material, catat sebelum implementasi.
 
 ## Identitas pekerjaan
 
-Nama file: `PBXX-TRACK-NN-topik.md`, misalnya [PB05-LA-01-geofence-engine.md](PB05-LA-01-geofence-engine.md). NN adalah urutan bagian pekerjaan, bukan nomor PBI baru. ID PB01–PB20 pada backlog tetap dipertahankan.
+Nama file: `PBXX-TRACK-NN-topik.md`, misalnya [PB05-LA-01-geofence-engine.md](backend/PB05-LA-01-geofence-engine.md). NN adalah urutan bagian pekerjaan, bukan nomor PBI baru. ID PB01–PB20 pada backlog tetap dipertahankan.
 
 ## Status dan evidence
 

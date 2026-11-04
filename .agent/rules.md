@@ -20,6 +20,8 @@ Folder ini menyimpan kontrak produk dan konteks kerja lintas sesi agar setiap ag
 | `.agent/implementationPhases.md` | Rencana sprint, backlog PB01–PB20, dependency, dan status |
 | `.agent/sessionHandoff.md` | Keadaan terkini, pekerjaan terakhir, blocker, dan langkah berikutnya |
 
+Brief task disimpan di `task-implementation/` pada root repository; detail logic LA/LB berada di `task-implementation/backend/`. Brief memperinci backlog, tanpa menggantikan otoritas `.agent/`.
+
 Folder ini **bukan** tempat output sementara, credential, file media, atau salinan dokumentasi lain.
 
 `AGENTS.md` di root adalah satu-satunya file instruksi agent. **Dilarang** menambahkan `CLAUDE.md`, karena keberadaannya membuat Claude Code mengabaikan `AGENTS.md`. Instruksi untuk tool lain ditambahkan dengan cara yang tetap merujuk ke `AGENTS.md` (mis. `context.fileName` di `.gemini/settings.json` untuk Gemini CLI).
