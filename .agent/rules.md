@@ -3,7 +3,7 @@
 | Atribut | Nilai |
 | --- | --- |
 | Status | Aktif untuk seluruh pekerjaan di repository |
-| Tanggal | 2 November 2026 |
+| Tanggal | 2 November 2026, diperbarui 4 November 2026 |
 | Tujuan | Menjaga konsistensi keputusan produk, implementasi, verifikasi, dan handoff antar-sesi serta antar-anggota tim |
 | Cakupan | Source, test, data, konten, dokumentasi, CI/CD, dan rilis AGAM |
 
@@ -150,7 +150,11 @@ Jangan menulis riwayat percakapan ke PRD. Dokumentasi saja tidak menaikkan statu
 
 - Periksa branch, diff, dan working tree sebelum mengedit. Pertahankan perubahan anggota tim lain.
 - Pekerjaan dibagi ke tiga track paralel (FE, LA, LB). Ikuti alur kerja, kepemilikan folder, dan aturan perubahan kontrak di `.agent/implementationPhases.md` §2. Jangan mengubah folder milik track lain atau `lib/contracts/` secara sepihak.
-- Setiap bagian PBI dikerjakan di branch sendiri (`<jenis>/pbXX-<track>-<topik>`) dan masuk ke `main` lewat PR yang direview minimal satu developer lain.
+- Model branch tetap hanya `main`, `dev`, `LA`, `LB`, dan `FE` (nama track memakai huruf besar). `main` menyimpan versi stabil; `dev` menjadi branch integrasi; setiap track mengerjakan seluruh task/PBI miliknya pada branch track yang sesuai. Jangan membuat branch per fitur, PBI, atau task.
+- Alur integrasi: `LA`/`LB`/`FE` → PR ke `dev` → pengujian integrasi → PR `dev` ke `main` untuk versi stabil. Setiap PR direview minimal satu developer lain; perubahan kontrak tetap memerlukan persetujuan kedua track lain.
+- Batasi setiap PR pada satu bagian pekerjaan yang dapat direview. Sinkronkan branch track dengan `dev` sebelum pekerjaan berikutnya dan setelah integrasi; jangan mencampur pekerjaan yang belum siap ke PR. Gunakan checkout/worktree terpisah untuk pekerjaan paralel dan koordinasikan satu pemilik aktif per branch track.
+- Branch lama per PBI adalah riwayat model sebelumnya. Jangan membuat ulang, mengganti nama, menghapus, atau memindahkan pekerjaan pada branch tersebut tanpa instruksi pengguna; laporkan kebutuhan migrasi jika checkout masih memakai model lama.
+- Migrasi yang diinstruksikan pengguna pada 4 November 2026: progres PB03 dan PB05 diteruskan di `LA`. Branch lama `feat/pb03-la-poi-repository` dipertahankan sebagai riwayat; pekerjaan baru tidak dilanjutkan atau di-push ke branch tersebut. Branch lokal PB05 diganti menjadi `LA`, bukan dipublikasikan sebagai branch PB05 terpisah.
 - Dilarang commit, push, merge, membuat rilis, atau publish tanpa instruksi pengguna.
 - Hindari operasi Git destruktif (force push, reset hard, menghapus pekerjaan yang belum di-commit).
 - Stage hanya file yang terkait tugas.

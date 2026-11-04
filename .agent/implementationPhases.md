@@ -3,13 +3,13 @@
 | Atribut | Nilai |
 | --- | --- |
 | Status dokumen | Aktif; status per PBI dicatat di bagian masing-masing |
-| Tanggal | 2 November 2026, diperbarui 3 November 2026 |
+| Tanggal | 2 November 2026, diperbarui 4 November 2026 |
 | Kontrak produk | `.agent/PRD.md`; aturan kerja di `.agent/rules.md` |
 | Model kerja | 5 sprint × 1 minggu (Week 10–14), deliverable final Week 15 |
 | Pembagian kerja | Tiga track paralel: 1 developer frontend, 2 developer logic aplikasi (lihat §2) |
 | Desain layar | UI01–UI09 sudah selesai; frontend tinggal mengimplementasikan |
 | Backlog | PB01–PB20 dari PRD resmi; ID tidak boleh diubah atau dinomori ulang |
-| Current focus | Sprint 1: kontrak v1.0 disepakati (§3); PB01 `in_progress` (CI sukses; menunggu uji perangkat fisik); PB03 `in_progress` (JSON bawaan, validasi, cache selesai; Firestore `blocked`); PB02 dan PB04 belum dimulai |
+| Current focus | Sprint 1: kontrak v1.0 disepakati (§3); PB01 `in_progress` (CI sukses; menunggu uji perangkat fisik); PB03 `in_progress` (JSON bawaan, validasi, cache selesai; Firestore `blocked`); PB02 dan PB04 belum dimulai. Bagian mandiri PB05-LA-01 juga tersedia dan teruji; PB05 `in_progress`, belum terintegrasi |
 
 Dokumen ini menetapkan cara tim bekerja paralel, urutan pekerjaan per track, dependency, dan definition of done. Rencana bukan bukti implementasi.
 
@@ -76,7 +76,7 @@ Untuk menghindari konflik merge, setiap track hanya mengubah foldernya sendiri. 
 
 ### 2.4 Perubahan kontrak
 
-- Perubahan pada `lib/contracts/` dilakukan lewat PR tersendiri yang **disetujui oleh kedua track lain** sebelum di-merge.
+- Perubahan pada `lib/contracts/` dilakukan lewat PR tersendiri dari branch track pengusul ke `dev`, tanpa membuat branch tambahan, dan **disetujui oleh kedua track lain** sebelum di-merge. Selesaikan PR kontrak sebelum menumpuk pekerjaan lain pada branch yang sama agar diff tetap terpisah.
 - Perubahan yang merusak (mengganti nama, menghapus field/metode, mengubah perilaku) wajib memperbarui fake dan semua pemakai dalam PR yang sama.
 - Menambah field atau metode baru boleh dilakukan selama tidak merusak pemakai yang sudah ada.
 - Jika kontrak ternyata tidak cukup di tengah sprint, track terkait berdiskusi dulu, bukan mengubah sepihak.
@@ -92,24 +92,42 @@ Untuk menghindari konflik merge, setiap track hanya mengubah foldernya sendiri. 
 
 **Langkah per PBI:**
 
-1. Tarik `main` terbaru.
+1. Periksa working tree dan sinkronkan branch track dengan `dev` terbaru; pertahankan perubahan lokal yang belum selesai.
 2. Baca `.agent/rules.md`, `.agent/sessionHandoff.md`, dan bagian PBI terkait di dokumen ini serta PRD.
-3. Buat branch dari `main` dengan pola `<jenis>/pbXX-<track>-<topik>`, misalnya `feat/pb05-la-geofence` atau `feat/pb07-fe-poi-card`.
+3. Kerjakan pada branch tetap `LA`, `LB`, atau `FE` sesuai track. Tidak membuat branch baru per PBI/fitur/task. Branch track yang belum tersedia disiapkan dari `dev` dengan instruksi pengguna. Jika checkout masih berada di branch per PBI lama, laporkan kebutuhan migrasi; jangan memindahkan perubahan secara otomatis.
 4. Kerjakan hanya di folder milik track sendiri (§2.3). Jika butuh perubahan kontrak, ikuti §2.4.
 5. Jalankan `fvm dart format lib test`, `fvm flutter analyze`, dan test yang relevan. CI menolak kode yang belum diformat.
-6. Buka PR ke `main` dengan deskripsi: PBI, apa yang berubah, cara menguji, dan keterbatasan.
+6. Buka PR dari branch track ke `dev` dengan deskripsi: PBI/bagian pekerjaan, apa yang berubah, cara menguji, dan keterbatasan. Batasi PR pada satu bagian yang dapat direview; jangan menumpuk task lain yang belum siap pada branch sebelum integrasi selesai.
 7. PR direview minimal oleh satu developer lain sebelum di-merge.
 8. Perbarui status PBI di dokumen ini dan catatan di `.agent/sessionHandoff.md`.
+
+**Lima branch tetap:**
+
+| Branch | Fungsi |
+| --- | --- |
+| `main` | Versi stabil yang sudah melewati integrasi |
+| `dev` | Integrasi lintas track dan pengujian bersama |
+| `LA` | Seluruh pekerjaan track Logic A |
+| `LB` | Seluruh pekerjaan track Logic B |
+| `FE` | Seluruh pekerjaan track Frontend |
+
+Alur: `LA`/`LB`/`FE` → PR ke `dev` → pengujian integrasi → PR `dev` ke `main`. Setelah integrasi, sinkronkan kembali branch track dengan `dev` sebelum task berikutnya. Branch tetap dipakai ulang. Pekerjaan paralel menggunakan checkout/worktree terpisah dengan satu pemilik aktif per branch track. Ownership folder dan review kontrak tetap berlaku; branch tetap tidak menjamin bebas konflik.
+
+Nama branch per PBI pada catatan implementasi sebelumnya adalah riwayat, bukan instruksi membuat branch baru. Pembuatan, migrasi, dan penghapusan branch tidak dilakukan otomatis. Commit, push, merge, dan rilis tetap memerlukan instruksi pengguna.
+
+**Migrasi LA (instruksi pengguna, 4 November 2026):** progres PB03 sudah menjadi dasar `LA`; perubahan PB05 dilanjutkan pada branch yang sama setelah branch lokal PB05 diganti menjadi `LA`. Branch lama `feat/pb03-la-poi-repository` dibiarkan sebagai riwayat. Jangan push branch PB05 terpisah atau melanjutkan task baru pada branch PB03 lama. Status PB03/PB05 tidak berubah hanya karena migrasi branch.
+
+**Catatan CI:** konfigurasi saat pembaruan aturan ini menjalankan CI pada PR dan push ke `main`; push ke `dev` belum dicakup. Penyesuaian CI untuk push ke `dev` masih tindak lanjut track LA, bukan perubahan yang sudah diterapkan oleh dokumentasi ini.
 
 ### 2.6 Integrasi akhir sprint
 
 Pada hari terakhir setiap sprint:
 
-1. Semua PR sprint tersebut di-merge ke `main`.
+1. PR bagian pekerjaan yang siap diintegrasikan ke `dev`; integrasi kecil dilakukan sepanjang sprint, tidak menunggu hari terakhir.
 2. FE mengganti fake dengan implementasi asli untuk fitur sprint itu.
 3. Ketiga developer menguji alur sprint di perangkat fisik.
 4. Defect integrasi dicatat; yang tidak selesai pindah ke sprint berikutnya dengan status yang jujur.
-5. APK hasil integrasi dibangun oleh CI sebagai bukti sprint.
+5. APK hasil integrasi dibangun oleh CI sebagai bukti sprint. Setelah pemeriksaan dan pengujian integrasi relevan lulus, ajukan PR `dev` → `main` untuk versi stabil; jangan mempromosikan pekerjaan yang belum siap. Merge dan rilis tetap menunggu instruksi pengguna.
 
 ## 3. Kontrak Awal
 
@@ -195,7 +213,7 @@ Titik sambung antar-logic: `TrailService` (LB) mendengarkan `PoiTriggerEvent` da
 | Sprint | Sprint goal | PBI | Status |
 | --- | --- | --- | --- |
 | S1 — Week 10 | Kontrak, fondasi aplikasi, lokasi, peta | PB01, PB02, PB03, PB04 | `in_progress` |
-| S2 — Week 11 | Geofence, sesi, trigger, kartu POI, audio | PB05, PB06, PB07, PB08, PB09 | `planned` |
+| S2 — Week 11 | Geofence, sesi, trigger, kartu POI, audio | PB05, PB06, PB07, PB08, PB09 | `in_progress` — bagian mandiri PB05-LA-01 dimulai; integrasi Sprint 1 tetap tertunda |
 | S3 — Week 12 | Pencarian dan navigasi | PB10, PB11, PB12 | `planned` |
 | S4 — Week 13 | Eyes-free, rekomendasi, trail, fasilitas, offline; Feature Freeze | PB13, PB14, PB15, PB16, PB17 | `planned` |
 | S5 — Week 14 | Uji acceptance, perbaikan, rilis v1.0 | PB18, PB19, PB20 | `planned` |
@@ -273,8 +291,13 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
 ### PB05 — Engine geofence in-app
 
 - **Track:** LA · **Requirement:** F02
+- **Brief:** [PB05-LA-01 — engine sinkron](tasks/PB05-LA-01-geofence-engine.md); tata cara brief di [tasks/README.md](tasks/README.md).
+- **Ada di source (4 November 2026):** `lib/logic/location/geofence_engine.dart`, API internal LA dan state machine sinkron; test deterministik di `test/logic/location/geofence_engine_test.dart`. Menggunakan model/konstanta existing tanpa mengubah kontrak, UI, GPS, Android, atau package.
+- **Parameter:** margin histeresis default 5 m dan jeda sampel maksimum 10 detik telah diterapkan, belum dikalibrasi; lihat PRD §9.2.
+- **Verifikasi lokal (4 November 2026):** SDK resmi tag Flutter 3.47.9 / Dart 3.13.7 dijalankan lewat path absolut setelah FVM awalnya tidak tersedia di PATH. Format: 31 file, 0 perubahan; analyze: tanpa issue; test geofence: 46 lulus; seluruh suite: 113 lulus (67 existing + 46 baru). Command/path dan catatan lingkungan ada di handoff; CI remote tidak dijalankan sesi ini.
+- **Sisa:** integrasi PB06 (lifecycle/dataset/mode), interval GPS adaptif, uji perangkat fisik, dan kalibrasi lapangan. Bagian logic LA-01 selesai secara teknis, tetapi tidak menutup PB05 maupun acceptance F02.
 - **Done:** unit test lulus dengan nilai yang dihitung independen; trigger tepat pada POI uji.
-- **Status:** `planned`
+- **Status:** `in_progress`
 
 ### PB06 — Sesi lokasi, notifikasi, getar, dan prompt saat trigger
 

@@ -149,6 +149,8 @@ Jarak antar-POI terdekat ±49 m (P08–P09) dan ±50 m (P01–P02), sehingga rad
 9. **Efisiensi baterai:** interval pembaruan diperlambat (±10 detik) bila pengguna diam atau berada >200 m dari POI terdekat.
 10. Radius disimpan per POI di data sehingga dapat dikalibrasi lewat Firestore tanpa membangun ulang aplikasi.
 
+**Parameter engineering PB05-LA-01 (4 November 2026):** engine sinkron menggunakan default margin histeresis **5 m** dan jeda sampel maksimum **10 detik**, keduanya configurable dan **telah diterapkan, belum dikalibrasi di lapangan**. Jeda yang lebih besar membatalkan kontinuitas dwell; jeda tepat 10 detik diterima. Sampel invalid membatalkan kandidat dwell tetapi tidak membuktikan keluar dan tidak menghapus cooldown. Timestamp sama/mundur diabaikan. Saat engine dinonaktifkan, dwell/pengunci kunjungan dibersihkan tetapi cooldown dipertahankan. Setelah keluar dan masuk kembali selama cooldown, dwell dapat berjalan; trigger berikutnya hanya muncul pada sampel valid setelah dwell dan cooldown terpenuhi. Ini bukan perubahan radius produk, pengaturan interval GPS, atau evidence acceptance F02. Rincian ada pada [brief PB05-LA-01](tasks/PB05-LA-01-geofence-engine.md); integrasi sesi dan kalibrasi masih tertunda.
+
 ### 9.3 Area kampus
 
 - Area layanan: Kampus Ganesha + ±200 m (termasuk Jl. Ganesha, Tamansari, dan gerbang).
@@ -333,7 +335,7 @@ Item berikut **belum diputuskan atau belum tersedia**. Agent dilarang mengisinya
 | Project Firebase | Belum dibuat | PM / Backend |
 | Konten teks, foto, audio, video P01–P10 | Belum tersedia di repository | Tim konten |
 | Daftar perangkat uji | Belum ditetapkan | QA |
-| Margin histeresis dan kalibrasi radius per POI | Ditentukan saat implementasi/field test | Developer / QA |
+| Margin histeresis dan kalibrasi radius per POI | Default engineering margin 5 m dan jeda sampel maksimum 10 detik diterapkan PB05-LA-01; kalibrasi lapangan tetap tertunda | Developer / QA |
 | Batas area kampus (poligon/bounding box) | Ditetapkan saat PB04 | Developer |
 
 ## 23. Perbedaan terhadap PRD Baseline W9
