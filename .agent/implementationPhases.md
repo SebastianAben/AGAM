@@ -9,7 +9,7 @@
 | Pembagian kerja | Tiga track paralel: 1 developer frontend, 2 developer logic aplikasi (lihat §2) |
 | Desain layar | UI01–UI09 sudah selesai; frontend tinggal mengimplementasikan |
 | Backlog | PB01–PB20 dari PRD resmi; ID tidak boleh diubah atau dinomori ulang |
-| Current focus | Sprint 1–2 track LA: seluruh logic LA Sprint 1–2 ada di source dan lulus unit test (10 November 2026), belum terintegrasi dengan UI/LB dan belum diuji di perangkat fisik. PB01, PB02, PB03, PB05, PB06, PB08, PB09 `in_progress`; Firestore (PB03) `blocked`; PB04 dikerjakan LB |
+| Current focus | Track LA: seluruh logic LA Sprint 1–3 ada di source dan lulus unit test (10 November 2026), belum terintegrasi dengan UI/LB dan belum diuji di perangkat fisik. PB01, PB02, PB03, PB05, PB06, PB08, PB09, PB12 `in_progress`; Firestore (PB03) `blocked`; PB04 dikerjakan LB |
 
 Dokumen ini menetapkan cara tim bekerja paralel, urutan pekerjaan per track, dependency, dan definition of done. Rencana bukan bukti implementasi.
 
@@ -214,7 +214,7 @@ Titik sambung antar-logic: `TrailService` (LB) mendengarkan `PoiTriggerEvent` da
 | --- | --- | --- | --- |
 | S1 — Week 10 | Kontrak, fondasi aplikasi, lokasi, peta | PB01, PB02, PB03, PB04 | `in_progress` |
 | S2 — Week 11 | Geofence, sesi, trigger, kartu POI, audio | PB05, PB06, PB07, PB08, PB09 | `in_progress` — logic LA PB05/PB06/PB08 dan format PB09 ada di source (10 November 2026); UI, integrasi, dan uji perangkat belum |
-| S3 — Week 12 | Pencarian dan navigasi | PB10, PB11, PB12 | `planned` |
+| S3 — Week 12 | Pencarian dan navigasi | PB10, PB11, PB12 | `in_progress` — bagian LA PB12 ada di source (10 November 2026); PB10/PB11 (LB) dan UI belum |
 | S4 — Week 13 | Eyes-free, rekomendasi, trail, fasilitas, offline; Feature Freeze | PB13, PB14, PB15, PB16, PB17 | `planned` |
 | S5 — Week 14 | Uji acceptance, perbaikan, rilis v1.0 | PB18, PB19, PB20 | `planned` |
 
@@ -367,7 +367,12 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
 
 - **Track:** LA (`VoiceGuidance`, audio tiba), LB (event tiba), FE (tampilan tiba) · **Requirement:** F04, F06
 - **Done:** arahan suara di setiap belokan; pengumuman tiba saat ≤15 m dari tujuan.
-- **Status:** `planned`
+- **Ada di source (10 November 2026, LA):**
+  - `lib/logic/audio/device_voice_guidance.dart`: `VoiceGuidance` asli dengan `flutter_tts` ^4.2.5, locale `id-ID`. Dianggap tersedia hanya jika suara `id-ID` **offline** terpasang (`isLanguageInstalled`); jika tidak, diam dan UI memakai arahan visual. Arahan baru menggantikan ucapan lama (QUEUE_FLUSH). Manifest menambah query `TTS_SERVICE` sesuai README plugin.
+  - `lib/logic/audio/navigation_announcer.dart`: mendengarkan `NavigationState` (LB); membacakan `RouteStep.instruction` sekali per langkah dan saat rute baru setelah rerouting; langkah `arrive` tidak dibacakan; saat tiba, TTS dihentikan lalu file audio tiba POI diputar lewat `AudioService`.
+  - Mode Navigasi di `SessionController` (POI lain hanya notifikasi ringkas) sudah selesai di PB06.
+- **Belum/keputusan terbuka:** tujuan fasilitas tidak punya file audio tiba sehingga konfirmasinya hanya visual. Jika tim ingin pengumuman suara untuk fasilitas atau fallback TTS saat file audio POI belum ada, itu menyimpang dari PRD §10 (TTS hanya arahan) dan perlu keputusan PM. Integrasi dengan `NavigationController` asli (LB), tampilan tiba (FE), file audio tiba (PB09), dan uji perangkat belum dilakukan.
+- **Status:** `in_progress` — logic LA selesai dan teruji unit dengan navigasi palsu
 
 ## 8. Sprint 4 — Eyes-free, Rekomendasi, Trail, Fasilitas; Feature Freeze
 

@@ -1,6 +1,20 @@
 # Session Handoff — AGAM
 
-## Current — Logic LA Sprint 1–2, 10 November 2026
+## Current — Bagian LA PB12, 10 November 2026
+
+**Lanjutan sesi yang sama**, setelah commit `38c54a0` di-push ke `origin/LA` atas instruksi pengguna (tanpa PR). Pengguna meminta pesan commit cukup `feat:` + PB, tanpa nomor sprint dan tanpa baris atribusi AI.
+
+**Dibuat:** `lib/logic/audio/device_voice_guidance.dart` (`VoiceGuidance`, `flutter_tts` ^4.2.5, suara `id-ID` offline), `lib/logic/audio/navigation_announcer.dart` (arahan per langkah + audio tiba), query `TTS_SERVICE` di manifest, `createLaServices` kini menerima `navigation` (LB) dan membuat `voice` serta `navigationAnnouncer`. Test: `test/logic/audio/device_voice_guidance_test.dart`, `navigation_announcer_test.dart` (termasuk dengan `FakeNavigationController` kontrak).
+
+**Pemeriksaan:** `fvm flutter analyze` tanpa issue; `fvm flutter test` **225 lulus**; `fvm flutter build apk --debug` berhasil dengan `flutter_tts`. Tidak ada uji perangkat.
+
+**Keputusan terbuka (PM):** pengumuman tiba untuk fasilitas atau fallback TTS saat audio POI belum ada — tidak diterapkan karena PRD §10 membatasi TTS untuk arahan navigasi.
+
+**Berikutnya:** sama dengan catatan di bawah; ditambah integrasi `NavigationAnnouncer` dengan `NavigationController` asli LB.
+
+---
+
+## Sebelumnya — Logic LA Sprint 1–2, 10 November 2026
 
 **Tujuan:** atas permintaan pengguna, mengerjakan seluruh tugas track LA Sprint 1–2 (PB01 CI, PB02, PB03 sisa, PB05 sisa, PB06, PB08, bagian LA PB09). **Branch:** `LA` (dasar `accddc1`, sama dengan `main`/`dev`/`FE`). **Mesin:** macOS, FVM 4.3.2 + Flutter 3.47.9 / Dart 3.13.7 (`fvm flutter`). Belum ada commit, push, PR, atau rilis.
 
