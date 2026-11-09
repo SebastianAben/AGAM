@@ -1,6 +1,53 @@
 # Session Handoff — AGAM
 
-## Current — Penyelarasan lokasi brief, 4 November 2026
+## Current — Logic LA Sprint 1–2, 10 November 2026
+
+**Tujuan:** atas permintaan pengguna, mengerjakan seluruh tugas track LA Sprint 1–2 (PB01 CI, PB02, PB03 sisa, PB05 sisa, PB06, PB08, bagian LA PB09). **Branch:** `LA` (dasar `accddc1`, sama dengan `main`/`dev`/`FE`). **Mesin:** macOS, FVM 4.3.2 + Flutter 3.47.9 / Dart 3.13.7 (`fvm flutter`). Belum ada commit, push, PR, atau rilis.
+
+**Package ditambahkan** (versi diperiksa di pub.dev, dikunci `pubspec.lock`): `geolocator` ^14.1.2, `flutter_local_notifications` ^22.3.3 (sengaja bukan 23.0.0 yang dirilis 6 November 2026), `just_audio` ^0.10.6, `audio_service` ^0.18.19, `shared_preferences` ^2.5.6, `path_provider` ^2.1.6; dev `fake_async` ^1.3.3. Perilaku plugin yang dipakai diperiksa dari source di pub cache.
+
+**Yang dibuat/diubah:**
+
+- Android (`android/`): manifest (izin lokasi akurat, foreground service `location`/`mediaPlayback`, notifikasi/getar, `ACCESS_BACKGROUND_LOCATION` dihapus eksplisit, service/receiver audio_service, receiver aksi notifikasi); `MainActivity` turunan `AudioServiceActivity` + channel `site.agam/battery`; desugaring `desugar_jdk_libs` 2.1.4 (README plugin notifikasi); `.kotlin/` di `android/.gitignore`.
+- `lib/logic/location/`: `position_source.dart` (geolocator, filter jarak 0), `adaptive_interval.dart`, `device_location_service.dart` (`LocationService`), `device_permission_service.dart` (`PermissionService`); `geofence_engine.dart` + `suspend()` dan `updatePois()`.
+- `lib/logic/session/`: `device_session_controller.dart` (`SessionController`), `trigger_notifier.dart`, `trigger_responder.dart`.
+- `lib/logic/audio/`: `audio_backend.dart`, `device_audio_service.dart` (`AudioService`), `agam_audio_handler.dart`.
+- `lib/logic/settings/device_settings_store.dart` (`SettingsStore`; sebenarnya PB16, dibuat karena auto-play dipakai trigger/PB08).
+- `lib/logic/la_bootstrap.dart`: `createLaServices(map:)` merangkai layanan LA asli. **Belum dipanggil** dari `main.dart`.
+- CI: `checkout@v7`, `setup-java@v6`, `upload-artifact@v7`, `action-gh-release@v3`; CI juga pada push ke `dev`; `release.yml` menjalankan format + analyze.
+- Brief/format konten: `task-implementation/backend/PB09-LA-01-content-format.md`.
+- Test baru: `test/logic/{location,session,audio,settings,support}/`, `test/logic/data/content_assets_test.dart`, `test/android/manifest_privacy_test.dart`.
+- Dokumen: PRD (header status, §9.2 parameter adaptif + keterbatasan, §17 package, §22), implementation phases (PB01–PB09).
+
+**Keputusan engineering (belum dikalibrasi; tercatat di PRD §9.2):** zona dekat POI = radius + 30 m tanpa perlambatan; diam = <10 m selama ≥30 detik; area kampus hanya dari pembacaan ≤20 m. Interval adaptif hanya diterapkan saat aplikasi tampil karena geolocator memulai ulang foreground service saat langganan diganti. Tombol notifikasi Dengarkan/Lewati diteruskan dari isolate latar belakang ke isolate utama via `IsolateNameServer`.
+
+**Pemeriksaan nyata (mesin ini):**
+
+| Command | Hasil |
+| --- | --- |
+| `fvm dart format lib test` | Diterapkan; `dart fix --apply` untuk lint initializing formals |
+| `fvm flutter analyze` | No issues found |
+| `fvm flutter test` | **210 test lulus** (113 lama + 97 baru) |
+| `fvm flutter build apk --debug` | Berhasil (`app-debug.apk` ±167 MB debug); Gradle mengunduh Android SDK Platform 35 |
+| Manifest merge debug | Tanpa `ACCESS_BACKGROUND_LOCATION`; `INTERNET` dari manifest debug Flutter; `ACCESS_NETWORK_STATE` dari media3 |
+| `git diff --check` | Lulus |
+
+**Tidak dijalankan:** emulator, perangkat fisik, build rilis, workflow GitHub, field test. Catatan test: dalam `fakeAsync`, future `cancel()` bawaan Dart terjadwal di zona root sehingga penghentian langganan pada auto-end diverifikasi lewat jalur `_end` di test non-fakeAsync.
+
+**Status:** PB02, PB06, PB08, PB09 → `in_progress` (logic LA selesai, belum terintegrasi/diuji perangkat). PB01/PB03/PB05 tetap `in_progress`. Tidak ada yang `done`.
+
+**Blocker/tertunda:** Firestore (project Firebase belum ada); konten/audio P01–P10; perangkat uji; urutan trail. `VoiceGuidance` (PB12, Sprint 3) belum dibuat.
+
+**Berikutnya:**
+
+1. Review diff; commit di `LA` hanya dengan instruksi pengguna (disarankan dipisah: Android+package, lokasi/izin, sesi/notifikasi, audio/pengaturan, CI, dokumentasi).
+2. Integrasi bersama FE/LB: panggil `createLaServices(map: <MapConfig LB>)` di `main.dart`, rangkai `AppServices` (sementara `FakeVoiceGuidance`). `TriggerResponder.viewRequests` belum ada di `AppServices` v1.0 → perlu kesepakatan FE (usulan kontrak §2.4) atau penyambungan di `main.dart`.
+3. Uji perangkat fisik: izin (termasuk perkiraan), trigger saat layar mati, notifikasi + tombol di lock screen, narasi dari notifikasi, auto-end, optimasi baterai per merek, dan ikon notifikasi (saat ini memakai `ic_launcher`; ikon monokrom mungkin diperlukan).
+4. Verifikasi CI baru berjalan di GitHub setelah push/PR.
+
+---
+
+## Sebelumnya — Penyelarasan lokasi brief, 4 November 2026
 
 **Otorisasi:** pengguna meminta satu commit dokumentasi diselaraskan dan di-push ke lima branch tetap (`main`, `dev`, `LA`, `LB`, `FE`), kemudian PB04-LB-01 dikerjakan lokal pada `LB`. Branch historis PB03 tidak diubah; tanpa PR, merge fitur, atau rilis. Instruksi ini menggantikan pembatasan publikasi sesi sebelumnya khusus migrasi dokumentasi ini.
 

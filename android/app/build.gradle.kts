@@ -10,6 +10,8 @@ android {
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
+        // Dibutuhkan flutter_local_notifications (README plugin 22.x).
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -46,4 +48,9 @@ kotlin {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    // Versi mengikuti README flutter_local_notifications 22.3.3.
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }

@@ -34,26 +34,13 @@ class GeofenceEngine {
     if (maxSampleGap <= Duration.zero) {
       throw ArgumentError.value(maxSampleGap, 'maxSampleGap');
     }
-    final ids = <String>{};
-    _pois = List.unmodifiable(
-      pois.map((poi) {
-        if (poi.id.trim().isEmpty || !ids.add(poi.id)) {
-          throw ArgumentError('ID POI kosong atau duplikat');
-        }
-        if (!_validPosition(poi.position) ||
-            !poi.radiusM.isFinite ||
-            poi.radiusM <= 0) {
-          throw ArgumentError('Posisi atau radius POI tidak valid');
-        }
-        return _PoiState(poi.id, poi.position, poi.radiusM);
-      }),
-    );
+    _pois = _buildStates(pois);
   }
 
   final double hysteresisMarginM;
   final Duration maxSampleGap;
   final GeofenceDistanceCalculator _distance;
-  late final List<_PoiState> _pois;
+  late List<_PoiState> _pois;
   DateTime? _lastTimestamp;
 
   /// Timestamp sama/mundur diabaikan. Input buruk membatalkan dwell,
@@ -63,10 +50,7 @@ class GeofenceEngine {
   /// menghitung jarak, atau memperbarui timestamp global. Cooldown bertahan.
   List<GeofenceEntry> evaluate(LocationFix fix, {required bool enabled}) {
     if (!enabled) {
-      for (final poi in _pois) {
-        poi.clearCandidate();
-        poi.triggeredInside = false;
-      }
+      suspend();
       return const [];
     }
     final timestamp = fix.timestamp;
@@ -118,6 +102,56 @@ class GeofenceEngine {
       poi.clearCandidate();
     }
     return entries;
+  }
+
+  /// Sama dengan [evaluate] dengan `enabled: false`, tanpa membutuhkan
+  /// pembacaan lokasi: dwell dan pengunci kunjungan dibersihkan, cooldown
+  /// dipertahankan. Dipakai saat sesi berakhir atau pengguna di luar area.
+  void suspend() {
+    for (final poi in _pois) {
+      poi.clearCandidate();
+      poi.triggeredInside = false;
+    }
+  }
+
+  /// Mengganti snapshot POI, mis. setelah data diperbarui dari Firestore.
+  ///
+  /// Cooldown dipertahankan per ID agar POI yang sama tidak terpicu ulang
+  /// karena dataset diperbarui. Dwell dan pengunci kunjungan hanya
+  /// dipertahankan bila posisi dan radius POI tidak berubah. POI yang
+  /// dihapus ikut dilupakan. Validasi sama dengan konstruktor; jika gagal,
+  /// snapshot lama tetap dipakai.
+  void updatePois(Iterable<Poi> pois) {
+    final previous = {for (final poi in _pois) poi.id: poi};
+    final next = _buildStates(pois);
+    for (final poi in next) {
+      final old = previous[poi.id];
+      if (old == null) continue;
+      poi.lastTriggeredAt = old.lastTriggeredAt;
+      if (old.position == poi.position && old.radiusM == poi.radiusM) {
+        poi.enteredAt = old.enteredAt;
+        poi.lastInsideSampleAt = old.lastInsideSampleAt;
+        poi.triggeredInside = old.triggeredInside;
+      }
+    }
+    _pois = next;
+  }
+
+  static List<_PoiState> _buildStates(Iterable<Poi> pois) {
+    final ids = <String>{};
+    return List.unmodifiable(
+      pois.map((poi) {
+        if (poi.id.trim().isEmpty || !ids.add(poi.id)) {
+          throw ArgumentError('ID POI kosong atau duplikat');
+        }
+        if (!_validPosition(poi.position) ||
+            !poi.radiusM.isFinite ||
+            poi.radiusM <= 0) {
+          throw ArgumentError('Posisi atau radius POI tidak valid');
+        }
+        return _PoiState(poi.id, poi.position, poi.radiusM);
+      }),
+    );
   }
 
   static double _haversine(GeoPoint from, GeoPoint to) => from.distanceTo(to);

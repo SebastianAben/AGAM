@@ -3,13 +3,13 @@
 | Atribut | Nilai |
 | --- | --- |
 | Status dokumen | Aktif; status per PBI dicatat di bagian masing-masing |
-| Tanggal | 2 November 2026, diperbarui 4 November 2026 |
+| Tanggal | 2 November 2026, diperbarui 10 November 2026 |
 | Kontrak produk | `.agent/PRD.md`; aturan kerja di `.agent/rules.md` |
 | Model kerja | 5 sprint × 1 minggu (Week 10–14), deliverable final Week 15 |
 | Pembagian kerja | Tiga track paralel: 1 developer frontend, 2 developer logic aplikasi (lihat §2) |
 | Desain layar | UI01–UI09 sudah selesai; frontend tinggal mengimplementasikan |
 | Backlog | PB01–PB20 dari PRD resmi; ID tidak boleh diubah atau dinomori ulang |
-| Current focus | Sprint 1: kontrak v1.0 disepakati (§3); PB01 `in_progress` (CI sukses; menunggu uji perangkat fisik); PB03 `in_progress` (JSON bawaan, validasi, cache selesai; Firestore `blocked`); PB02 dan PB04 belum dimulai. Bagian mandiri PB05-LA-01 juga tersedia dan teruji; PB05 `in_progress`, belum terintegrasi |
+| Current focus | Sprint 1–2 track LA: seluruh logic LA Sprint 1–2 ada di source dan lulus unit test (10 November 2026), belum terintegrasi dengan UI/LB dan belum diuji di perangkat fisik. PB01, PB02, PB03, PB05, PB06, PB08, PB09 `in_progress`; Firestore (PB03) `blocked`; PB04 dikerjakan LB |
 
 Dokumen ini menetapkan cara tim bekerja paralel, urutan pekerjaan per track, dependency, dan definition of done. Rencana bukan bukti implementasi.
 
@@ -117,7 +117,7 @@ Nama branch per PBI pada catatan implementasi sebelumnya adalah riwayat, bukan i
 
 **Migrasi LA (instruksi pengguna, 4 November 2026):** progres PB03 sudah menjadi dasar `LA`; perubahan PB05 dilanjutkan pada branch yang sama setelah branch lokal PB05 diganti menjadi `LA`. Branch lama `feat/pb03-la-poi-repository` dibiarkan sebagai riwayat. Jangan push branch PB05 terpisah atau melanjutkan task baru pada branch PB03 lama. Status PB03/PB05 tidak berubah hanya karena migrasi branch.
 
-**Catatan CI:** konfigurasi saat pembaruan aturan ini menjalankan CI pada PR dan push ke `main`; push ke `dev` belum dicakup. Penyesuaian CI untuk push ke `dev` masih tindak lanjut track LA, bukan perubahan yang sudah diterapkan oleh dokumentasi ini.
+**Catatan CI:** sejak 10 November 2026 `ci.yml` berjalan pada PR serta push ke `main` dan `dev` (belum diverifikasi dengan run GitHub).
 
 ### 2.6 Integrasi akhir sprint
 
@@ -213,7 +213,7 @@ Titik sambung antar-logic: `TrailService` (LB) mendengarkan `PoiTriggerEvent` da
 | Sprint | Sprint goal | PBI | Status |
 | --- | --- | --- | --- |
 | S1 — Week 10 | Kontrak, fondasi aplikasi, lokasi, peta | PB01, PB02, PB03, PB04 | `in_progress` |
-| S2 — Week 11 | Geofence, sesi, trigger, kartu POI, audio | PB05, PB06, PB07, PB08, PB09 | `in_progress` — bagian mandiri PB05-LA-01 dimulai; integrasi Sprint 1 tetap tertunda |
+| S2 — Week 11 | Geofence, sesi, trigger, kartu POI, audio | PB05, PB06, PB07, PB08, PB09 | `in_progress` — logic LA PB05/PB06/PB08 dan format PB09 ada di source (10 November 2026); UI, integrasi, dan uji perangkat belum |
 | S3 — Week 12 | Pencarian dan navigasi | PB10, PB11, PB12 | `planned` |
 | S4 — Week 13 | Eyes-free, rekomendasi, trail, fasilitas, offline; Feature Freeze | PB13, PB14, PB15, PB16, PB17 | `planned` |
 | S5 — Week 14 | Uji acceptance, perbaikan, rilis v1.0 | PB18, PB19, PB20 | `planned` |
@@ -243,6 +243,7 @@ Titik sambung antar-logic: `TrailService` (LB) mendengarkan `PoiTriggerEvent` da
 - **Sudah dibuat (2 November 2026, branch `chore/pb01-la-scaffolding`):** project Flutter 3.47.9 dikunci via `.fvmrc`; application ID `site.agam`, label "AGAM"; minSdk 24, targetSdk/compileSdk 36; struktur folder §2.3; kerangka `AgamApp` di `lib/ui/app.dart`; workflow `ci.yml` (format, analyze, test, build APK debug sebagai artifact) dan `release.yml` (tag `v*` → APK di GitHub Releases).
 - **Pemeriksaan lokal:** `dart format` tanpa perubahan, `flutter analyze` tanpa issue, `flutter test` lulus (saat PB01 berisi 1 test; suite tumbuh seiring PBI berikutnya). Build APK **belum** dijalankan lokal karena Android SDK belum terpasang di mesin setup.
 - **CI (terverifikasi 3 November 2026):** workflow `ci.yml` sudah berjalan dan sukses — run 41424657609 (PR #1) dan 41424686250 (`main`), keduanya menghasilkan artifact `agam-debug-apk`. Peringatan deprecation: `actions/checkout@v4`, `actions/setup-java@v4`, `actions/upload-artifact@v4` dipaksa ke Node.js 24; `ubuntu-latest` pindah ke Ubuntu 26 pada 19 Oktober 2026.
+- **Pembaruan CI (10 November 2026, LA):** action dinaikkan ke `actions/checkout@v7`, `actions/setup-java@v6`, `actions/upload-artifact@v7`, `softprops/action-gh-release@v3` (versi dan catatan rilis diperiksa via GitHub API; perubahan utama runtime Node 24). CI kini juga berjalan pada push ke `dev`. `release.yml` kini menjalankan format dan analyze sebelum test. Workflow baru belum dijalankan di GitHub.
 - **Sisa:** APK belum dipasang di perangkat fisik; workflow `release.yml` belum pernah berjalan; keystore rilis ditunda ke PB19 (sampai saat itu APK rilis ditandatangani debug key runner sehingga tidak dapat dipasang menimpa versi sebelumnya).
 - **Done:** APK debug terpasang dan dibuka tanpa crash di perangkat uji; workflow CI membangun APK dan mengunggahnya ke Releases.
 - **Status:** `in_progress`
@@ -252,7 +253,12 @@ Titik sambung antar-logic: `TrailService` (LB) mendengarkan `PoiTriggerEvent` da
 - **Track:** FE (UI01), LA (`PermissionService`, `LocationService`) · **Requirement:** F01, A01
 - **Scope:** layar penjelasan privasi; izin lokasi akurat "saat aplikasi digunakan" dan notifikasi; penanganan izin perkiraan/ditolak; panduan pengaturan baterai pabrikan; pembacaan lokasi mode peta biasa.
 - **Done:** izin diminta setelah layar penjelasan; lokasi terbaca dan diperbarui; pembacaan berhenti saat aplikasi diminimalkan.
-- **Status:** `planned`
+- **Ada di source (10 November 2026, LA):**
+  - `lib/logic/location/device_permission_service.dart`: `PermissionService` asli (geolocator + flutter_local_notifications + channel `site.agam/battery` di `MainActivity.kt`). Lokasi perkiraan → `approximateOnly`; permintaan ulang untuk lokasi akurat; tidak pernah meminta izin "sepanjang waktu".
+  - `lib/logic/location/device_location_service.dart` + `position_source.dart`: `LocationService` asli. Peta biasa membaca lokasi hanya saat aplikasi tampil dan ada pendengar; berhenti saat diminimalkan; `lastFix` dihapus saat pembacaan berhenti.
+  - Manifest: izin lokasi akurat, foreground service `location`/`mediaPlayback`, notifikasi; `ACCESS_BACKGROUND_LOCATION` dihapus eksplisit (`tools:node="remove"`), dijaga `test/android/manifest_privacy_test.dart`.
+- **Sisa:** UI01 (FE) dan penyambungan `AppServices`; uji perangkat fisik (izin, perkiraan, notifikasi Android 13+, optimasi baterai per merek).
+- **Status:** `in_progress` — logic LA selesai dan teruji unit, menunggu UI01 dan uji perangkat
 
 ### PB03 — Dataset 10 POI (Firestore + JSON bawaan)
 
@@ -268,6 +274,7 @@ Titik sambung antar-logic: `TrailService` (LB) mendengarkan `PoiTriggerEvent` da
 - **Pemeriksaan (lokal, Flutter 3.47.9 via FVM):** `dart format --set-exit-if-changed` tanpa perubahan; `flutter analyze` tanpa issue; `flutter test` 67 test lulus (56 baru + 11 test kontrak). Test dataset bawaan diverifikasi benar-benar menangkap kesalahan dengan sengaja mengubah satu koordinat, lalu dipulihkan.
 - **Sisa (`blocked`):** sinkronisasi Firestore belum dibuat (project Firebase belum ada, PRD §22); `cloud_firestore` belum ditambahkan ke `pubspec.yaml`. Direktori cache saat integrasi masih perlu package penyedia path yang versinya wajib diverifikasi. Belum diuji di perangkat fisik.
 - **Done:** data 10 POI terbaca dari server dan dari cache lokal; dokumen tidak valid diabaikan; aplikasi berjalan saat offline.
+- **Pembaruan 10 November 2026:** `path_provider` ^2.1.6 ditambahkan; `lib/logic/la_bootstrap.dart` memakai `getApplicationSupportDirectory()` untuk `FileDatasetCache`.
 - **Status:** `in_progress` — JSON bawaan, validasi, cache, dan fallback selesai dan teruji; bagian Firestore `blocked`, dan belum terintegrasi dengan UI.
 
 ### PB04 — Explore Map dengan tile vektor dibundel
@@ -295,7 +302,8 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
 - **Ada di source (4 November 2026):** `lib/logic/location/geofence_engine.dart`, API internal LA dan state machine sinkron; test deterministik di `test/logic/location/geofence_engine_test.dart`. Menggunakan model/konstanta existing tanpa mengubah kontrak, UI, GPS, Android, atau package.
 - **Parameter:** margin histeresis default 5 m dan jeda sampel maksimum 10 detik telah diterapkan, belum dikalibrasi; lihat PRD §9.2.
 - **Verifikasi lokal (4 November 2026):** SDK resmi tag Flutter 3.47.9 / Dart 3.13.7 dijalankan lewat path absolut setelah FVM awalnya tidak tersedia di PATH. Format: 31 file, 0 perubahan; analyze: tanpa issue; test geofence: 46 lulus; seluruh suite: 113 lulus (67 existing + 46 baru). Command/path dan catatan lingkungan ada di handoff; CI remote tidak dijalankan sesi ini.
-- **Sisa:** integrasi PB06 (lifecycle/dataset/mode), interval GPS adaptif, uji perangkat fisik, dan kalibrasi lapangan. Bagian logic LA-01 selesai secara teknis, tetapi tidak menutup PB05 maupun acceptance F02.
+- **Pembaruan 10 November 2026:** engine mendapat `suspend()` dan `updatePois()` (cooldown dipertahankan per ID saat dataset diperbarui); diuji di `test/logic/location/geofence_engine_update_test.dart`. Interval GPS adaptif ada di `lib/logic/location/adaptive_interval.dart` (parameter dan keterbatasan di PRD §9.2). Integrasi dengan sesi dilakukan `DeviceSessionController` (PB06).
+- **Sisa:** uji perangkat fisik dan kalibrasi lapangan (margin, jeda sampel, parameter interval adaptif). Tidak menutup acceptance F02.
 - **Done:** unit test lulus dengan nilai yang dihitung independen; trigger tepat pada POI uji.
 - **Status:** `in_progress`
 
@@ -303,7 +311,12 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
 
 - **Track:** LA (`SessionController`, notifikasi), FE (UI03, kontrol sesi) · **Requirement:** F02, F04, A01
 - **Done:** notifikasi dan prompt muncul ≤10 detik setelah masuk radius, termasuk saat layar mati di perangkat fisik; tidak ada pembacaan lokasi di luar sesi kecuali mode peta biasa di layar.
-- **Status:** `planned`
+- **Ada di source (10 November 2026, LA):**
+  - `lib/logic/session/device_session_controller.dart`: `SessionController` asli. Foreground service tipe `location` lewat geolocator; ganti mode tanpa memulai ulang service; `end()` menghentikan lokasi dan service; auto-end 30 menit di luar kampus (memakai `MapConfig.isInsideCampus` dari LB); izin dicabut → `permissionRevoked`; trigger nonaktif di luar area; Navigasi → `brief`, Explore/Trail → `full`; cooldown bertahan antar-sesi.
+  - `lib/logic/session/trigger_notifier.dart`: notifikasi trigger (getar, prioritas tinggi, tombol Dengarkan/Lihat/Lewati, terlihat di lock screen) dan notifikasi ringkas tanpa suara. Tombol tanpa membuka aplikasi diteruskan dari isolate latar belakang plugin ke isolate utama lewat `IsolateNameServer`.
+  - `lib/logic/session/trigger_responder.dart`: respons per mode; prompt audio atau narasi langsung bila auto-play aktif; `viewRequests` untuk FE membuka kartu POI.
+- **Belum:** UI03 dan kontrol sesi (FE); penyambungan `viewRequests` ke navigasi layar memerlukan keputusan FE (tidak ada di `AppServices` v1.0, sehingga butuh usulan perubahan kontrak §2.4 atau penyambungan di `main.dart`); uji perangkat fisik saat layar mati; teks notifikasi masih rumusan developer dari skenario PRD §5 dan dapat disesuaikan desain UI03.
+- **Status:** `in_progress` — logic LA selesai dan teruji unit, menunggu UI dan uji perangkat
 
 ### PB07 — Kartu POI
 
@@ -315,14 +328,17 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
 
 - **Track:** LA (`AudioService`), FE (kontrol di kartu) · **Requirement:** F03, F04
 - **Done:** narasi dapat dikendalikan dari kartu dan notifikasi.
-- **Status:** `planned`
+- **Ada di source (10 November 2026, LA):** `lib/logic/audio/device_audio_service.dart` (`AudioService` asli; path dari `Poi.media`; konten placeholder → `PlaybackStatus.error` tanpa crash) dan `lib/logic/audio/agam_audio_handler.dart` (`just_audio` + `audio_service`; putar/jeda/berhenti dari notifikasi media dan lock screen). `MainActivity` diturunkan dari `AudioServiceActivity`.
+- **Sisa:** file audio belum ada (PB09); kontrol di kartu (FE); uji perangkat fisik.
+- **Status:** `in_progress` — logic LA selesai dan teruji unit dengan backend palsu
 
 ### PB09 — Produksi konten 10 POI
 
 - **Track:** di luar track developer; LA menyiapkan format dan validasi · **Requirement:** F03, A02
 - **Catatan:** agent dilarang membuat konten ini.
+- **Bagian LA (10 November 2026):** format aset dan aturan validasi untuk tim konten di [PB09-LA-01](../task-implementation/backend/PB09-LA-01-content-format.md); pemeriksaan otomatis `test/logic/data/content_assets_test.dart`.
 - **Done:** konten 10 POI lengkap, sumber tercatat, hak penggunaan media aman, disetujui tim.
-- **Status:** `planned`
+- **Status:** `in_progress` — format dan validasi LA tersedia; konten belum ada (tim konten)
 
 ## 7. Sprint 3 — Pencarian dan Navigasi
 

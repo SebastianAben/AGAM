@@ -3,7 +3,7 @@
 | Atribut | Nilai |
 | --- | --- |
 | Status dokumen | **Kontrak produk kerja v1.0** untuk tim dan coding agent; diturunkan dari PRD resmi dan diperbarui dengan keputusan tim |
-| Status implementasi | Belum ada implementasi. Repository baru berisi dokumentasi (2 November 2026) |
+| Status implementasi | Source tersedia sebagian (10 November 2026): scaffolding, kontrak v1.0, data POI (PB03), engine geofence (PB05), serta layanan LA Sprint 1–2 (izin, lokasi, sesi, notifikasi trigger, audio, pengaturan). Belum terintegrasi dengan UI dan belum diuji di perangkat; status per PBI di `.agent/implementationPhases.md` |
 | Tanggal | 2 November 2026 |
 | Sumber resmi | Draft PRD W9 (`Kelompok 03_Draft PRD.docx.pdf`, bagian 1–4) dan presentasi PRD lengkap (`Transformasi Digital-PRD-Kel.Warung.pdf`, halaman 1–23). Keduanya berada di luar repository |
 | Mata kuliah | II4011 Transformasi Digital — Prof. Ir. Kridanto Surendro, M.Sc., Ph.D. |
@@ -151,6 +151,19 @@ Jarak antar-POI terdekat ±49 m (P08–P09) dan ±50 m (P01–P02), sehingga rad
 
 **Parameter engineering PB05-LA-01 (4 November 2026):** engine sinkron menggunakan default margin histeresis **5 m** dan jeda sampel maksimum **10 detik**, keduanya configurable dan **telah diterapkan, belum dikalibrasi di lapangan**. Jeda yang lebih besar membatalkan kontinuitas dwell; jeda tepat 10 detik diterima. Sampel invalid membatalkan kandidat dwell tetapi tidak membuktikan keluar dan tidak menghapus cooldown. Timestamp sama/mundur diabaikan. Saat engine dinonaktifkan, dwell/pengunci kunjungan dibersihkan tetapi cooldown dipertahankan. Setelah keluar dan masuk kembali selama cooldown, dwell dapat berjalan; trigger berikutnya hanya muncul pada sampel valid setelah dwell dan cooldown terpenuhi. Ini bukan perubahan radius produk, pengaturan interval GPS, atau evidence acceptance F02. Rincian ada pada [brief PB05-LA-01](../task-implementation/backend/PB05-LA-01-geofence-engine.md); integrasi sesi dan kalibrasi masih tertunda.
 
+**Parameter engineering lokasi dan sesi LA Sprint 1–2 (10 November 2026)** — **telah diterapkan, belum dikalibrasi**; tidak mengubah keputusan produk:
+
+| Parameter | Nilai | Keterangan |
+| --- | --- | --- |
+| Interval normal / lambat | 3 detik / 10 detik | Dari butir 1 dan 9 |
+| Jarak "jauh dari POI" | >200 m dari titik tengah POI terdekat | Dari butir 9 |
+| Zona dekat POI | radius POI + 30 m | Di zona ini interval **tidak** diperlambat, karena jeda sampel >10 detik membatalkan dwell |
+| Status diam | perpindahan <10 m selama ≥30 detik, dihitung dari satu titik jangkar di memori (bukan riwayat) | Pembacaan berakurasi >20 m diabaikan |
+| Filter jarak FLP | 0 m | Agar dwell tetap mendapat sampel saat pengguna diam di dalam radius |
+| Area kampus untuk sesi | hanya diperbarui dari pembacaan berakurasi ≤20 m | Pembacaan buruk tidak memulai hitungan auto-end 30 menit |
+
+Keterbatasan yang diketahui: geolocator (5.2.1) menghentikan foreground service saat langganan dibatalkan, sehingga pergantian interval adaptif hanya diterapkan **saat aplikasi tampil di layar**. Selama layar mati, interval terakhir dipertahankan. Penghematan baterai saat layar mati perlu diukur di perangkat fisik (PB18/PB19).
+
 ### 9.3 Area kampus
 
 - Area layanan: Kampus Ganesha + ±200 m (termasuk Jl. Ganesha, Tamansari, dan gerbang).
@@ -275,14 +288,17 @@ Dokumen yang diabaikan tidak menggagalkan dataset lain. Dataset yang tidak menyi
 | Peta | Tile vektor OSM (PMTiles) dibundel + renderer Flutter | Lihat §14 |
 | Routing | Graf jalur kampus (GeoJSON) + Dijkstra/A* di perangkat | Lihat §11 |
 | Data | Firestore (`cloud_firestore`) + JSON bawaan + cache lokal | Lihat §15 |
-| Audio | Pemutar audio untuk file narasi/prompt; `flutter_tts` untuk arahan navigasi | Kontrol dari notifikasi |
+| Audio | `just_audio` + `audio_service` untuk file narasi/prompt/tiba; `flutter_tts` untuk arahan navigasi | Kontrol dari notifikasi dan lock screen |
+| Notifikasi trigger | `flutter_local_notifications` | Getar, prompt, tombol Dengarkan/Lihat/Lewati |
 | Video | Pemutar video di kartu POI | GKUB, GKUT |
-| Penyimpanan lokal | Pilihan engineering (mis. shared_preferences/SQLite) | Hanya progres & pengaturan |
+| Penyimpanan lokal | `shared_preferences` (pengaturan); `path_provider` untuk direktori cache data POI | Hanya progres & pengaturan |
 | CI/CD | GitHub Actions → build APK → GitHub Releases | Repo `SebastianAben/AGAM` |
 | Tools | Figma, GitHub, Flutter DevTools, `flutter_test`, `integration_test`, Android Emulator, perangkat Android fisik | |
 | AI development tools | ChatGPT/Codex, Claude/Claude Code, Gemini | Output ditinjau, diuji, dan dicatat tim |
 
-Versi Flutter/Dart, application ID, dan SDK Android sudah ditetapkan saat PB01 (2 November 2026). Hal yang masih **wajib diverifikasi**, bukan diasumsikan: versi package yang ditambahkan, kompatibilitas renderer tile vektor, serta ukuran akhir APK.
+Versi Flutter/Dart, application ID, dan SDK Android sudah ditetapkan saat PB01 (2 November 2026).
+
+Package LA yang ditambahkan 10 November 2026 (versi diperiksa di pub.dev dan dikunci `pubspec.lock`): `geolocator` ^14.1.2, `flutter_local_notifications` ^22.3.3 (bukan 23.0.0 yang baru dirilis 6 November 2026), `just_audio` ^0.10.6, `audio_service` ^0.18.19, `shared_preferences` ^2.5.6, `path_provider` ^2.1.6; dev: `fake_async` ^1.3.3. `audio_service` membawa `flutter_cache_manager` (http, sqflite) secara transitif untuk gambar sampul; AGAM tidak memberi URL gambar sehingga tidak ada request jaringan dari jalur ini. Manifest utama aplikasi tidak mendeklarasikan `INTERNET` dan secara eksplisit menghapus `ACCESS_BACKGROUND_LOCATION`. Manifest hasil merge build debug (10 November 2026) tidak memuat `ACCESS_BACKGROUND_LOCATION`; `INTERNET` di sana berasal dari manifest debug bawaan Flutter (alat pengembangan) dan `ACCESS_NETWORK_STATE` dari `androidx.media3` (backend `just_audio`). Manifest build rilis belum diperiksa. Saat Firestore ditambahkan, `INTERNET` diperlukan di build rilis. Hal yang masih **wajib diverifikasi**, bukan diasumsikan: versi package yang ditambahkan, kompatibilitas renderer tile vektor, serta ukuran akhir APK.
 
 ## 18. Layar (Screen/State)
 
@@ -335,7 +351,7 @@ Item berikut **belum diputuskan atau belum tersedia**. Agent dilarang mengisinya
 | Project Firebase | Belum dibuat | PM / Backend |
 | Konten teks, foto, audio, video P01–P10 | Belum tersedia di repository | Tim konten |
 | Daftar perangkat uji | Belum ditetapkan | QA |
-| Margin histeresis dan kalibrasi radius per POI | Default engineering margin 5 m dan jeda sampel maksimum 10 detik diterapkan PB05-LA-01; kalibrasi lapangan tetap tertunda | Developer / QA |
+| Margin histeresis, kalibrasi radius per POI, dan parameter interval adaptif | Default engineering margin 5 m dan jeda sampel maksimum 10 detik (PB05-LA-01) serta parameter interval adaptif [§9.2](#92-logika-trigger) diterapkan; kalibrasi lapangan tetap tertunda | Developer / QA |
 | Batas area kampus (poligon/bounding box) | Ditetapkan saat PB04 | Developer |
 
 ## 23. Perbedaan terhadap PRD Baseline W9
