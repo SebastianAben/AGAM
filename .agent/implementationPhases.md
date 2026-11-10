@@ -9,7 +9,7 @@
 | Pembagian kerja | Tiga track paralel: 1 developer frontend, 2 developer logic aplikasi (lihat §2) |
 | Desain layar | UI01–UI09 sudah selesai; frontend tinggal mengimplementasikan |
 | Backlog | PB01–PB20 dari PRD resmi; ID tidak boleh diubah atau dinomori ulang |
-| Current focus | Sprint 1: kontrak v1.0 disepakati (§3); PB01 `in_progress` (CI sukses; menunggu uji perangkat fisik); PB03 `in_progress` (JSON bawaan, validasi, cache selesai; Firestore `blocked`); PB02 dan PB04 belum dimulai. Bagian mandiri PB05-LA-01 juga tersedia dan teruji; PB05 `in_progress`, belum terintegrasi |
+| Current focus | Sprint 1: kontrak v1.0 disepakati (§3); PB01 `in_progress` (CI sukses; menunggu uji perangkat fisik); PB03 `in_progress` (JSON bawaan, validasi, cache selesai; Firestore `blocked`); FE sudah mulai UI01–UI04 (PB02, PB04, PB06–PB08) dan UI08 (PB15); izin/lokasi foreground Geolocator kini dicoba lewat adapter FE, sementara implementasi sesi foreground LA/LB, konten, dan integrasi tetap tertunda. Bagian mandiri PB05-LA-01 tersedia dan teruji; PB05 `in_progress`, belum terintegrasi |
 
 Dokumen ini menetapkan cara tim bekerja paralel, urutan pekerjaan per track, dependency, dan definition of done. Rencana bukan bukti implementasi.
 
@@ -214,8 +214,8 @@ Titik sambung antar-logic: `TrailService` (LB) mendengarkan `PoiTriggerEvent` da
 | --- | --- | --- | --- |
 | S1 — Week 10 | Kontrak, fondasi aplikasi, lokasi, peta | PB01, PB02, PB03, PB04 | `in_progress` |
 | S2 — Week 11 | Geofence, sesi, trigger, kartu POI, audio | PB05, PB06, PB07, PB08, PB09 | `in_progress` — bagian mandiri PB05-LA-01 dimulai; integrasi Sprint 1 tetap tertunda |
-| S3 — Week 12 | Pencarian dan navigasi | PB10, PB11, PB12 | `planned` |
-| S4 — Week 13 | Eyes-free, rekomendasi, trail, fasilitas, offline; Feature Freeze | PB13, PB14, PB15, PB16, PB17 | `planned` |
+| S3 — Week 12 | Pencarian dan navigasi | PB10, PB11, PB12 | `in_progress` — UI05/UI06 FE mulai; implementasi SearchService, graf/routing, dan arahan suara belum terintegrasi |
+| S4 — Week 13 | Eyes-free, rekomendasi, trail, fasilitas, offline; Feature Freeze | PB13, PB14, PB15, PB16, PB17 | `in_progress` — UI08 FE/PB15 mulai lebih awal; PBI Sprint 4 lainnya belum dimulai |
 | S5 — Week 14 | Uji acceptance, perbaikan, rilis v1.0 | PB18, PB19, PB20 | `planned` |
 
 ## 5. Sprint 1 — Kontrak, Fondasi, Lokasi, dan Peta
@@ -252,7 +252,7 @@ Titik sambung antar-logic: `TrailService` (LB) mendengarkan `PoiTriggerEvent` da
 - **Track:** FE (UI01), LA (`PermissionService`, `LocationService`) · **Requirement:** F01, A01
 - **Scope:** layar penjelasan privasi; izin lokasi akurat "saat aplikasi digunakan" dan notifikasi; penanganan izin perkiraan/ditolak; panduan pengaturan baterai pabrikan; pembacaan lokasi mode peta biasa.
 - **Done:** izin diminta setelah layar penjelasan; lokasi terbaca dan diperbarui; pembacaan berhenti saat aplikasi diminimalkan.
-- **Status:** `planned`
+- **Status:** `in_progress` — UI01 meminta izin foreground perangkat melalui Geolocator dan UI02 menerima posisi perangkat saat aplikasi aktif. Adapter percobaan berada di `lib/ui/`; integrasi ke implementasi layanan LA, notifikasi/perangkat, sesi foreground saat layar mati, dan verifikasi fisik masih tertunda.
 
 ### PB03 — Dataset 10 POI (Firestore + JSON bawaan)
 
@@ -274,7 +274,7 @@ Titik sambung antar-logic: `TrailService` (LB) mendengarkan `PoiTriggerEvent` da
 
 - **Track:** LB (pipeline tile, style, `MapConfig`), FE (UI02) · **Requirement:** F01, A03
 - **Done:** peta tampil offline sejak instalasi; 10 POI dan posisi pengguna yang bergerak terlihat; script tile dapat dijalankan ulang; ukuran tile tercatat.
-- **Status:** `planned`
+- **Status:** `in_progress` — kerangka UI02 FE tersedia dengan POI dan posisi fake; peta memakai ilustrasi yang jelas berlabel, bukan tile. Pipeline tile/`MapConfig` asli milik LB belum tersedia.
 
 ## 6. Sprint 2 — Geofence, Sesi, Trigger, Kartu POI, dan Audio
 
@@ -303,26 +303,26 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
 
 - **Track:** LA (`SessionController`, notifikasi), FE (UI03, kontrol sesi) · **Requirement:** F02, F04, A01
 - **Done:** notifikasi dan prompt muncul ≤10 detik setelah masuk radius, termasuk saat layar mati di perangkat fisik; tidak ada pembacaan lokasi di luar sesi kecuali mode peta biasa di layar.
-- **Status:** `planned`
+- **Status:** `in_progress` — lapisan UI03 FE tersedia sebagai kartu trigger di atas UI02 dan tersambung ke `SessionController` fake. Foreground service, notifikasi, trigger nyata, serta uji perangkat milik LA belum tersedia.
 
 ### PB07 — Kartu POI
 
 - **Track:** FE (UI04); data dari `PoiRepository` (LA) · **Requirement:** F03
 - **Done:** kartu terbuka dari trigger dan dari peta dengan konten sesuai; video GKUB/GKUT dapat diputar.
-- **Status:** `planned`
+- **Status:** `in_progress` — UI04 tersedia sebagai halaman detail penuh yang dapat dibuka dari tombol Details pada POI yang sudah tiba/check-in. Data teks, foto, fasilitas, trivia, sumber, dan audio tetap placeholder sampai tim konten menyediakan materi terverifikasi.
 
 ### PB08 — Pemutar narasi audio
 
 - **Track:** LA (`AudioService`), FE (kontrol di kartu) · **Requirement:** F03, F04
 - **Done:** narasi dapat dikendalikan dari kartu dan notifikasi.
-- **Status:** `planned`
+- **Status:** `in_progress` — kontrol UI04 tersambung ke `AudioService` dan aktif bila file narasi POI tersedia serta kontennya disetujui; seluruh aset narasi dan implementasi `AudioService` LA masih tertunda.
 
 ### PB09 — Produksi konten 10 POI
 
 - **Track:** di luar track developer; LA menyiapkan format dan validasi · **Requirement:** F03, A02
 - **Catatan:** agent dilarang membuat konten ini.
 - **Done:** konten 10 POI lengkap, sumber tercatat, hak penggunaan media aman, disetujui tim.
-- **Status:** `planned`
+- **Status:** `in_progress` — UI05 FE tersedia dengan pencarian/filter lewat kontrak SearchService dan tujuan dari repository. Device shell masih memakai SearchService fake; integrasi LB dan verifikasi alias ≤1 detik belum dilakukan.
 
 ## 7. Sprint 3 — Pencarian dan Navigasi
 
@@ -338,14 +338,14 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
 
 - **Track:** LB (`SearchService`), FE (UI05) · **Requirement:** F05
 - **Done:** "labtek 5", "Labtek V", "lab 5" → Labtek V teratas; respons ≤1 detik.
-- **Status:** `planned`
+- **Status:** `in_progress` — UI05 FE tersedia dengan pencarian/filter lewat kontrak SearchService dan tujuan dari repository. Device shell masih memakai SearchService fake; integrasi LB dan verifikasi alias ≤1 detik belum dilakukan.
 
 ### PB11 — Navigasi jalan kaki di perangkat
 
 - **Track:** LB (graf, `RoutingService`, `NavigationController`), FE (UI06), LA (sesi Navigasi) · **Requirement:** F06, A01
 - **Dependency eksternal:** koordinat pintu masuk (survei).
 - **Done:** rute tampil ke pintu masuk tujuan; rerouting berjalan; tidak ada request routing ke server.
-- **Status:** `planned`
+- **Status:** `in_progress` — UI06 FE menampilkan pratinjau tujuan, jarak, ETA, dan langkah bila tersedia, serta memulai sesi/navigasi dari posisi perangkat. Shell masih memakai routing/navigation fake; graf jalur, pintu masuk survei, rerouting, dan verifikasi lapangan LB belum tersedia.
 
 ### PB12 — Arahan suara navigasi dan deteksi tiba
 
@@ -380,7 +380,7 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
 - **Track:** LB (`TrailService`), FE (UI08), LA (sesi Trail) · **Requirement:** F08
 - **Dependency eksternal:** urutan trail dari tim.
 - **Done:** progres tersimpan setelah aplikasi ditutup; lencana muncul saat 10/10.
-- **Status:** `planned`
+- **Status:** `in_progress` — layar scrollable UI08 FE tersedia dan membaca `TrailProgress`/POI dari kontrak fake. Urutan yang tampil sintetis dan berlabel; penyimpanan progres, urutan resmi, check-in integrasi, badge acceptance, serta logic sesi/navigasi LA/LB belum selesai.
 
 ### PB16 — Fasilitas terdekat
 

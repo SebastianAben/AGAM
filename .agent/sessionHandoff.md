@@ -1,5 +1,121 @@
 # Session Handoff — AGAM
 
+## Current — Preview UI Profil pada tab Pengaturan, 10 November 2026
+
+**Perubahan FE:** tab Pengaturan menampilkan preview statis Profil Pengguna dengan detail akun sesuai referensi. Header menampilkan logo saja; navbar utama tetap berada di shell dan menandai Pengaturan aktif. Tombol Logout hanya menampilkan snackbar preview dan tidak mengubah status akun/sesi. Foto profil memakai ikon placeholder karena aset portrait tidak tersedia terpisah.
+
+**Batas kontrak:** tidak ada autentikasi, akun, role, penyimpanan profil, atau logout sungguhan yang ditambahkan. Konten preview diambil dari gambar yang diberikan pengguna. PRD tanpa login tetap berlaku; PB16 fasilitas/pengaturan belum selesai.
+
+**Pemeriksaan aktual:** `dart format` dan `flutter analyze` untuk `app.dart`, `agam_bottom_navigation.dart`, dan `profile_preview_screen.dart` lulus (No issues found); `git diff --check` lulus; APK debug dibangun dan dipasang ke `emulator-5554`; halaman preview dibuka melalui tab Pengaturan. Automated test, perangkat fisik, dan field test tidak dijalankan.
+
+**Berikutnya:** jika dibutuhkan, ganti ikon placeholder dengan aset foto berizin; integrasi fitur UI09/PB16 tetap mengikuti kontrak produk.
+
+---
+
+## Current — UI05 Cari & Rute dan pratinjau UI06, 9 November 2026
+
+**Perubahan FE:** tab `Cari & Rute` kini membuka halaman UI05 dalam shell utama; header logo dan navbar tetap tersedia. Halaman menyediakan pencarian dari `SearchService`, filter kategori, daftar gedung yang berasal dari repository, pemilihan tujuan, dan panel pratinjau UI06. Tombol mulai navigasi memulai sesi foreground, menunggu pembacaan lokasi bila belum ada, lalu memanggil `NavigationController`.
+
+**Batas dan anti-halusinasi:** map preview, rute, langkah, serta fasilitas di shell saat ini tetap bergantung pada service fake/sintetis. Titik masuk gedung belum disurvei; lokasi fasilitas dan konten yang belum disetujui tidak ditampilkan sebagai fakta. Seluruh tujuan tanpa pintu masuk diberi label placeholder. Voice guidance, graf jalan, rerouting, rekomendasi/riwayat, SearchService produksi, dan dataset fasilitas masih belum terintegrasi.
+
+**Pemeriksaan aktual:** `dart format` tanpa perubahan; `flutter analyze lib/ui/app.dart lib/ui/search_route_screen.dart` **No issues found**; `git diff --check` lulus; APK debug dibangun dan dipasang ke `emulator-5554`. Setelah melewati UI01, tap pada tab Cari & Rute membuka UI05 dan navbar menandai tab aktif. Ini pemeriksaan manual emulator; perangkat fisik/field test dan automated test tidak dijalankan.
+
+**Berikutnya:** integrasi LB untuk PB10/PB11 dan LA untuk sesi/voice tetap diperlukan; PB10/PB11 `in_progress`, bukan selesai.
+
+---
+
+## Current — UI04 Detail Lokasi dari Orientation Trail, 9 November 2026
+
+**Perubahan FE:** pada UI08, kartu POI yang sudah tercatat check-in otomatis atau berstatus tiba menampilkan tombol `Check-in` dan `Details`. `Details` membuka UI04 melalui route halaman penuh. UI04 menyediakan AppBar kembali, hero foto (memakai aset POI yang disetujui bila tersedia; selain itu placeholder gambar), kartu narasi dengan playback melalui `AudioService` jika aset disetujui tersedia, transkrip, fungsi/deskripsi, fasilitas, trivia, sumber/atribusi, serta CTA navigasi dan status check-in. Tombol check-in hanya mengonfirmasi status otomatis kontrak Trail; tidak menambah check-in manual baru. Konten yang belum diverifikasi berlabel `PLACEHOLDER`.
+
+**Batas:** foto, teks konten, fasilitas, trivia, atribusi, dan audio P01–P10 belum tersedia; seluruhnya tetap jelas sebagai placeholder. `AudioService`, TrailService, dan navigasi yang tersedia selain adapter lokasi masih fake, sehingga halaman ini belum menjadi UI04 acceptance final.
+
+**Pemeriksaan aktual:** `fvm dart format` tanpa perubahan; `fvm flutter analyze` **No issues found**; `git diff --check` lulus. APK dibangun/dipasang ke `emulator-5554`; dengan koordinat sintetis emulator pada P06, check-in otomatis tampil dan tombol Details membuka UI04. Ini hanya pemeriksaan emulator; test dan field test tidak dijalankan.
+
+**Berikutnya:** tim konten memasok media/teks bersumber dan metadata; LA mengintegrasikan audio; LB/LA menyelesaikan check-in/navigation produksi. PB07 dan bagian FE PB08 tetap `in_progress`.
+
+---
+
+## Current — Izin dan lokasi perangkat nyata, serta header shell, 9 November 2026
+
+**Perubahan FE:** tombol izin UI01 sekarang meminta izin lokasi Android foreground dengan `geolocator`; ketika diizinkan, UI02 membaca stream posisi perangkat dan menampilkan koordinat/akurasi pada peta/status. `DeviceLocationService` menghentikan stream saat tidak ada listener atau aplikasi masuk background, lalu memulai ulang saat foreground. Shell memakai `AgamAppHeader` sebagai `Scaffold.appBar`, sehingga logo tampil sejak pertama membuka Jelajah tanpa perlu berpindah ke Trail. Saat mulai Trail, fake session/navigation yang masih ada memakai `LocationService` yang sama; peta/routing/trail selain pembacaan posisi tetap implementasi contoh.
+
+**Privasi dan batas integrasi:** manifest hanya meminta coarse/fine foreground; tidak meminta `ACCESS_BACKGROUND_LOCATION`, tidak menyimpan koordinat, dan tidak mengirimkannya. Implementasi sesi foreground/service, notifikasi, battery settings, serta acceptance perangkat fisik PB02/PB06/PB15 masih tertunda. File `pubspec.yaml` dan `android/app/src/main/AndroidManifest.xml` milik LA sesuai aturan track dan perlu review LA sebelum integrasi branch.
+
+**Pemeriksaan aktual:** package `geolocator: ^14.1.2` dipasang; `fvm dart format --set-exit-if-changed` tanpa perubahan; `fvm flutter analyze` **No issues found**; `git diff --check` lulus. APK berhasil dibangun/dipasang ke `emulator-5554`; dialog izin Android foreground tampil, setelah diberi izin status peta memperlihatkan pembacaan GPS (`±5m` pada emulator), dan halaman Trail dapat memulai sesi yang memakai stream lokasi. Ini bukti emulator, bukan perangkat fisik/field test. Test tidak dijalankan.
+
+**Berikutnya:** LA review perubahan manifest/dependency dan pindahkan adapter ke implementasi logic milik LA; uji alur izin serta pembacaan lokasi di perangkat Android fisik. PBI tetap `in_progress`.
+
+---
+
+## Current — Shell tetap, logo, dan batas scroll UI Jelajah/Trail, 9 November 2026
+
+**Perbaikan lanjutan:** UI02 dan UI08 sekarang berada dalam `AgamMainShell` dengan `IndexedStack`; header bersama (`AgamAppHeader`) dan satu `AgamBottomNavigation` berada di luar konten halaman. Berpindah tab mempertahankan widget/posisi scroll dan tidak menumpuk route. Logo header memakai `assets/media/logo.png`. Jelajah, Trail, filter Trail, dan isi kartu Jelajah mengatur `ClampingScrollPhysics` secara eksplisit; daftar Trail dan filter juga di-clip ke viewport. Status PBI tidak berubah.
+
+**Pemeriksaan aktual:** `fvm flutter pub get` berhasil; format Dart tidak menemukan perubahan; `fvm flutter analyze` **No issues found**; `git diff --check` lulus. `fvm flutter run -d emulator-5554 --no-resident` membangun dan memasang APK. Header logo dan perpindahan ke tab Trail diperiksa melalui emulator; navbar terlihat sama. Test tidak dijalankan dan drag overscroll manual belum diukur.
+
+**Berikutnya:** periksa drag scroll di emulator setelah pengguna menjalankan build terbaru. Bagian UI FE tetap belum menutup acceptance/integrasi PBI terkait.
+
+---
+
+## Current — Penyelarasan UI Jelajah dan Trail, 9 November 2026
+
+**Perubahan FE:** navigasi bawah UI02 Jelajah dan UI08 Trail kini memakai `AgamBottomNavigation` bersama dengan ukuran, ikon, label, warna, serta inset sistem yang seragam; halaman aktif ditandai. Seluruh aplikasi memakai font Plus Jakarta Sans dari aset lokal di `assets/fonts/`, dengan lisensi OFL disertakan. `AgamScrollBehavior` memakai clamping dan meniadakan overscroll indicator, termasuk pada daftar Trail, filter horizontal, dan isi kartu Jelajah. Tombol pada kartu UI04 menutup panel sehingga hanya peta tersisa; saat panel diperluas, tombol tetap dapat menciutkannya.
+
+**Pemeriksaan aktual:** `fvm flutter pub get` berhasil; `fvm dart format` pada file UI/widgets yang diubah; `fvm flutter analyze` **No issues found**. Test tidak dijalankan. Tidak ada commit/push.
+
+**Berikutnya:** jalankan ulang aplikasi/emulator untuk pemeriksaan visual perangkat; status PB02/PB04/PB06/PB07/PB15 tetap `in_progress` sesuai integrasi layanan dan acceptance yang belum selesai.
+
+---
+
+## Current — UI08 Orientation Trail, 8 November 2026
+
+**Pemetaan kode UI:** layar utama adalah **UI08 Orientation Trail** (PRD §18 / PB15). Panel progres, filter daftar, urutan POI, lencana, dan CTA tetap dalam UI08. Mini peta adalah pratinjau komponen UI02; CTA menginisiasi rute UI06. Callout pada contoh pengguna bukan hasil rekomendasi UI07; implementasi UI07 tetap terpisah.
+
+**Perubahan FE:** `lib/ui/orientation_trail_screen.dart` menambahkan layout panjang scrollable dengan header/progres 0/10, statistik, badge, notice urutan TBD, filter semua/belum dikunjungi/selesai, kartu seluruh POI, peta skematis, CTA tetap di bawah, dan navigation bar. `lib/ui/explore_map_screen.dart` membuka UI08 dari tab Trail. Aksi mulai menggunakan `TrailService`, `SessionController`, dan `NavigationController` dari AppServices fake.
+
+**Batas data:** daftar POI memakai nama P01–P10 dari PRD; urutan diambil dari `FakeTrailService` dan diberi label sintetis. Deskripsi, rute/jarak, media, dan progres tersimpan belum tersedia; UI mempertahankan placeholder dan tidak mengarang fasilitas/deskripsi. Mini peta dilabel ilustrasi karena tile/graf rute LB belum tersedia.
+
+**Status PBI:** PB15 `in_progress` pada bagian FE. Urutan final masih TBD; penyimpanan progres lokal, sesi Trail asli LA, check-in terintegrasi LB, lencana acceptance, dan field test belum selesai.
+
+**Pemeriksaan aktual:** `fvm dart format lib/ui/explore_map_screen.dart lib/ui/orientation_trail_screen.dart`; `fvm flutter analyze` **No issues found**; `fvm flutter run -d emulator-5554 --no-resident` membangun/memasang APK. Membuka tab Trail dan scroll sampai peta bawah diperiksa pada emulator; tidak ada exception Flutter baru pada log. Test tidak dijalankan.
+
+**Berikutnya:** tinjau visual dengan tim; ganti urutan sintetis saat PM/tim menetapkan urutan resmi; integrasikan layanan LB/LA persisten dan navigation state sesudah tersedia.
+
+---
+
+## Current — UI02 Explore Map dengan UI03/UI04, 8 November 2026
+
+**Definisi layar:** contoh pengguna menunjukkan gabungan tiga layar/state yang sudah didefinisikan PRD §18: UI02 Explore Map sebagai layar induk, UI03 trigger POI yang muncul di atas peta, dan UI04 kartu detail POI sebagai panel bawah. Bukan kode UI baru di luar UI01–UI09.
+
+**Implementasi FE:** `lib/ui/explore_map_screen.dart` memakai `AppServices` dan fake contracts. Peta ilustratif, status posisi, penanda POI, kontrol sesi, bottom navigation, trigger, dan panel detail dibuat. Data ilustrasi diberi label; fasilitas fake menyebut contoh; foto/narasi tetap placeholder karena aset/konten resmi belum tersedia. `lib/ui/app.dart` meneruskan dari UI01 ke UI02 setelah izin fake berhasil.
+
+**Status PBI:** PB02, PB04, PB06, dan PB07 `in_progress` pada bagian FE. Implementasi asli LA/LB, tile peta/routing, konten dan media, serta uji penerimaan belum selesai. Tidak mengubah kontrak bersama atau source track LA/LB.
+
+**Pemeriksaan aktual:** format Dart untuk `app.dart`, `onboarding_screen.dart`, dan `explore_map_screen.dart`; `fvm flutter analyze` **No issues found**; `fvm flutter run -d emulator-5554 --no-resident` membangun dan memasang APK debug, UI02 terbuka setelah alur izin, log setelah perbaikan navigasi/layout tidak menunjukkan exception baru. `git diff --check` diperiksa. Test tidak dijalankan.
+
+**Catatan keterbatasan:** SDK dan Android komponen pertama kali diunduh pada mesin ini; build pertama lama. Peta yang ditampilkan adalah skematis, bukan data jalan kampus atau tile offline. Logo, foto, narasi, dan fasilitas final belum tersedia.
+
+**Berikutnya:** bandingkan visual pada emulator; koordinasikan konten/logo dengan tim terkait; integrasikan `MapConfig`, sesi, dan trigger asli saat LA/LB menyerahkan implementasinya.
+
+---
+
+## Sebelumnya — Implementasi awal UI01 oleh FE, 8 November 2026
+
+**Tujuan:** mulai mengimplementasikan layar Onboarding & Izin sesuai referensi visual yang dilampirkan pengguna dan PB02.
+
+**Branch/keadaan:** `FE`; working tree sebelumnya bersih. Tidak ada commit, push, merge, atau rilis.
+
+**Perubahan:** `lib/ui/onboarding_screen.dart` menambahkan tampilan onboarding responsif dengan kartu manfaat, pemberitahuan penggunaan lokasi, tombol izin, serta penanganan izin lokasi ditolak/perkiraan/permanen/layanan mati dan izin notifikasi opsional. `lib/ui/app.dart` menghubungkan layar ke `PermissionService` dari `AppServices.fake()` (dapat diinjeksi lewat konstruktor untuk integrasi berikutnya). Logo masih berupa mark ikon sementara karena aset logo resmi belum tersedia. Saat dijalankan, ukuran layar awal emulator sempat menghasilkan tinggi minimum negatif; batas layout diperbaiki agar aman ketika tinggi constraint belum tersedia.
+
+**Status saat pencatatan awal:** UI01 FE baru mulai; PB02 `in_progress`. Handoff Current paling atas mencatat kemajuan sesudahnya.
+
+**Pemeriksaan pada sesi awal:** format file UI01 dan build UI01 di emulator berhasil setelah memperbaiki tinggi layout awal. Analyzer dijalankan pada sesi UI02 berikutnya. Flutter 3.47.9/Dart 3.13.7 dan FVM 4.3.2 dipasang di mesin; Android SDK otomatis memasang NDK 28.2.13676358, Build Tools 36.0.0, dan CMake 3.22.1 selama build.
+
+**Langkah berikutnya saat itu:** jalankan analyzer; lanjutkan layout dengan aset logo resmi bila tim menyediakannya; koordinasikan layanan izin asli dengan LA. UI02 kini tersedia sebagaimana catatan Current.
+
+---
+
 ## Current — Penyelarasan lokasi brief, 4 November 2026
 
 **Otorisasi:** pengguna meminta satu commit dokumentasi diselaraskan dan di-push ke lima branch tetap (`main`, `dev`, `LA`, `LB`, `FE`), kemudian PB04-LB-01 dikerjakan lokal pada `LB`. Branch historis PB03 tidak diubah; tanpa PR, merge fitur, atau rilis. Instruksi ini menggantikan pembatasan publikasi sesi sebelumnya khusus migrasi dokumentasi ini.
