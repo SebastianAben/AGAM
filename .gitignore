@@ -40,3 +40,4 @@ app.*.map.json
 
 # FVM Version Cache
 .fvm/
+tools/tiles/.cache/
