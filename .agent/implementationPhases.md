@@ -3,13 +3,13 @@
 | Atribut | Nilai |
 | --- | --- |
 | Status dokumen | Aktif; status per PBI dicatat di bagian masing-masing |
-| Tanggal | 2 November 2026, diperbarui 10 November 2026 |
+| Tanggal | 2 November 2026, diperbarui 14 November 2026 |
 | Kontrak produk | `.agent/PRD.md`; aturan kerja di `.agent/rules.md` |
 | Model kerja | 5 sprint × 1 minggu (Week 10–14), deliverable final Week 15 |
 | Pembagian kerja | Tiga track paralel: 1 developer frontend, 2 developer logic aplikasi (lihat §2) |
-| Desain layar | UI01–UI09 sudah selesai; frontend tinggal mengimplementasikan |
-| Backlog | PB01–PB20 dari PRD resmi; ID tidak boleh diubah atau dinomori ulang |
-| Current focus | Track LA: seluruh logic LA Sprint 1–3 ada di source dan lulus unit test (10 November 2026), belum terintegrasi dengan UI/LB dan belum diuji di perangkat fisik. PB01, PB02, PB03, PB05, PB06, PB08, PB09, PB12 `in_progress`; Firestore (PB03) `blocked`; PB04 dikerjakan LB |
+| Desain layar | UI01–UI09 sudah selesai; frontend tinggal mengimplementasikan. UI10 Daftar & Login (ditambahkan 14 November 2026) belum didesain |
+| Backlog | PB01–PB20 dari PRD resmi, ditambah PB21–PB22 (akun, keputusan PM 6 dan 14 November 2026); ID tidak boleh diubah atau dinomori ulang |
+| Current focus | Track LA: seluruh logic LA Sprint 1–3 ada di source dan lulus unit test (10 November 2026), belum terintegrasi dengan UI/LB dan belum diuji di perangkat fisik. PB01, PB02, PB03, PB05, PB06, PB08, PB09, PB12 `in_progress`; Firestore (PB03) `blocked`; PB04 dikerjakan LB. 14 November 2026: PB21 (akun dan login wajib) dan PB22 (log aktivitas) ditambahkan ke Sprint 3, `planned`, menunggu project Firebase dan kontrak v1.1 |
 
 Dokumen ini menetapkan cara tim bekerja paralel, urutan pekerjaan per track, dependency, dan definition of done. Rencana bukan bukti implementasi.
 
@@ -37,12 +37,12 @@ Bagian satu track yang selesai tetapi belum terintegrasi dicatat sebagai `in_pro
 
 ### 2.1 Tiga track
 
-AGAM tidak memiliki server. "Logic" berarti lapisan logika dan data **di dalam aplikasi**.
+AGAM tidak memiliki server milik tim; akun dan data memakai layanan terkelola Firebase. "Logic" berarti lapisan logika dan data **di dalam aplikasi**.
 
 | Track | Developer | Tanggung jawab |
 | --- | --- | --- |
-| **FE** — Frontend | 1 | Seluruh layar UI01–UI09, navigasi antarlayar, state UI, dan penyambungan ke antarmuka logic |
-| **LA** — Logic A: lokasi, sesi, data, audio | 1 | Project & CI, izin dan layanan lokasi, data POI/Firestore, geofence, sesi & foreground service, notifikasi, audio, TTS, pengaturan |
+| **FE** — Frontend | 1 | Seluruh layar UI01–UI10, navigasi antarlayar, state UI, dan penyambungan ke antarmuka logic |
+| **LA** — Logic A: lokasi, sesi, data, audio, akun | 1 | Project & CI, izin dan layanan lokasi, data POI/Firestore, geofence, sesi & foreground service, notifikasi, audio, TTS, pengaturan, akun dan log aktivitas |
 | **LB** — Logic B: peta, rute, pencarian, trail | 1 | Pipeline tile & batas kampus, graf jalur & routing, kontrol navigasi, pencarian, rekomendasi, progres trail, fasilitas |
 
 Track tidak terikat pada orang tertentu. Pekerjaan suatu track dapat diambil oleh anggota tim yang sedang tersedia, selama komposisinya tetap satu developer frontend dan dua developer logic, dan pekerjaan tersebut mengikuti kepemilikan folder serta aturan kontrak di bawah.
@@ -67,7 +67,8 @@ Untuk menghindari konflik merge, setiap track hanya mengubah foldernya sendiri. 
 | --- | --- |
 | `lib/contracts/` (model, antarmuka, fake) | Bersama; perubahan mengikuti §2.4 |
 | `lib/ui/` | FE |
-| `lib/logic/location/`, `lib/logic/session/`, `lib/logic/data/`, `lib/logic/audio/`, `lib/logic/settings/` | LA |
+| `lib/logic/location/`, `lib/logic/session/`, `lib/logic/data/`, `lib/logic/audio/`, `lib/logic/settings/`, `lib/logic/account/` | LA |
+| `firestore.rules`, `firebase.json`, test rules Firestore | LA |
 | `lib/logic/map/`, `lib/logic/routing/`, `lib/logic/search/`, `lib/logic/trail/` | LB |
 | `lib/main.dart`, dependency injection, `pubspec.yaml`, `android/`, `.github/` | LA; perubahan oleh track lain lewat PR yang direview LA |
 | `tools/tiles/`, `assets/map/`, `assets/routing/` | LB |
@@ -198,6 +199,27 @@ Nama di tabel berikut sesuai kode kontrak v1.0.
 
 Titik sambung antar-logic: `TrailService` (LB) mendengarkan `PoiTriggerEvent` dari `SessionController` (LA); `NavigationController` (LB) memakai posisi dari layanan lokasi LA; `VoiceGuidance` (LA) membacakan langkah dari `NavigationState` (LB); auto-end 30 menit di `SessionController` (LA) memakai `MapConfig.isInsideCampus` (LB).
 
+### 3.3 Usulan kontrak v1.1 — akun dan log aktivitas (PB21–PB22)
+
+**Status: usulan, belum disepakati.** Wajib disetujui ketiga track sesuai §2.4 sebelum di-merge.
+
+| Tambahan | Isi | Pemilik |
+| --- | --- | --- |
+| `UserRole` | `mahasiswaItb`, `pengunjung` | LA |
+| `UserAccount` | `uid`, `email`, `role` | LA |
+| `AuthState` | belum login, atau login dengan `UserAccount` | LA |
+| `AuthService` | aliran `AuthState`; daftar (email, password, role), login, logout, kirim email reset password, hapus akun | LA |
+| `ActivityEvent` | tipe tertutup sesuai PRD §15.5; hanya event dan field yang diizinkan | LA |
+| `ActivityLogger` | mencatat `ActivityEvent`; tidak pernah melempar error ke pemanggil | LA |
+| Fake | `FakeAuthService`, `FakeActivityLogger` (mencatat ke memori untuk test) | LA |
+| `AppServices` | ditambah `auth` dan `activity` | Bersama |
+
+`ActivityEvent` dibuat sebagai tipe tertutup supaya event di luar PRD §15.5 tidak dapat dibuat dari kode; privasi dijaga oleh tipe, bukan hanya oleh review.
+
+Perubahan ini **merusak** pemakai yang ada karena `AppServices` mendapat dua field wajib. Sesuai §2.4, PR kontrak v1.1 wajib sekaligus memperbarui `AppServices.fake()` dan perangkaian layanan di `lib/ui/` milik FE, sehingga PR tersebut memerlukan persetujuan FE dan LB.
+
+Progres trail, POI dikunjungi, dan pengaturan disimpan per akun (PRD §15.1). Implementasi `SettingsStore` (LA) dan penyimpanan progres `TrailService` (LB) wajib memakai `uid` aktif sebagai bagian kunci penyimpanan; antarmuka keduanya tidak berubah.
+
 ## 4. Milestone
 
 | Waktu | Milestone |
@@ -214,7 +236,7 @@ Titik sambung antar-logic: `TrailService` (LB) mendengarkan `PoiTriggerEvent` da
 | --- | --- | --- | --- |
 | S1 — Week 10 | Kontrak, fondasi aplikasi, lokasi, peta | PB01, PB02, PB03, PB04 | `in_progress` |
 | S2 — Week 11 | Geofence, sesi, trigger, kartu POI, audio | PB05, PB06, PB07, PB08, PB09 | `in_progress` — logic LA PB05/PB06/PB08 dan format PB09 ada di source (10 November 2026); UI, integrasi, dan uji perangkat belum |
-| S3 — Week 12 | Pencarian dan navigasi | PB10, PB11, PB12 | `in_progress` — bagian LA PB12 ada di source (10 November 2026); PB10/PB11 (LB) dan UI belum |
+| S3 — Week 12 | Pencarian dan navigasi; akun dan log aktivitas | PB10, PB11, PB12, PB21, PB22 | `in_progress` — bagian LA PB12 ada di source (10 November 2026); PB10/PB11 (LB) dan UI belum; PB21/PB22 `planned` |
 | S4 — Week 13 | Eyes-free, rekomendasi, trail, fasilitas, offline; Feature Freeze | PB13, PB14, PB15, PB16, PB17 | `planned` |
 | S5 — Week 14 | Uji acceptance, perbaikan, rilis v1.0 | PB18, PB19, PB20 | `planned` |
 
@@ -280,7 +302,7 @@ Titik sambung antar-logic: `TrailService` (LB) mendengarkan `PoiTriggerEvent` da
 ### PB04 — Explore Map dengan tile vektor dibundel
 
 - **Track:** LB (pipeline tile, style, `MapConfig`), FE (UI02) · **Requirement:** F01, A03
-- **Done:** peta tampil offline sejak instalasi; 10 POI dan posisi pengguna yang bergerak terlihat; script tile dapat dijalankan ulang; ukuran tile tercatat.
+- **Done:** peta tampil offline setelah login pertama; 10 POI dan posisi pengguna yang bergerak terlihat; script tile dapat dijalankan ulang; ukuran tile tercatat.
 - **Status:** `planned`
 
 ## 6. Sprint 2 — Geofence, Sesi, Trigger, Kartu POI, dan Audio
@@ -340,15 +362,17 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
 - **Done:** konten 10 POI lengkap, sumber tercatat, hak penggunaan media aman, disetujui tim.
 - **Status:** `in_progress` — format dan validasi LA tersedia; konten belum ada (tim konten)
 
-## 7. Sprint 3 — Pencarian dan Navigasi
+## 7. Sprint 3 — Pencarian, Navigasi, dan Akun
 
 | Track | Langkah |
 | --- | --- |
-| FE | 1. UI05 Pencarian dan filter kategori (PB10). 2. UI06 Navigasi: garis rute, jarak, ETA, langkah berikutnya, keadaan menyimpang/rerouting (PB11). 3. Tampilan tiba (bagian awal UI07) (PB12). 4. Rapikan UI01–UI06 untuk Major Progress Review. |
-| LA | 1. `VoiceGuidance`: TTS `id-ID`, deteksi ketersediaan suara, fallback visual (PB12). 2. Putar audio pengumuman tiba saat `NavigationState` tiba (PB12). 3. Mode Navigasi di `SessionController`: POI lain hanya notifikasi ringkas tanpa audio (PB06/PB11). |
-| LB | 1. `NavigationController`: posisi → `NavigationState`, reroute >25 m, tiba ≤15 m (PB11). 2. Koreksi graf jalur dan titik pintu masuk dari survei bila sudah tersedia; jika belum, pakai titik tengah gedung berlabel placeholder (PB11). 3. Integrasi `SearchService` dengan data asli (PB10). |
+| FE | 1. UI05 Pencarian dan filter kategori (PB10). 2. UI06 Navigasi: garis rute, jarak, ETA, langkah berikutnya, keadaan menyimpang/rerouting (PB11). 3. Tampilan tiba (bagian awal UI07) (PB12). 4. Rapikan UI01–UI06 untuk Major Progress Review. 5. UI10 Daftar & Login, gerbang login sebelum UI01, info akun, logout, dan hapus akun di UI09 (PB21). 6. Event `featureUsed` untuk kartu POI, narasi, dan fasilitas (PB22). |
+| LA | 1. `VoiceGuidance`: TTS `id-ID`, deteksi ketersediaan suara, fallback visual (PB12). 2. Putar audio pengumuman tiba saat `NavigationState` tiba (PB12). 3. Mode Navigasi di `SessionController`: POI lain hanya notifikasi ringkas tanpa audio (PB06/PB11). 4. Usulan kontrak v1.1 (§3.3). 5. Setup Firebase di aplikasi, `AuthService`, profil `users/{uid}`, penyimpanan lokal per akun, rules Firestore beserta test (PB21). 6. `ActivityLogger` serta event akun, `appOpen`, dan mode (PB22). |
+| LB | 1. `NavigationController`: posisi → `NavigationState`, reroute >25 m, tiba ≤15 m (PB11). 2. Koreksi graf jalur dan titik pintu masuk dari survei bila sudah tersedia; jika belum, pakai titik tengah gedung berlabel placeholder (PB11). 3. Integrasi `SearchService` dengan data asli (PB10). 4. Event `featureUsed` pencarian dan `trailCompleted` saat `SearchService` dan `TrailService` asli dibuat; progres trail disimpan per akun (PB22). |
 
-**Integrasi akhir sprint:** mencari "labtek 5", menavigasi ke Labtek V dengan arahan suara, dan menerima pengumuman tiba di perangkat fisik. Hasilnya dipakai untuk Major Progress Review.
+**Syarat akun di Sprint 3:** project Firebase dengan Firestore dan Authentication sudah dibuat di awal minggu, dan kontrak v1.1 disepakati ketiga track sebelum FE dan LB memakainya. Gerbang login hanya di-merge ke `dev` setelah lengkap, supaya demo Major Progress Review tidak terhalang login yang setengah jadi.
+
+**Integrasi akhir sprint:** mencari "labtek 5", menavigasi ke Labtek V dengan arahan suara, dan menerima pengumuman tiba di perangkat fisik. Hasilnya dipakai untuk Major Progress Review. Jika PB21 sudah lengkap, alur dimulai dari daftar/login.
 
 ### PB10 — Pencarian dengan alias dan filter kategori
 
@@ -373,6 +397,24 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
   - Mode Navigasi di `SessionController` (POI lain hanya notifikasi ringkas) sudah selesai di PB06.
 - **Belum/keputusan terbuka:** tujuan fasilitas tidak punya file audio tiba sehingga konfirmasinya hanya visual. Jika tim ingin pengumuman suara untuk fasilitas atau fallback TTS saat file audio POI belum ada, itu menyimpang dari PRD §10 (TTS hanya arahan) dan perlu keputusan PM. Integrasi dengan `NavigationController` asli (LB), tampilan tiba (FE), file audio tiba (PB09), dan uji perangkat belum dilakukan.
 - **Status:** `in_progress` — logic LA selesai dan teruji unit dengan navigasi palsu
+
+### PB21 — Akun dan login wajib
+
+- **Asal:** tidak ada di PRD resmi; ditambahkan atas keputusan PM (6 dan 14 November 2026). Wajib dicatat di Change Log PRD resmi (PRD §23).
+- **Track:** LA (`AuthService`, profil `users/{uid}`, penyimpanan lokal per akun, rules Firestore dan test-nya, setup Firebase, DI), FE (UI10, gerbang login, akun di UI09), LB (penyimpanan progres trail per akun) · **Requirement:** A01 · **[CL]**
+- **Scope:** daftar dengan email, password, pilihan role, dan persetujuan pemberitahuan privasi; login; lupa password lewat email reset; logout; hapus akun (profil, log, data lokal milik akun, akun Auth); pesan offline saat login pertama; sesi login bertahan setelah aplikasi ditutup; progres lokal per akun (PRD §15.1). Tanpa verifikasi email.
+- **Dependency:** project Firebase (Firestore + Authentication Email/Password); kontrak v1.1 (§3.3); teks pemberitahuan privasi disetujui PM; desain UI10.
+- **Done:** pengguna baru tidak dapat masuk tanpa daftar/login; setelah login pertama aplikasi dapat dipakai dalam mode pesawat; logout kembali ke UI10 tanpa menghapus progres, dan login kembali dengan akun yang sama memulihkan progres; akun lain di perangkat yang sama tidak melihat progres akun pertama; hapus akun menghapus profil, log, dan data lokalnya; test rules dengan emulator menolak akses ke profil pengguna lain.
+- **Status:** `planned`
+
+### PB22 — Log aktivitas internal
+
+- **Asal:** tidak ada di PRD resmi; ditambahkan atas keputusan PM (6 dan 14 November 2026). Wajib dicatat di Change Log PRD resmi (PRD §23).
+- **Track:** LA (`ActivityLogger`, event `signUp`/`login`/`logout`/`appOpen`/`modeStart`/`modeEnd`, rules `hasOnly`), FE (event `featureUsed` untuk kartu POI, narasi, fasilitas), LB (event `featureUsed` pencarian dan `trailCompleted`) · **Requirement:** A01 · **[CL]**
+- **Scope:** seluruh event PRD §15.5 dengan field yang diizinkan saja; antrean offline; `appOpen` hanya saat cold start; event mode dan trail selesai hanya bertanggal.
+- **Dependency:** PB21; `SearchService` dan `TrailService` asli (LB) untuk event LB. Jika belum tersedia di Sprint 3, bagian LB pindah ke Sprint 4, tetap sebelum Feature Freeze.
+- **Done:** setiap event PRD §15.5 tercatat dengan field yang benar; test rules dengan emulator menolak dokumen berfield tambahan (mis. `lat`) dan dokumen dengan `uid` milik orang lain; pemeriksaan lalu lintas jaringan menunjukkan tidak ada koordinat, ID POI, atau tujuan yang terkirim.
+- **Status:** `planned`
 
 ## 8. Sprint 4 — Eyes-free, Rekomendasi, Trail, Fasilitas; Feature Freeze
 
@@ -452,7 +494,7 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
 | F06 Navigation | PB11, PB12 | Field test ≥4/5 tujuan acak |
 | F07 Contextual Recommendation | PB14, PB16 | Demo alur kartu ditutup/tiba |
 | F08 Orientation Trail | PB15 | Demo progres tersimpan + lencana |
-| A01 Privacy & Session Control | PB02, PB06, PB11 | Pemeriksaan penyimpanan dan lalu lintas jaringan |
+| A01 Privacy & Session Control | PB02, PB06, PB11, PB21, PB22 | Pemeriksaan penyimpanan dan lalu lintas jaringan; test rules Firestore |
 | A02 Content Traceability | PB03, PB07, PB09 | Metadata lengkap pada 10 POI |
 | A03 Offline Information Access | PB03, PB04, PB17 | Uji mode pesawat |
 
@@ -460,7 +502,9 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
 
 | Dependency | Dibutuhkan oleh | Status |
 | --- | --- | --- |
-| Project Firebase | PB03 (LA) | Belum dibuat |
+| Project Firebase (Firestore + Authentication Email/Password) | PB03, PB21, PB22 (LA) | Belum dibuat |
+| Desain UI10 Daftar & Login dan teks pemberitahuan privasi | PB21 (FE) | Belum ada; teks wajib disetujui PM |
+| Success metric | PB22 (finalisasi daftar event) | Belum ditetapkan |
 | Konten P01–P10 (teks, foto, audio, video, metadata) | PB07, PB08, PB09 | Belum tersedia |
 | Koordinat pintu masuk | PB11, PB12 (LB) | Menunggu survei |
 | Urutan Orientation Trail | PB15 (LB) | Belum ditetapkan |

@@ -9,7 +9,7 @@
 | Mata kuliah | II4011 Transformasi Digital — Prof. Ir. Kridanto Surendro, M.Sc., Ph.D. |
 | Tim | Kelompok 03 / Warung; keputusan produk dipegang Project Manager |
 | Platform | Aplikasi mobile Android (APK) |
-| Stack | Flutter / Dart, Fused Location Provider (`geolocator`), OpenStreetMap (tile vektor dibundel), Firebase Firestore + JSON bawaan, `flutter_tts` |
+| Stack | Flutter / Dart, Fused Location Provider (`geolocator`), OpenStreetMap (tile vektor dibundel), Firebase Firestore + JSON bawaan, Firebase Auth (email + password), `flutter_tts` |
 
 Kata **wajib**, **dilarang**, **sebaiknya**, dan **dapat** bersifat normatif. Requirement di dokumen ini adalah **target**; tidak ada yang boleh dilaporkan sebagai selesai tanpa evidence (lihat `.agent/rules.md`).
 
@@ -41,6 +41,8 @@ Seluruh perhitungan (lokasi, geofence, rute, pencarian, rekomendasi) dilakukan *
 | Mahasiswa baru / yang belum familiar dengan Ganesha | Belum mengenal tata letak kampus; berpindah gedung antarkelas dengan waktu sempit | Menemukan gedung/ruang kuliah dengan cepat, memahami fungsi gedung, mengetahui fasilitas terdekat |
 | Pengunjung (calon mahasiswa, orang tua, tamu acara/seminar) | Datang sesekali dengan waktu terbatas | Menuju gedung tujuan tanpa banyak bertanya dan memperoleh informasi fasilitas gedung |
 
+**[CL] Role akun.** Saat daftar, pengguna memilih salah satu role yang mewakili kelompok target di atas: **Mahasiswa ITB** (`mahasiswaItb`) atau **Pengunjung** (`pengunjung`). Role diisi sendiri, tidak diverifikasi, dan tidak membedakan fitur; role hanya dipakai tim untuk memisahkan statistik.
+
 ## 4. Tujuan dan Non-Tujuan
 
 | ID | Tujuan |
@@ -57,7 +59,9 @@ Seluruh perhitungan (lokasi, geofence, rute, pencarian, rekomendasi) dilakukan *
 | NG03 | Versi awal tidak menyediakan augmented reality |
 | NG04 | Tidak mengirim, menyimpan di server, atau membagikan riwayat lokasi pengguna kepada pihak lain |
 
-Di luar lingkup v1 (keputusan tim): **login/akun/role pengguna**, **bahasa selain Bahasa Indonesia**, dan **backend milik tim**.
+Di luar lingkup v1 (keputusan tim): **bahasa selain Bahasa Indonesia** dan **backend/server milik tim**. Akun pengguna memakai layanan terkelola Firebase (Auth + Firestore), bukan server milik tim.
+
+**[CL] Akun wajib (keputusan PM 6 November 2026).** Pengguna wajib daftar atau login sebelum memakai aplikasi. Login tidak membuka fitur tambahan. Data akun dipakai internal oleh tim developer untuk menghitung jumlah pengguna, success metric, dan log aktivitas ([§15.5](#155-log-aktivitas)). Seluruh batas privasi NG04 dan A01 tetap berlaku.
 
 ## 5. Skenario Utama
 
@@ -76,6 +80,8 @@ Raka (18 tahun, mahasiswa baru S1 Teknik Informatika) datang pertama kali ke Gan
 ## 6. Mode Aplikasi dan Sesi Lokasi
 
 AGAM memiliki empat mode. **Sesi** adalah mode Explore, Navigasi, atau Orientation Trail yang dimulai pengguna.
+
+**[CL] Prasyarat login.** Seluruh mode hanya tersedia setelah pengguna login. Alur pertama kali: Daftar/Login (UI10) → Onboarding & Izin Lokasi (UI01). UI10 tampil sebelum seluruh UI01; UI01 tidak dipecah. Logout mengakhiri sesi aktif dan kembali ke UI10.
 
 | Mode | Fungsi | Pembacaan lokasi | Trigger POI |
 | --- | --- | --- | --- |
@@ -229,12 +235,17 @@ Aturan konten:
 | Database informasi POI & fasilitas (teks/terstruktur) | Firestore (sumber remote) + JSON bawaan di APK |
 | Media (foto, audio, video) | Dibundel di APK; **tidak** disimpan di Firestore/Firebase Storage |
 | Tile peta, graf jalur | Dibundel di APK |
-| Progres trail, POI dikunjungi, pengaturan | Penyimpanan lokal perangkat |
+| Progres trail, POI dikunjungi, pengaturan | Penyimpanan lokal perangkat, dipisahkan per akun (lihat di bawah); tidak disinkronkan ke server |
+| Akun (email, password) | Firebase Auth; password tidak pernah disimpan atau dicatat aplikasi |
+| Profil (role, tanggal daftar) | Firestore `users/{uid}`; hanya pemilik yang dapat membaca dan menulis |
+| Log aktivitas | Firestore `activity_logs`; pengguna hanya membuat log miliknya, tim membaca lewat Console ([§15.5](#155-log-aktivitas)) |
 | Posisi pengguna | Hanya di memori selama dibutuhkan; tidak pernah disimpan sebagai riwayat atau dikirim |
+
+**[CL] Progres lokal per akun.** Progres trail, POI dikunjungi, dan pengaturan disimpan di perangkat dengan kunci `uid`. Logout tidak menghapus data tersebut, hanya menyembunyikannya; login kembali dengan akun yang sama di perangkat yang sama memulihkannya. Akun lain di perangkat yang sama memiliki progres sendiri. Data ini tidak dikirim ke server, sehingga berganti perangkat berarti progres dimulai dari awal. Hapus akun ikut menghapus data lokal milik akun tersebut.
 
 ### 15.2 Alur sinkronisasi
 
-1. Saat pertama dibuka, aplikasi memakai JSON bawaan.
+1. Setelah login pertama, aplikasi memakai JSON bawaan; konten tidak memerlukan jaringan.
 2. Jika ada koneksi, aplikasi mengambil data dari Firestore dan menyimpannya ke cache lokal.
 3. Dokumen Firestore **divalidasi** di aplikasi (tipe, rentang koordinat, radius positif, field wajib). Dokumen tidak valid diabaikan dan nilai dari salinan lokal dipakai.
 4. Jika gagal (offline/error), aplikasi tetap memakai salinan terakhir.
@@ -246,6 +257,8 @@ Nama field final ditetapkan pada PB03 (2 November 2026). Bentuk ini dipakai sama
 - `pois/{id}`: `id`, `name`, `aliases[]`, `category`, `lat`, `lng`, `radiusM`, `entrances[]` (`lat`, `lng`, `label`), `description`, `function`, `facilities[]`, `trivia`, `media` (`photos[]`, `narrationAudio`, `promptAudio`, `arrivalAudio`, `video` — path aset di APK), `trailOrder`, `metadata`.
 - `facilities/{id}`: `id`, `name`, `category`, `lat`, `lng`, `buildingId` (opsional), `description`, `metadata`.
 - `metadata`: `sources[]`, `verifiedAt` (ISO 8601), `owner`, `assetAttribution[]`, `approved`, `isPlaceholder`.
+- `users/{uid}`: `role` (`mahasiswaItb` | `pengunjung`), `createdAt` (timestamp). Email tidak diduplikasi di Firestore karena sudah ada di Firebase Auth.
+- `activity_logs/{autoId}`: lihat [§15.5](#155-log-aktivitas).
 
 Nilai `category` ditulis persis seperti nama enum kontrak: POI `laboratoryAndLecture` atau `lecture`; fasilitas `toilet`, `musala`, `kantin`, `atm`, `perpustakaan`, `layananAkademik`.
 
@@ -266,17 +279,42 @@ Dokumen yang diabaikan tidak menggagalkan dataset lain. Dataset yang tidak menyi
 
 ### 15.4 Firestore
 
-- Security rules: **baca publik, tulis hanya akun tim yang terautentikasi**.
-- Pengeditan konten dilakukan tim lewat Firebase Console.
-- Aplikasi tidak menulis apa pun ke Firestore.
-- Project Firebase **belum dibuat**.
+Security rules:
+
+- `pois/` dan `facilities/`: baca publik dan tidak dapat ditulis dari aplikasi. Tim mengedit konten lewat Firebase Console (edit dari Console tidak melewati security rules).
+- `users/{uid}`: hanya pengguna dengan `uid` yang sama yang dapat membaca, membuat, mengubah `role`, dan menghapus dokumennya.
+- `activity_logs/`: pengguna yang login hanya dapat **membuat** log dengan `uid` miliknya; rules menolak field di luar daftar §15.5 (`hasOnly`). Pengguna dapat membaca dan menghapus log miliknya untuk keperluan hapus akun; konsekuensinya, pengguna juga dapat menghapus log tanpa menghapus akun karena rules tidak dapat membedakan keduanya (diterima PM, 14 November 2026). Tim membaca log lewat Firebase Console.
+- Aplikasi tidak menulis ke koleksi lain.
+
+Project Firebase **belum dibuat**. Saat dibuat, aktifkan Firestore dan Authentication metode Email/Password; Analytics, Crashlytics, dan Storage tidak diaktifkan.
+
+### 15.5 Log aktivitas
+
+**[CL]** Daftar event tertutup. Event baru hanya boleh ditambahkan dengan keputusan PM dan pemeriksaan privasi yang sama.
+
+| `type` | Field tambahan | Catatan |
+| --- | --- | --- |
+| `signUp` | `role` | |
+| `login`, `logout` | — | |
+| `appOpen` | `appVersion`, `androidVersion`, `deviceModel` | Hanya saat aplikasi dibuka dari keadaan tertutup (cold start), bukan setiap kembali ke foreground. Membuka aplikasi dari notifikasi trigger tidak boleh meninggalkan jejak waktu trigger |
+| `modeStart`, `modeEnd` | `mode` (`explore` \| `navigation` \| `trail`); `modeEnd` ditambah `durationMin` (dibulatkan ke 5 menit) | Tanggal saja, tanpa jam, dan tanpa alasan berakhir. Jam selesai Trail sama dengan jam tiba di POI terakhir; alasan auto-end mengungkap bahwa pengguna keluar kampus |
+| `featureUsed` | `feature` (`search` \| `poiCard` \| `narration` \| `facilities`) | Tanpa ID POI, kata kunci pencarian, atau tujuan |
+| `trailCompleted` | — | Tanggal saja, tanpa jam, karena waktu selesai trail sama dengan waktu tiba di POI terakhir |
+
+Field umum: `uid`, `type`, dan waktu. Waktu berupa `at` (timestamp perangkat) untuk `signUp`, `login`, `logout`, `appOpen`, dan `featureUsed`; berupa `date` (YYYY-MM-DD, tanpa jam) untuk `modeStart`, `modeEnd`, dan `trailCompleted`. Event yang waktunya dapat bertepatan dengan kedatangan di POI tertentu hanya boleh membawa tanggal.
+
+**Dilarang dicatat dalam bentuk apa pun:** koordinat atau posisi, ID atau nama POI, tujuan navigasi, titik awal rute, urutan kunjungan, kata kunci pencarian, dan alasan sesi berakhir. Statistik per POI, jika kelak dibutuhkan, hanya berupa penghitung agregat tanpa `uid` dan tanpa waktu, dan memerlukan keputusan PM.
+
+Log yang dibuat saat offline disimpan dalam antrean Firestore di perangkat dan terkirim saat online. Log dihapus tim paling lambat setelah penilaian akhir mata kuliah; tanggal pastinya tercatat di [§22](#22-hal-tertunda-tbd).
 
 ## 16. Privasi
 
-- Tidak ada login, akun, atau role pengguna di aplikasi.
-- Tidak ada analytics, crash reporting, atau logging yang membawa koordinat pengguna. Penambahan SDK pihak ketiga yang dapat mengirim lokasi memerlukan keputusan PM.
-- Request jaringan yang diperbolehkan hanya pengambilan data Firestore (tanpa parameter lokasi).
+- **[CL]** Login wajib dengan email dan password (Firebase Auth). Data akun hanya untuk keperluan internal tim ([§4](#4-tujuan-dan-non-tujuan)). Verifikasi email tidak diwajibkan; lupa password memakai email reset dari Firebase Auth.
+- Layar daftar wajib menampilkan pemberitahuan tentang data yang dicatat, tujuannya, dan pernyataan bahwa posisi tidak pernah dikirim. Pengguna harus menyetujuinya sebelum akun dibuat. Teks pemberitahuan disusun FE dan wajib disetujui PM sebelum rilis.
+- Log aktivitas mengikuti daftar tertutup [§15.5](#155-log-aktivitas). Tidak ada analytics pihak ketiga, crash reporting, atau logging yang membawa koordinat pengguna. Penambahan SDK pihak ketiga yang dapat mengirim lokasi atau data perangkat memerlukan keputusan PM.
+- Request jaringan yang diperbolehkan: Firebase Auth, pengambilan data Firestore (tanpa parameter lokasi), serta penulisan `users/{uid}` dan `activity_logs` sesuai [§15.4](#154-firestore) dan §15.5.
 - Pengguna dapat menghapus progres lokal.
+- Pengguna dapat menghapus akun dari Pengaturan. Hapus akun menghapus profil `users/{uid}`, seluruh log miliknya, data lokal milik akun tersebut, lalu akun Firebase Auth.
 
 ## 17. Arsitektur Teknis
 
@@ -288,6 +326,8 @@ Dokumen yang diabaikan tidak menggagalkan dataset lain. Dataset yang tidak menyi
 | Peta | Tile vektor OSM (PMTiles) dibundel + renderer Flutter | Lihat §14 |
 | Routing | Graf jalur kampus (GeoJSON) + Dijkstra/A* di perangkat | Lihat §11 |
 | Data | Firestore (`cloud_firestore`) + JSON bawaan + cache lokal | Lihat §15 |
+| Akun | Firebase Auth (email + password) | Sesi login tersimpan di perangkat sehingga aplikasi tetap dapat dipakai offline setelah login pertama |
+| Log aktivitas | Firestore (`activity_logs`) | Bukan Firebase Analytics; lihat §15.5 |
 | Audio | `just_audio` + `audio_service` untuk file narasi/prompt/tiba; `flutter_tts` untuk arahan navigasi | Kontrol dari notifikasi dan lock screen |
 | Notifikasi trigger | `flutter_local_notifications` | Getar, prompt, tombol Dengarkan/Lihat/Lewati |
 | Video | Pemutar video di kartu POI | GKUB, GKUT |
@@ -299,6 +339,8 @@ Dokumen yang diabaikan tidak menggagalkan dataset lain. Dataset yang tidak menyi
 Versi Flutter/Dart, application ID, dan SDK Android sudah ditetapkan saat PB01 (2 November 2026).
 
 Package LA yang ditambahkan 10 November 2026 (versi diperiksa di pub.dev dan dikunci `pubspec.lock`): `geolocator` ^14.1.2, `flutter_local_notifications` ^22.3.3 (bukan 23.0.0 yang baru dirilis 6 November 2026), `just_audio` ^0.10.6, `audio_service` ^0.18.19, `shared_preferences` ^2.5.6, `path_provider` ^2.1.6; dev: `fake_async` ^1.3.3. Untuk PB12 ditambahkan `flutter_tts` ^4.2.5 (sudah tercantum di stack). `audio_service` membawa `flutter_cache_manager` (http, sqflite) secara transitif untuk gambar sampul; AGAM tidak memberi URL gambar sehingga tidak ada request jaringan dari jalur ini. Manifest utama aplikasi tidak mendeklarasikan `INTERNET` dan secara eksplisit menghapus `ACCESS_BACKGROUND_LOCATION`. Manifest hasil merge build debug (10 November 2026) tidak memuat `ACCESS_BACKGROUND_LOCATION`; `INTERNET` di sana berasal dari manifest debug bawaan Flutter (alat pengembangan) dan `ACCESS_NETWORK_STATE` dari `androidx.media3` (backend `just_audio`). Manifest build rilis belum diperiksa. Saat Firestore ditambahkan, `INTERNET` diperlukan di build rilis. Hal yang masih **wajib diverifikasi**, bukan diasumsikan: versi package yang ditambahkan, kompatibilitas renderer tile vektor, serta ukuran akhir APK.
+
+Untuk akun dan log aktivitas (PB21–PB22) diperlukan package baru `firebase_core`, `cloud_firestore`, `firebase_auth`, dan `device_info_plus` (untuk `deviceModel` dan `androidVersion`). Versinya wajib diverifikasi sebelum ditambahkan (`rules.md` §4.2).
 
 ## 18. Layar (Screen/State)
 
@@ -312,7 +354,8 @@ Package LA yang ditambahkan 10 November 2026 (versi diperiksa di pub.dev dan dik
 | UI06 | Navigation | Rute, jarak, ETA, arahan visual & suara | F06, F04 |
 | UI07 | Arrival & Recommendation | Konfirmasi tiba, rekomendasi POI berikutnya, fasilitas terdekat | F06, F07 |
 | UI08 | Orientation Trail | Urutan 10 POI, progres, lencana | F08 |
-| UI09 | Fasilitas & Pengaturan | Daftar fasilitas per kategori, auto-play audio, akhiri sesi, hapus progres | A01, A03, F04, F07 |
+| UI09 | Fasilitas & Pengaturan | Daftar fasilitas per kategori, auto-play audio, akhiri sesi, hapus progres; **[CL]** info akun (email, role), logout, hapus akun | A01, A03, F04, F07 |
+| UI10 | **[CL]** Daftar & Login | Daftar (email, password, pilih role, persetujuan pemberitahuan privasi), login, lupa password, pesan offline "Butuh koneksi internet untuk login pertama kali" | A01 |
 
 ## 19. Kompatibilitas Android dan Perangkat Uji
 
@@ -332,7 +375,7 @@ Komposisi perangkat uji yang disarankan: satu Samsung/Pixel, satu Xiaomi/Oppo, s
 ## 20. Distribusi
 
 - APK dibangun oleh GitHub Actions dan dirilis melalui GitHub Releases. Link/QR Releases dipakai untuk deliverable *Final Working Product*.
-- Tidak ada server backend milik tim.
+- Tidak ada server backend milik tim. Akun dan log memakai layanan terkelola Firebase.
 
 ## 21. Bahasa dan Aksesibilitas
 
@@ -348,11 +391,14 @@ Item berikut **belum diputuskan atau belum tersedia**. Agent dilarang mengisinya
 | Koordinat pintu masuk tiap gedung | Menunggu survei lapangan | Tim |
 | Dataset fasilitas (toilet, musala, kantin, ATM, perpustakaan, layanan akademik) | Akan dikumpulkan | Tim konten |
 | Urutan Orientation Trail | Belum ditetapkan | Tim |
-| Project Firebase | Belum dibuat | PM / Backend |
+| Project Firebase (Firestore + Authentication Email/Password) | Belum dibuat | PM / Backend |
 | Konten teks, foto, audio, video P01–P10 | Belum tersedia di repository | Tim konten |
 | Daftar perangkat uji | Belum ditetapkan | QA |
 | Margin histeresis, kalibrasi radius per POI, dan parameter interval adaptif | Default engineering margin 5 m dan jeda sampel maksimum 10 detik (PB05-LA-01) serta parameter interval adaptif [§9.2](#92-logika-trigger) diterapkan; kalibrasi lapangan tetap tertunda | Developer / QA |
 | Batas area kampus (poligon/bounding box) | Ditetapkan saat PB04 | Developer |
+| Success metric | Belum ditetapkan. Log §15.5 disusun agar dapat dipakai metrik umum (pengguna aktif, pemakaian mode dan fitur, trail selesai); event yang tidak dipakai metrik mana pun dihapus setelah metrik ditetapkan | PM |
+| Tanggal penghapusan log aktivitas | Paling lambat setelah penilaian akhir mata kuliah; tanggal pasti belum ditetapkan | PM |
+| Teks pemberitahuan privasi layar daftar (UI10) | Disusun FE, wajib disetujui PM | FE / PM |
 
 ## 23. Perbedaan terhadap PRD Baseline W9
 
@@ -370,6 +416,13 @@ Perubahan berikut wajib dicatat PM pada Change Log PRD resmi.
 | Sumber suara | `flutter_tts` untuk narasi, prompt, arahan | Narasi & prompt = file audio; TTS hanya arahan navigasi | Konsistensi suara dan kemandirian dari data TTS perangkat |
 | Mode aplikasi | Tidak dirinci | Empat mode (§6) dan auto-end 30 menit | Memperjelas kapan lokasi dibaca dan trigger aktif |
 | PB17 | Cache konten & tile peta saat offline | Tile sudah dibundel sejak S1; PB17 menjadi verifikasi offline konten | Keputusan tile |
+| Akun pengguna | Tidak disebut di requirement, backlog, maupun sprint plan | Login wajib (email + password), role Mahasiswa ITB/Pengunjung, hapus akun (§4, §16) | Pencatatan jumlah pengguna dan success metric oleh tim (keputusan PM 6 November 2026) |
+| Log aktivitas | Tidak disebut | Daftar event tertutup tanpa data lokasi (§15.5) | Success metric; tetap mematuhi NG04/A01 |
+| Backlog | PB01–PB20 | Ditambah PB21 (akun dan login wajib) dan PB22 (log aktivitas) pada Sprint 3; nomor PB01–PB20 tidak berubah | Fitur akun sebelum Feature Freeze |
+| Layar | UI01–UI09 | Ditambah UI10 Daftar & Login; UI09 memuat akun, logout, dan hapus akun | Akun |
+| Offline (A03) | Informasi tersedia tanpa jaringan | Tetap, tetapi login pertama memerlukan internet | Konsekuensi login wajib; A03 berprioritas Should |
+| Firestore | Sumber data konten | Ditambah profil pengguna dan log aktivitas | Akun |
+| Progres trail | Disimpan lokal | Tetap lokal, dipisahkan per akun di perangkat; tidak disinkronkan | Pergantian akun di perangkat yang sama |
 
 ## 24. Koreksi Minor terhadap Dokumen Resmi
 

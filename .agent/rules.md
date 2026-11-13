@@ -49,7 +49,7 @@ Jangan mulai menulis kode, konten, atau dokumentasi sebelum langkah 1–4 selesa
 | Dokumen PRD resmi (PDF/PPT, di luar repo) | Referensi historis; jika berbeda, `.agent/PRD.md` yang berlaku |
 
 - Rencana bukan bukti implementasi. Kode yang ada tidak otomatis menggantikan target produk.
-- Keputusan yang sudah dikunci di PRD (stack, radius, mode, privasi, peta, routing, bahasa, tanpa login) **dilarang** diubah diam-diam. Usulkan perubahan dengan alasan dan tunggu keputusan PM.
+- Keputusan yang sudah dikunci di PRD (stack, radius, mode, privasi, peta, routing, bahasa, login wajib, daftar log aktivitas) **dilarang** diubah diam-diam. Usulkan perubahan dengan alasan dan tunggu keputusan PM.
 - Laporkan status secara terpisah: **ada di source**, **build berhasil**, **berjalan di emulator**, **berjalan di perangkat fisik**, **automated test lulus**, **lulus field test**. Jangan menaikkan status tanpa bukti.
 
 ## 4. Aturan Anti-Halusinasi
@@ -75,7 +75,10 @@ Ini adalah aturan terpenting di proyek ini.
 ### 5.1 Privasi (A01, NG04) — tidak dapat ditawar
 
 - Posisi pengguna **dilarang** dikirim ke server mana pun: server tim, Firestore, server routing, server tile, analytics, crash reporting, atau API pihak ketiga.
-- Posisi pengguna **dilarang** disimpan sebagai riwayat. Yang boleh disimpan lokal hanya ID POI dikunjungi, progres trail, dan pengaturan.
+- Posisi pengguna **dilarang** disimpan sebagai riwayat. Yang boleh disimpan lokal hanya ID POI dikunjungi, progres trail, dan pengaturan, dipisahkan per akun ([PRD §15.1](PRD.md#151-pembagian-data)).
+- Log aktivitas hanya boleh berisi event dan field di [PRD §15.5](PRD.md#155-log-aktivitas). **Dilarang** mencatat koordinat, ID atau nama POI, tujuan navigasi, titik awal rute, urutan kunjungan, kata kunci pencarian, atau alasan sesi berakhir dalam event apa pun yang terikat akun.
+- Event yang waktunya dapat bertepatan dengan kedatangan di POI tertentu (mode dimulai/diakhiri, trail selesai) hanya boleh dicatat dengan tanggal, tanpa jam.
+- Password dilarang dicatat, disimpan aplikasi, atau muncul di log debug.
 - Pembacaan lokasi mengikuti empat mode di [PRD §6](PRD.md#6-mode-aplikasi-dan-sesi-lokasi). Dilarang meminta izin lokasi "sepanjang waktu".
 - Menambah SDK pihak ketiga yang berpotensi mengakses lokasi atau mengirim data perangkat memerlukan keputusan PM.
 
@@ -87,7 +90,8 @@ Ini adalah aturan terpenting di proyek ini.
 | Lokasi | `geolocator` (Fused Location Provider) + foreground service tipe `location` |
 | Peta | Tile vektor OSM buatan sendiri (PMTiles), dibundel di APK |
 | Routing | Graf jalur kampus (GeoJSON) + Dijkstra/A* di perangkat |
-| Data | Firestore (baca saja dari aplikasi) + JSON bawaan + cache lokal |
+| Data | Firestore (aplikasi membaca konten; hanya menulis profil sendiri dan log aktivitas) + JSON bawaan + cache lokal |
+| Akun | Firebase Auth email + password; login wajib (keputusan PM 6 November 2026) |
 | Audio | File audio untuk narasi/prompt/tiba; `flutter_tts` hanya untuk arahan navigasi |
 | CI/CD | GitHub Actions → GitHub Releases |
 
@@ -95,8 +99,8 @@ Dilarang menambahkan tanpa keputusan PM:
 
 - Backend/server milik tim, atau server routing.
 - Google Maps SDK, Mapbox, atau server tile publik OSM.
-- Firebase Storage untuk media, Firebase Auth untuk pengguna, Analytics, atau Crashlytics.
-- Login atau akun pengguna, dan bahasa selain Bahasa Indonesia.
+- Firebase Storage untuk media, Analytics, atau Crashlytics.
+- Metode login selain email + password, fitur tambahan khusus akun, sinkronisasi progres ke server, event log di luar [PRD §15.5](PRD.md#155-log-aktivitas), dan bahasa selain Bahasa Indonesia.
 - iOS sebagai target rilis.
 
 Pilihan engineering di dalam stack (state management, struktur folder, package penyimpanan lokal, renderer peta, library audio/video) dapat diputuskan developer, lalu dicatat di PRD atau handoff jika material.
@@ -110,7 +114,7 @@ Pilihan engineering di dalam stack (state management, struktur folder, package p
 ### 5.4 Secrets
 
 - Dilarang meng-commit credential, service account, keystore, atau password.
-- File konfigurasi Firebase klien (`google-services.json`) bukan secret, tetapi keamanannya bergantung pada Firestore security rules (baca publik, tulis hanya akun tim).
+- File konfigurasi Firebase klien (`google-services.json`) bukan secret, tetapi keamanannya bergantung pada Firestore security rules ([PRD §15.4](PRD.md#154-firestore): konten baca publik dan hanya diedit tim lewat Console; profil dan log hanya milik pengguna sendiri).
 - Keystore rilis dan password-nya disimpan di GitHub Secrets.
 
 ## 6. Verifikasi
