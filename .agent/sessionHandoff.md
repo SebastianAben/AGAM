@@ -1,6 +1,33 @@
 # Session Handoff — AGAM
 
-## Current — Keputusan akun, login, dan log aktivitas, 14 November 2026
+## Current — Integrasi LA, LB, dan FE, 14 November 2026
+
+**Tujuan:** menyatukan ketiga track pada branch `chore/integration-fe-la-lb` (dibuat dari `dev` `a1775f7`) atas instruksi PM, lalu menyambungkan layanan asli LA ke UI FE (Fase 4). Branch track `LA`, `LB`, dan `FE` tidak diubah. Belum ada PR ke `dev`; tidak ada merge ke `main`.
+
+**Commit:**
+
+| Commit | Isi |
+| --- | --- |
+| `2ce8275` | Merge `origin/LA` (`8e239b0`, konten Labtek V); tanpa konflik |
+| `86480da` | Merge `origin/LB` (`ed2e7c0`, pipeline tile PB04-LB-01); konflik `.gitignore` digabung, PRD §22 mempertahankan isi kedua sisi, dokumen status disesuaikan |
+| `85c4766` | Merge `origin/FE` (`5db4dd4`, layar UI01–UI08); manifest memakai versi `dev` (izin FE sudah tercakup), `pubspec.yaml` ditambah font Plus Jakarta Sans dan `assets/media/logo.png`, `pubspec.lock` tidak berubah setelah `pub get`. Status PB09 FE salin-tempel dari PB10 tidak dipakai. Pada commit ini `test/ui/app_test.dart` gagal (masih mencari teks "AGAM"); diperbaiki di commit berikutnya |
+| `ef997a5` | Fase 4: `lib/main.dart` memanggil `createLaServices` dan menyerahkan `AppServices` ke `AgamApp`; parameter `navigation` di `lib/logic/la_bootstrap.dart` menjadi factory yang menerima `LocationService` asli; test aplikasi memakai `AppServices.fake` |
+
+**Komposisi layanan saat ini:** LA asli (izin, lokasi, `PoiRepository`, sesi, audio, suara, pengaturan, notifikasi trigger, pengumuman navigasi). LB masih fake (`FakeMapConfig` dengan area sintetis, routing garis lurus, `FakeNavigationController` yang membaca posisi asli, pencarian, trail, fasilitas, rekomendasi). Peta UI02 masih ilustrasi skematis; PMTiles belum dirender maupun didaftarkan sebagai aset.
+
+**Pemeriksaan (lokal, Flutter 3.47.9 via FVM):** `dart format` 0 perubahan; `flutter analyze` tanpa issue; `flutter test` 225 lulus. Test pipeline tile 18 lulus dengan Python 3.13 (`/opt/homebrew/bin/python3.13`); `python3` bawaan macOS 3.9 gagal 8 test karena tidak punya `hashlib.file_digest`, bukan kesalahan kode. **`flutter build apk --debug` tidak dapat dijalankan** karena Android SDK tidak terpasang di mesin ini; build Android akan diverifikasi CI saat PR ke `dev`. Belum diuji di perangkat fisik.
+
+**Catatan untuk track:**
+
+- FE: `lib/ui/device_app_services.dart` dan `lib/ui/device_location_services.dart` kini hanya fallback bila `AgamApp` dibuat tanpa `services`; nama kelasnya menduplikasi `DevicePermissionService`/`DeviceLocationService` milik LA. Perlu dibersihkan FE.
+- FE/LA: `TriggerResponder.viewRequests` (tombol Lihat di notifikasi) belum punya jalur ke navigator FE; UI02 baru mendengarkan `session.triggers`. Butuh usulan kontrak §2.4 atau penyambungan di `main.dart`.
+- LB: style AGAM, `MapConfig` asli, `SearchService`, `RoutingService`/`NavigationController`, `TrailService`, dan `FacilityService` asli masih belum ada; begitu tersedia, ganti fake di `lib/main.dart`.
+
+**Berikutnya:** PR `chore/integration-fe-la-lb` → `dev` (menunggu instruksi PM) dan pastikan CI build APK lulus; setelah merge, sinkronkan `LA`, `LB`, `FE` dari `dev` dengan merge; uji APK di perangkat fisik; PM membuat project Firebase (Firestore + Authentication Email/Password); kontrak v1.1 dan PB21–PB22.
+
+---
+
+## Sebelumnya — Keputusan akun, login, dan log aktivitas, 14 November 2026
 
 **Tujuan:** mendokumentasikan fitur akun atas keputusan PM. Hanya dokumen; tidak ada perubahan kode. Atas instruksi PM, perubahan di-commit pada branch `chore/integration-fe-la-lb` yang dibuat dari `dev` (`a1775f7`); branch yang sama dipakai untuk integrasi berikutnya. Belum di-push.
 

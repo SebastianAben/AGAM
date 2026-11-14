@@ -9,7 +9,7 @@
 | Pembagian kerja | Tiga track paralel: 1 developer frontend, 2 developer logic aplikasi (lihat §2) |
 | Desain layar | UI01–UI09 sudah selesai; frontend tinggal mengimplementasikan. UI10 Daftar & Login (ditambahkan 14 November 2026) belum didesain |
 | Backlog | PB01–PB20 dari PRD resmi, ditambah PB21–PB22 (akun, keputusan PM 6 dan 14 November 2026); ID tidak boleh diubah atau dinomori ulang |
-| Current focus | Track LA: seluruh logic LA Sprint 1–3 ada di source dan lulus unit test (10 November 2026), belum terintegrasi dengan UI/LB dan belum diuji di perangkat fisik. PB01, PB02, PB03, PB05, PB06, PB08, PB09, PB12 `in_progress`; Firestore (PB03) `blocked`; PB04 `in_progress` (pipeline tile LB-01 selesai, belum terintegrasi). 14 November 2026: PB21 (akun dan login wajib) dan PB22 (log aktivitas) ditambahkan ke Sprint 3, `planned`, menunggu project Firebase dan kontrak v1.1 |
+| Current focus | 14 November 2026: LA, LB, dan FE digabung pada branch `chore/integration-fe-la-lb`; `lib/main.dart` memakai layanan LA asli dengan layanan LB fake, belum di-PR ke `dev` dan belum diuji di perangkat fisik. PB01–PB12 dan PB15 `in_progress` (lihat status per PBI); Firestore (PB03) `blocked`. PB21 (akun dan login wajib) dan PB22 (log aktivitas) di Sprint 3, `planned`, menunggu project Firebase dan kontrak v1.1 |
 
 Dokumen ini menetapkan cara tim bekerja paralel, urutan pekerjaan per track, dependency, dan definition of done. Rencana bukan bukti implementasi.
 
@@ -281,7 +281,8 @@ Progres trail, POI dikunjungi, dan pengaturan disimpan per akun (PRD §15.1). Im
   - Manifest: izin lokasi akurat, foreground service `location`/`mediaPlayback`, notifikasi; `ACCESS_BACKGROUND_LOCATION` dihapus eksplisit (`tools:node="remove"`), dijaga `test/android/manifest_privacy_test.dart`.
 - **UI01/UI02 FE (14 November 2026):** onboarding meminta izin foreground lalu UI02 menampilkan posisi perangkat saat aplikasi aktif. FE sempat memakai adapter Geolocator sendiri di `lib/ui/device_location_services.dart`.
 - **Sisa:** uji perangkat fisik (izin, perkiraan, notifikasi Android 13+, optimasi baterai per merek).
-- **Status:** `in_progress` — logic LA dan UI01 tersedia; menunggu uji perangkat
+- **Integrasi (14 November 2026):** layanan LA tersambung ke UI lewat `lib/main.dart` di branch integrasi.
+- **Status:** `in_progress` — logic LA dan UI01 tersambung; menunggu uji perangkat
 
 ### PB03 — Dataset 10 POI (Firestore + JSON bawaan)
 
@@ -345,7 +346,8 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
   - `lib/logic/session/trigger_responder.dart`: respons per mode; prompt audio atau narasi langsung bila auto-play aktif; `viewRequests` untuk FE membuka kartu POI.
 - **UI03 FE (14 November 2026):** kartu trigger Dengarkan/Lihat/Lewati di atas UI02 dan kontrol sesi.
 - **Belum:** penyambungan `viewRequests` ke navigasi layar memerlukan keputusan FE (tidak ada di `AppServices` v1.0, sehingga butuh usulan perubahan kontrak §2.4 atau penyambungan di `main.dart`); uji perangkat fisik saat layar mati; teks notifikasi masih rumusan developer dari skenario PRD §5 dan dapat disesuaikan desain UI03.
-- **Status:** `in_progress` — logic LA dan UI03 tersedia; menunggu penyambungan `viewRequests` dan uji perangkat
+- **Integrasi (14 November 2026):** `DeviceSessionController` dan `TriggerResponder` tersambung lewat `lib/main.dart`; `MapConfig` masih fake LB (area sintetis).
+- **Status:** `in_progress` — logic LA dan UI03 tersambung; menunggu penyambungan `viewRequests` dan uji perangkat
 
 ### PB07 — Kartu POI
 
@@ -360,7 +362,8 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
 - **Ada di source (10 November 2026, LA):** `lib/logic/audio/device_audio_service.dart` (`AudioService` asli; path dari `Poi.media`; konten placeholder → `PlaybackStatus.error` tanpa crash) dan `lib/logic/audio/agam_audio_handler.dart` (`just_audio` + `audio_service`; putar/jeda/berhenti dari notifikasi media dan lock screen). `MainActivity` diturunkan dari `AudioServiceActivity`.
 - **Kontrol di kartu (FE, 14 November 2026):** UI04 memanggil `AudioService`; kontrol aktif bila file narasi POI tersedia.
 - **Sisa:** file audio belum ada (PB09); uji perangkat fisik.
-- **Status:** `in_progress` — logic LA dan kontrol UI04 tersedia; menunggu file audio dan uji perangkat
+- **Integrasi (14 November 2026):** `DeviceAudioService` tersambung ke kontrol UI04 lewat `lib/main.dart`.
+- **Status:** `in_progress` — logic LA dan kontrol UI04 tersambung; menunggu file audio dan uji perangkat
 
 ### PB09 — Produksi konten 10 POI
 
