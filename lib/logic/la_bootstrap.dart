@@ -1,8 +1,7 @@
 /// Merangkai layanan asli track LA (dependency injection, milik LA).
 ///
-/// Belum dipanggil dari `lib/main.dart`: penyambungan ke `AppServices` dan
-/// UI dilakukan saat integrasi akhir sprint bersama FE dan LB
-/// (`.agent/implementationPhases.md` §2.6).
+/// Dipanggil dari `lib/main.dart`; layanan LB yang belum tersedia masih
+/// memakai fake (`.agent/implementationPhases.md` §2.6).
 library;
 
 import 'package:path_provider/path_provider.dart';
@@ -33,6 +32,7 @@ class LaServices {
     required this.settings,
     required this.notifier,
     required this.triggerResponder,
+    required this.navigation,
     required this.navigationAnnouncer,
   });
 
@@ -45,17 +45,19 @@ class LaServices {
   final DeviceSettingsStore settings;
   final LocalTriggerNotifier notifier;
   final TriggerResponder triggerResponder;
+  final NavigationController navigation;
   final NavigationAnnouncer navigationAnnouncer;
 }
 
 /// Membuat layanan LA. Dari track LB: [map] untuk cek area kampus (auto-end
 /// 30 menit dan penonaktifan trigger di luar area) dan [navigation] untuk
-/// arahan suara serta pengumuman tiba.
+/// arahan suara serta pengumuman tiba. [navigation] berupa factory karena
+/// navigasi membaca posisi dari `LocationService` asli yang dibuat di sini.
 ///
 /// Wajib dipanggil sekali setelah `WidgetsFlutterBinding.ensureInitialized()`.
 Future<LaServices> createLaServices({
   required MapConfig map,
-  required NavigationController navigation,
+  required NavigationController Function(LocationService location) navigation,
 }) async {
   final cacheDir = await getApplicationSupportDirectory();
   final pois = PoiRepositoryImpl(
@@ -93,9 +95,10 @@ Future<LaServices> createLaServices({
     settings: settings,
   )..start();
 
+  final navigationController = navigation(location);
   final voice = DeviceVoiceGuidance();
   final announcer = NavigationAnnouncer(
-    navigation: navigation,
+    navigation: navigationController,
     voice: voice,
     audio: audio,
   )..start();
@@ -110,6 +113,7 @@ Future<LaServices> createLaServices({
     settings: settings,
     notifier: notifier,
     triggerResponder: responder,
+    navigation: navigationController,
     navigationAnnouncer: announcer,
   );
 }
