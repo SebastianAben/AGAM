@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "generatedBy": "PB03 — track LA",
-  "note": "Sumber id, nama, alias, kategori, koordinat, dan radius: .agent/PRD.md §9.1. Field teks dan media masih PLACEHOLDER karena konten P01-P10 belum tersedia (.agent/PRD.md §22). Jangan tampilkan field berlabel PLACEHOLDER sebagai konten final.",
+  "note": "Sumber id, nama, alias, kategori, koordinat, dan radius: .agent/PRD.md §9.1. Teks P01-P10 (deskripsi, fungsi, fasilitas, trivia) dari tim konten, diverifikasi 14 November 2026. Media belum tersedia sehingga metadata masih isPlaceholder dan belum approved (.agent/PRD.md §22).",
   "pois": [
     {
       "id": "P01",
@@ -15,10 +15,32 @@
       "description": "Gedung ini menjadi salah satu pusat kegiatan akademik Teknik Informatika ITB, termasuk perkuliahan, praktikum, dan penelitian.",
       "function": "Gedung Kuliah dan Laboratorium",
       "facilities": ["Ruang Kelas", "Laboratorium", "Toilet", "Mushalla", "Kantin"],
-      "trivia": "Labtek V memiliki nama resmi Gedung Benny Subianto, alumnus Teknik Mesin ITB angkatan 1960. Gedung ini diresmikan pada 11 Maret 1995 dan merupakan salah satu dari empat bangunan ikonik yang dikenal sebagai Labtek Kembar.",
-      "media": {},
+      "trivia": "Pada tahun 2008, Labtek V diberi nama Gedung Benny Subianto untuk menghormati alumnus Teknik Mesin ITB angkatan 1960 yang sukses di dunia bisnis.",
+      "media": {
+        "photos": [
+          "assets/media/P01/foto-1.jpg",
+          "assets/media/P01/foto-2.jpg"
+        ],
+        "narrationAudio": "assets/media/P01/narasi.m4a"
+      },
       "trailOrder": null,
-      "metadata": { "isPlaceholder": true, "approved": false }
+      "metadata": {
+        "isPlaceholder": true,
+        "sources": [
+          "Institut Teknologi Bandung (itb.ac.id)",
+          "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
+          "Website resmi fakultas dan program studi ITB",
+          "Buku Saku Mahasiswa Pascasarjana ITB 2021"
+        ],
+        "owner": "Noeriza Aqila Wibawa",
+        "verifiedAt": "2026-11-14",
+        "assetAttribution": [
+          "assets/media/P01/foto-1.jpg — Foto: Noeriza Aqila Wibawa",
+          "assets/media/P01/foto-2.jpg — Foto: Noeriza Aqila Wibawa",
+          "assets/media/P01/narasi.m4a — Pengisi suara: Naura"
+        ],
+        "approved": false
+      }
     },
     {
       "id": "P02",
@@ -32,10 +54,32 @@
       "description": "gedung ini digunakan untuk kegiatan pendidikan dan penelitian, khususnya Program Studi Teknik Fisika dan Teknik Kelautan ITB.",
       "function": "Gedung Kuliah dan Laboratorium",
       "facilities": ["Ruang Kelas", "Laboratorium", "Toilet"],
-      "trivia": "Labtek VI atau Gedung T.P. Rachmat, yang dinamai berdasarkan alumnus Teknik Mesin ITB angkatan 1961 sekaligus mantan CEO Astra. Gedung ini diresmikan pada 1995 dan menjadi salah satu dari empat Labtek Kembar yang mengelilingi Kolam Indonesia Tenggelam.",
-      "media": {},
+      "trivia": "Nama Gedung T.P. Rachmat diambil dari nama Theodore Permadi Rachmat, alumnus Teknik Mesin ITB yang sukses sebagai pengusaha.",
+      "media": {
+        "photos": [
+          "assets/media/P02/foto-1.jpg",
+          "assets/media/P02/foto-2.jpg"
+        ],
+        "narrationAudio": "assets/media/P02/narasi.m4a"
+      },
       "trailOrder": null,
-      "metadata": { "isPlaceholder": true, "approved": false }
+      "metadata": {
+        "isPlaceholder": true,
+        "sources": [
+          "Institut Teknologi Bandung (itb.ac.id)",
+          "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
+          "Website resmi fakultas dan program studi ITB",
+          "Buku Saku Mahasiswa Pascasarjana ITB 2021"
+        ],
+        "owner": "Noeriza Aqila Wibawa",
+        "verifiedAt": "2026-11-14",
+        "assetAttribution": [
+          "assets/media/P02/foto-1.jpg — Foto: Noeriza Aqila Wibawa",
+          "assets/media/P02/foto-2.jpg — Foto: Noeriza Aqila Wibawa",
+          "assets/media/P02/narasi.m4a — Pengisi suara: Naura"
+        ],
+        "approved": false
+      }
     },
     {
       "id": "P03",
@@ -49,10 +93,26 @@
       "description": "Labtek VII atau Gedung Yusuf Panigoro, gedung ini digunakan untuk kegiatan akademik dan penelitian Sekolah Farmasi ITB, khususnya bidang Sains dan Teknologi Farmasi serta Farmasi Klinik dan Komunitas.",
       "function": "Gedung Kuliah dan Laboratorium",
       "facilities": ["Ruang Kelas", "Laboratorium", "Toilet", "Mushalla"],
-      "trivia": "PLACEHOLDER — menunggu tim konten",
-      "media": {},
+      "trivia": "Labtek VII atau Gedung Yusuf Panigoro dinamai berdasarkan nama ayah Arifin Panigoro, alumnus Teknik Elektro ITB yang dikenal atas kiprahnya di bidang energi.",
+      "media": {
+        "narrationAudio": "assets/media/P03/narasi.m4a"
+      },
       "trailOrder": null,
-      "metadata": { "isPlaceholder": true, "approved": false }
+      "metadata": {
+        "isPlaceholder": true,
+        "sources": [
+          "Institut Teknologi Bandung (itb.ac.id)",
+          "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
+          "Website resmi fakultas dan program studi ITB",
+          "Buku Saku Mahasiswa Pascasarjana ITB 2021"
+        ],
+        "owner": "Noeriza Aqila Wibawa",
+        "verifiedAt": "2026-11-14",
+        "assetAttribution": [
+          "assets/media/P03/narasi.m4a — Pengisi suara: Naura"
+        ],
+        "approved": false
+      }
     },
     {
       "id": "P04",
@@ -66,10 +126,26 @@
       "description": "Labtek VIII atau Gedung Achmad Bakrie, gedung ini mendukung kegiatan akademik dan administrasi Sekolah Teknik Elektro dan Informatika (STEI) serta Fakultas Matematika dan Ilmu Pengetahuan Alam (FMIPA).",
       "function": "Gedung Kuliah dan Laboratorium",
       "facilities": ["Ruang Kelas", "Laboratorium", "Toilet", "Mushalla", "Apotek"],
-      "trivia": "PLACEHOLDER — menunggu tim konten",
-      "media": {},
+      "trivia": "Nama Gedung Achmad Bakrie diambil dari nama ayah Aburizal Bakrie, salah satu alumnus ITB yang dikenal di dunia bisnis.",
+      "media": {
+        "narrationAudio": "assets/media/P04/narasi.m4a"
+      },
       "trailOrder": null,
-      "metadata": { "isPlaceholder": true, "approved": false }
+      "metadata": {
+        "isPlaceholder": true,
+        "sources": [
+          "Institut Teknologi Bandung (itb.ac.id)",
+          "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
+          "Website resmi fakultas dan program studi ITB",
+          "Buku Saku Mahasiswa Pascasarjana ITB 2021"
+        ],
+        "owner": "Noeriza Aqila Wibawa",
+        "verifiedAt": "2026-11-14",
+        "assetAttribution": [
+          "assets/media/P04/narasi.m4a — Pengisi suara: Naura"
+        ],
+        "approved": false
+      }
     },
     {
       "id": "P05",
@@ -83,10 +159,26 @@
       "description": "Labtek Biru (Labir) merupakan kawasan gedung Labtek X dan Labtek XI di Kampus Ganesha ITB yang digunakan untuk kegiatan perkuliahan, praktikum, penelitian, dan aktivitas kemahasiswaan. Kawasan ini digunakan oleh program studi Teknik Kimia, Teknik Material, Biologi, Meteorologi, dan Oseanografi, serta menjadi tempat aktivitas sejumlah himpunan mahasiswa, seperti HIMATEK, MTM, HIMABIO Nymphaea, HMME, dan HMO.",
       "function": "Gedung Kuliah dan Laboratorium",
       "facilities": ["Ruang Kelas", "Laboratorium", "Toilet", "Kantin"],
-      "trivia": "PLACEHOLDER — menunggu tim konten",
-      "media": {},
+      "trivia": "Tangga utama Labtek XI dirancang melingkar menyerupai struktur heliks ganda DNA sebagai representasi ilmu hayati.",
+      "media": {
+        "narrationAudio": "assets/media/P05/narasi.m4a"
+      },
       "trailOrder": null,
-      "metadata": { "isPlaceholder": true, "approved": false }
+      "metadata": {
+        "isPlaceholder": true,
+        "sources": [
+          "Institut Teknologi Bandung (itb.ac.id)",
+          "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
+          "Website resmi fakultas dan program studi ITB",
+          "Buku Saku Mahasiswa Pascasarjana ITB 2021"
+        ],
+        "owner": "Noeriza Aqila Wibawa",
+        "verifiedAt": "2026-11-14",
+        "assetAttribution": [
+          "assets/media/P05/narasi.m4a — Pengisi suara: Naura"
+        ],
+        "approved": false
+      }
     },
     {
       "id": "P06",
@@ -100,10 +192,32 @@
       "description": "Gedung perkuliahan umum di Kampus Ganesha ITB yang digunakan untuk berbagai kegiatan akademik, terutama perkuliahan bersama. Gedung ini juga dikenal sebagai Gedung Wardah Foundation.",
       "function": "Gedung Kuliah",
       "facilities": ["Ruang Kelas", "Toilet", "Mushalla", "Kantin"],
-      "trivia": "PLACEHOLDER — menunggu tim konten",
-      "media": {},
+      "trivia": "Bentuk bangunan yang tidak simetris, lorong berliku, dan penomoran ruangan yang melompat membuat GKUB dikenal sebagai salah satu gedung paling membingungkan di ITB.",
+      "media": {
+        "photos": [
+          "assets/media/P06/foto-1.jpg",
+          "assets/media/P06/foto-2.jpg"
+        ],
+        "narrationAudio": "assets/media/P06/narasi.m4a"
+      },
       "trailOrder": null,
-      "metadata": { "isPlaceholder": true, "approved": false }
+      "metadata": {
+        "isPlaceholder": true,
+        "sources": [
+          "Institut Teknologi Bandung (itb.ac.id)",
+          "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
+          "Website resmi fakultas dan program studi ITB",
+          "Buku Saku Mahasiswa Pascasarjana ITB 2021"
+        ],
+        "owner": "Noeriza Aqila Wibawa",
+        "verifiedAt": "2026-11-14",
+        "assetAttribution": [
+          "assets/media/P06/foto-1.jpg — Foto: Naura",
+          "assets/media/P06/foto-2.jpg — Foto: Naura",
+          "assets/media/P06/narasi.m4a — Pengisi suara: Naura"
+        ],
+        "approved": false
+      }
     },
     {
       "id": "P07",
@@ -117,10 +231,26 @@
       "description": "Gedung perkuliahan umum ITB yang digunakan untuk berbagai kegiatan akademik dan perkuliahan lintas program studi. Gedung ini juga dikenal sebagai Gedung Paragon Innovation.",
       "function": "Gedung Kuliah",
       "facilities": ["Ruang Kelas", "Toilet", "Kantin"],
-      "trivia": "PLACEHOLDER — menunggu tim konten",
-      "media": {},
+      "trivia": "Pada 26 September 2019, GKUT resmi diberi nama Gedung Kuliah Umum Timur Paragon Foundation sebagai bentuk apresiasi atas dukungan filantropi dalam pendidikan.",
+      "media": {
+        "narrationAudio": "assets/media/P07/narasi.m4a"
+      },
       "trailOrder": null,
-      "metadata": { "isPlaceholder": true, "approved": false }
+      "metadata": {
+        "isPlaceholder": true,
+        "sources": [
+          "Institut Teknologi Bandung (itb.ac.id)",
+          "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
+          "Website resmi fakultas dan program studi ITB",
+          "Buku Saku Mahasiswa Pascasarjana ITB 2021"
+        ],
+        "owner": "Noeriza Aqila Wibawa",
+        "verifiedAt": "2026-11-14",
+        "assetAttribution": [
+          "assets/media/P07/narasi.m4a — Pengisi suara: Naura"
+        ],
+        "approved": false
+      }
     },
     {
       "id": "P08",
@@ -134,10 +264,22 @@
       "description": "Gedung perkuliahan umum ITB yang digunakan untuk kegiatan belajar mengajar berbagai mata kuliah. Gedung ini memiliki ruang kuliah berkapasitas beragam, termasuk ruang multimedia.",
       "function": "Gedung Kuliah",
       "facilities": ["Ruang Kelas", "Toilet"],
-      "trivia": "PLACEHOLDER — menunggu tim konten",
+      "trivia": "Nama Oktagon berasal dari bentuk arsitektur gedungnya yang menyerupai segi delapan.",
       "media": {},
       "trailOrder": null,
-      "metadata": { "isPlaceholder": true, "approved": false }
+      "metadata": {
+        "isPlaceholder": true,
+        "sources": [
+          "Institut Teknologi Bandung (itb.ac.id)",
+          "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
+          "Website resmi fakultas dan program studi ITB",
+          "Buku Saku Mahasiswa Pascasarjana ITB 2021"
+        ],
+        "owner": "Noeriza Aqila Wibawa",
+        "verifiedAt": "2026-11-14",
+        "assetAttribution": [],
+        "approved": false
+      }
     },
     {
       "id": "P09",
@@ -151,10 +293,26 @@
       "description": "Gedung perkuliahan umum ITB yang digunakan untuk kegiatan pembelajaran berbagai mata kuliah, dengan ruang kelas reguler dan ruang multimedia.",
       "function": "Gedung Kuliah",
       "facilities": ["Ruang Kelas", "Toilet"],
-      "trivia": "PLACEHOLDER — menunggu tim konten",
-      "media": {},
+      "trivia": "Lantai dua TVST menjadi lokasi studio Layanan Produksi Multimedia ITB yang didirikan pada Juli 2007.",
+      "media": {
+        "narrationAudio": "assets/media/P09/narasi.m4a"
+      },
       "trailOrder": null,
-      "metadata": { "isPlaceholder": true, "approved": false }
+      "metadata": {
+        "isPlaceholder": true,
+        "sources": [
+          "Institut Teknologi Bandung (itb.ac.id)",
+          "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
+          "Website resmi fakultas dan program studi ITB",
+          "Buku Saku Mahasiswa Pascasarjana ITB 2021"
+        ],
+        "owner": "Noeriza Aqila Wibawa",
+        "verifiedAt": "2026-11-14",
+        "assetAttribution": [
+          "assets/media/P09/narasi.m4a — Pengisi suara: Naura"
+        ],
+        "approved": false
+      }
     },
     {
       "id": "P10",
@@ -168,10 +326,22 @@
       "description": "Labtek I, yang dikenal sebagai Gedung Mekanika Tanah (Mektan), merupakan gedung perkuliahan di Kampus Ganesha ITB. Awalnya, gedung ini digunakan sebagai laboratorium mekanika tanah oleh Fakultas Teknik Sipil dan Lingkungan (FTSL). Setelah fungsi laboratorium dipindahkan ke Gedung CIBE, Labtek I direnovasi pada tahun 2018 menjadi gedung perkuliahan umum dengan ruang kelas berkapasitas 40–120 mahasiswa.",
       "function": "Gedung Kuliah",
       "facilities": ["Ruang Kelas", "Toilet", "Mushalla"],
-      "trivia": "PLACEHOLDER — menunggu tim konten",
+      "trivia": "Awalnya merupakan laboratorium mekanika tanah, Labtek I dialihfungsikan pada tahun 2018 menjadi gedung perkuliahan dengan ruang kelas berkapasitas 40–120 mahasiswa.",
       "media": {},
       "trailOrder": null,
-      "metadata": { "isPlaceholder": true, "approved": false }
+      "metadata": {
+        "isPlaceholder": true,
+        "sources": [
+          "Institut Teknologi Bandung (itb.ac.id)",
+          "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
+          "Website resmi fakultas dan program studi ITB",
+          "Buku Saku Mahasiswa Pascasarjana ITB 2021"
+        ],
+        "owner": "Noeriza Aqila Wibawa",
+        "verifiedAt": "2026-11-14",
+        "assetAttribution": [],
+        "approved": false
+      }
     }
   ],
   "facilities": []

@@ -154,10 +154,12 @@ void main() {
       }
     });
 
-    test('media belum tersedia', () {
+    // Foto dan narasi sudah mulai tersedia (14 November 2026); keberadaan
+    // file dan pendaftarannya diperiksa content_assets_test.dart.
+    test('audio prompt, audio tiba, dan video belum tersedia', () {
       for (final poi in result.pois) {
-        expect(poi.media.photos, isEmpty, reason: poi.id);
-        expect(poi.media.narrationAudio, isNull, reason: poi.id);
+        expect(poi.media.promptAudio, isNull, reason: poi.id);
+        expect(poi.media.arrivalAudio, isNull, reason: poi.id);
         expect(poi.media.video, isNull, reason: poi.id);
       }
     });

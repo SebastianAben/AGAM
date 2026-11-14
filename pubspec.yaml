@@ -69,6 +69,14 @@ flutter:
   # sebagai fallback offline — lihat .agent/PRD.md §15.2.
   assets:
     - assets/data/pois.json
+    - assets/media/P01/
+    - assets/media/P02/
+    - assets/media/P03/
+    - assets/media/P04/
+    - assets/media/P05/
+    - assets/media/P06/
+    - assets/media/P07/
+    - assets/media/P09/
     - assets/media/logo.png
 
   fonts:
