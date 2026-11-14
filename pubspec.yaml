@@ -76,7 +76,9 @@ flutter:
     - assets/media/P05/
     - assets/media/P06/
     - assets/media/P07/
+    - assets/media/P08/
     - assets/media/P09/
+    - assets/media/P10/
     - assets/media/logo.png
 
   fonts:

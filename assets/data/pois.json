@@ -21,11 +21,13 @@
           "assets/media/P01/foto-1.jpg",
           "assets/media/P01/foto-2.jpg"
         ],
-        "narrationAudio": "assets/media/P01/narasi.m4a"
+        "narrationAudio": "assets/media/P01/narasi.m4a",
+        "promptAudio": "assets/media/P01/prompt.m4a",
+        "arrivalAudio": "assets/media/P01/tiba.m4a"
       },
       "trailOrder": null,
       "metadata": {
-        "isPlaceholder": true,
+        "isPlaceholder": false,
         "sources": [
           "Institut Teknologi Bandung (itb.ac.id)",
           "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
@@ -37,9 +39,11 @@
         "assetAttribution": [
           "assets/media/P01/foto-1.jpg — Foto: Noeriza Aqila Wibawa",
           "assets/media/P01/foto-2.jpg — Foto: Noeriza Aqila Wibawa",
-          "assets/media/P01/narasi.m4a — Pengisi suara: Naura"
+          "assets/media/P01/narasi.m4a — Pengisi suara: Naura",
+          "assets/media/P01/prompt.m4a — Pengisi suara: Naura",
+          "assets/media/P01/tiba.m4a — Pengisi suara: Naura"
         ],
-        "approved": false
+        "approved": true
       }
     },
     {
@@ -60,11 +64,13 @@
           "assets/media/P02/foto-1.jpg",
           "assets/media/P02/foto-2.jpg"
         ],
-        "narrationAudio": "assets/media/P02/narasi.m4a"
+        "narrationAudio": "assets/media/P02/narasi.m4a",
+        "promptAudio": "assets/media/P02/prompt.m4a",
+        "arrivalAudio": "assets/media/P02/tiba.m4a"
       },
       "trailOrder": null,
       "metadata": {
-        "isPlaceholder": true,
+        "isPlaceholder": false,
         "sources": [
           "Institut Teknologi Bandung (itb.ac.id)",
           "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
@@ -76,9 +82,11 @@
         "assetAttribution": [
           "assets/media/P02/foto-1.jpg — Foto: Noeriza Aqila Wibawa",
           "assets/media/P02/foto-2.jpg — Foto: Noeriza Aqila Wibawa",
-          "assets/media/P02/narasi.m4a — Pengisi suara: Naura"
+          "assets/media/P02/narasi.m4a — Pengisi suara: Naura",
+          "assets/media/P02/prompt.m4a — Pengisi suara: Naura",
+          "assets/media/P02/tiba.m4a — Pengisi suara: Naura"
         ],
-        "approved": false
+        "approved": true
       }
     },
     {
@@ -95,7 +103,9 @@
       "facilities": ["Ruang Kelas", "Laboratorium", "Toilet", "Mushalla"],
       "trivia": "Labtek VII atau Gedung Yusuf Panigoro dinamai berdasarkan nama ayah Arifin Panigoro, alumnus Teknik Elektro ITB yang dikenal atas kiprahnya di bidang energi.",
       "media": {
-        "narrationAudio": "assets/media/P03/narasi.m4a"
+        "narrationAudio": "assets/media/P03/narasi.m4a",
+        "promptAudio": "assets/media/P03/prompt.m4a",
+        "arrivalAudio": "assets/media/P03/tiba.m4a"
       },
       "trailOrder": null,
       "metadata": {
@@ -109,7 +119,9 @@
         "owner": "Noeriza Aqila Wibawa",
         "verifiedAt": "2026-11-14",
         "assetAttribution": [
-          "assets/media/P03/narasi.m4a — Pengisi suara: Naura"
+          "assets/media/P03/narasi.m4a — Pengisi suara: Naura",
+          "assets/media/P03/prompt.m4a — Pengisi suara: Naura",
+          "assets/media/P03/tiba.m4a — Pengisi suara: Naura"
         ],
         "approved": false
       }
@@ -128,7 +140,9 @@
       "facilities": ["Ruang Kelas", "Laboratorium", "Toilet", "Mushalla", "Apotek"],
       "trivia": "Nama Gedung Achmad Bakrie diambil dari nama ayah Aburizal Bakrie, salah satu alumnus ITB yang dikenal di dunia bisnis.",
       "media": {
-        "narrationAudio": "assets/media/P04/narasi.m4a"
+        "narrationAudio": "assets/media/P04/narasi.m4a",
+        "promptAudio": "assets/media/P04/prompt.m4a",
+        "arrivalAudio": "assets/media/P04/tiba.m4a"
       },
       "trailOrder": null,
       "metadata": {
@@ -142,7 +156,9 @@
         "owner": "Noeriza Aqila Wibawa",
         "verifiedAt": "2026-11-14",
         "assetAttribution": [
-          "assets/media/P04/narasi.m4a — Pengisi suara: Naura"
+          "assets/media/P04/narasi.m4a — Pengisi suara: Naura",
+          "assets/media/P04/prompt.m4a — Pengisi suara: Naura",
+          "assets/media/P04/tiba.m4a — Pengisi suara: Naura"
         ],
         "approved": false
       }
@@ -161,7 +177,9 @@
       "facilities": ["Ruang Kelas", "Laboratorium", "Toilet", "Kantin"],
       "trivia": "Tangga utama Labtek XI dirancang melingkar menyerupai struktur heliks ganda DNA sebagai representasi ilmu hayati.",
       "media": {
-        "narrationAudio": "assets/media/P05/narasi.m4a"
+        "narrationAudio": "assets/media/P05/narasi.m4a",
+        "promptAudio": "assets/media/P05/prompt.m4a",
+        "arrivalAudio": "assets/media/P05/tiba.m4a"
       },
       "trailOrder": null,
       "metadata": {
@@ -175,7 +193,9 @@
         "owner": "Noeriza Aqila Wibawa",
         "verifiedAt": "2026-11-14",
         "assetAttribution": [
-          "assets/media/P05/narasi.m4a — Pengisi suara: Naura"
+          "assets/media/P05/narasi.m4a — Pengisi suara: Naura",
+          "assets/media/P05/prompt.m4a — Pengisi suara: Naura",
+          "assets/media/P05/tiba.m4a — Pengisi suara: Naura"
         ],
         "approved": false
       }
@@ -198,7 +218,9 @@
           "assets/media/P06/foto-1.jpg",
           "assets/media/P06/foto-2.jpg"
         ],
-        "narrationAudio": "assets/media/P06/narasi.m4a"
+        "narrationAudio": "assets/media/P06/narasi.m4a",
+        "promptAudio": "assets/media/P06/prompt.m4a",
+        "arrivalAudio": "assets/media/P06/tiba.m4a"
       },
       "trailOrder": null,
       "metadata": {
@@ -214,7 +236,9 @@
         "assetAttribution": [
           "assets/media/P06/foto-1.jpg — Foto: Naura",
           "assets/media/P06/foto-2.jpg — Foto: Naura",
-          "assets/media/P06/narasi.m4a — Pengisi suara: Naura"
+          "assets/media/P06/narasi.m4a — Pengisi suara: Naura",
+          "assets/media/P06/prompt.m4a — Pengisi suara: Naura",
+          "assets/media/P06/tiba.m4a — Pengisi suara: Naura"
         ],
         "approved": false
       }
@@ -233,7 +257,9 @@
       "facilities": ["Ruang Kelas", "Toilet", "Kantin"],
       "trivia": "Pada 26 September 2019, GKUT resmi diberi nama Gedung Kuliah Umum Timur Paragon Foundation sebagai bentuk apresiasi atas dukungan filantropi dalam pendidikan.",
       "media": {
-        "narrationAudio": "assets/media/P07/narasi.m4a"
+        "narrationAudio": "assets/media/P07/narasi.m4a",
+        "promptAudio": "assets/media/P07/prompt.m4a",
+        "arrivalAudio": "assets/media/P07/tiba.m4a"
       },
       "trailOrder": null,
       "metadata": {
@@ -247,7 +273,9 @@
         "owner": "Noeriza Aqila Wibawa",
         "verifiedAt": "2026-11-14",
         "assetAttribution": [
-          "assets/media/P07/narasi.m4a — Pengisi suara: Naura"
+          "assets/media/P07/narasi.m4a — Pengisi suara: Naura",
+          "assets/media/P07/prompt.m4a — Pengisi suara: Naura",
+          "assets/media/P07/tiba.m4a — Pengisi suara: Naura"
         ],
         "approved": false
       }
@@ -265,7 +293,11 @@
       "function": "Gedung Kuliah",
       "facilities": ["Ruang Kelas", "Toilet"],
       "trivia": "Nama Oktagon berasal dari bentuk arsitektur gedungnya yang menyerupai segi delapan.",
-      "media": {},
+      "media": {
+        "narrationAudio": "assets/media/P08/narasi.m4a",
+        "promptAudio": "assets/media/P08/prompt.m4a",
+        "arrivalAudio": "assets/media/P08/tiba.m4a"
+      },
       "trailOrder": null,
       "metadata": {
         "isPlaceholder": true,
@@ -277,7 +309,11 @@
         ],
         "owner": "Noeriza Aqila Wibawa",
         "verifiedAt": "2026-11-14",
-        "assetAttribution": [],
+        "assetAttribution": [
+          "assets/media/P08/narasi.m4a — Pengisi suara: Naura",
+          "assets/media/P08/prompt.m4a — Pengisi suara: Naura",
+          "assets/media/P08/tiba.m4a — Pengisi suara: Naura"
+        ],
         "approved": false
       }
     },
@@ -295,7 +331,9 @@
       "facilities": ["Ruang Kelas", "Toilet"],
       "trivia": "Lantai dua TVST menjadi lokasi studio Layanan Produksi Multimedia ITB yang didirikan pada Juli 2007.",
       "media": {
-        "narrationAudio": "assets/media/P09/narasi.m4a"
+        "narrationAudio": "assets/media/P09/narasi.m4a",
+        "promptAudio": "assets/media/P09/prompt.m4a",
+        "arrivalAudio": "assets/media/P09/tiba.m4a"
       },
       "trailOrder": null,
       "metadata": {
@@ -309,7 +347,9 @@
         "owner": "Noeriza Aqila Wibawa",
         "verifiedAt": "2026-11-14",
         "assetAttribution": [
-          "assets/media/P09/narasi.m4a — Pengisi suara: Naura"
+          "assets/media/P09/narasi.m4a — Pengisi suara: Naura",
+          "assets/media/P09/prompt.m4a — Pengisi suara: Naura",
+          "assets/media/P09/tiba.m4a — Pengisi suara: Naura"
         ],
         "approved": false
       }
@@ -327,7 +367,11 @@
       "function": "Gedung Kuliah",
       "facilities": ["Ruang Kelas", "Toilet", "Mushalla"],
       "trivia": "Awalnya merupakan laboratorium mekanika tanah, Labtek I dialihfungsikan pada tahun 2018 menjadi gedung perkuliahan dengan ruang kelas berkapasitas 40–120 mahasiswa.",
-      "media": {},
+      "media": {
+        "narrationAudio": "assets/media/P10/narasi.m4a",
+        "promptAudio": "assets/media/P10/prompt.m4a",
+        "arrivalAudio": "assets/media/P10/tiba.m4a"
+      },
       "trailOrder": null,
       "metadata": {
         "isPlaceholder": true,
@@ -339,7 +383,11 @@
         ],
         "owner": "Noeriza Aqila Wibawa",
         "verifiedAt": "2026-11-14",
-        "assetAttribution": [],
+        "assetAttribution": [
+          "assets/media/P10/narasi.m4a — Pengisi suara: Naura",
+          "assets/media/P10/prompt.m4a — Pengisi suara: Naura",
+          "assets/media/P10/tiba.m4a — Pengisi suara: Naura"
+        ],
         "approved": false
       }
     }

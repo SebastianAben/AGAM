@@ -147,19 +147,21 @@ void main() {
   });
 
   group('hal yang masih tertunda (PRD §22)', () {
-    test('konten belum berstatus siap rilis', () {
+    // Disetujui tim 14 November 2026 setelah teks, foto, dan audio lengkap.
+    // Isi minimum POI yang disetujui diperiksa content_assets_test.dart.
+    test('hanya Labtek V dan VI yang siap rilis', () {
+      const approved = {'P01', 'P02'};
       for (final poi in result.pois) {
-        expect(poi.metadata.isPlaceholder, isTrue, reason: poi.id);
-        expect(poi.metadata.approved, isFalse, reason: poi.id);
+        final ready = approved.contains(poi.id);
+        expect(poi.metadata.approved, ready, reason: poi.id);
+        expect(poi.metadata.isPlaceholder, !ready, reason: poi.id);
       }
     });
 
-    // Foto dan narasi sudah mulai tersedia (14 November 2026); keberadaan
-    // file dan pendaftarannya diperiksa content_assets_test.dart.
-    test('audio prompt, audio tiba, dan video belum tersedia', () {
+    // Foto dan audio sudah tersedia (14 November 2026); keberadaan file dan
+    // pendaftarannya diperiksa content_assets_test.dart.
+    test('video GKUB/GKUT belum tersedia', () {
       for (final poi in result.pois) {
-        expect(poi.media.promptAudio, isNull, reason: poi.id);
-        expect(poi.media.arrivalAudio, isNull, reason: poi.id);
         expect(poi.media.video, isNull, reason: poi.id);
       }
     });
