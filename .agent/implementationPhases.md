@@ -9,7 +9,7 @@
 | Pembagian kerja | Tiga track paralel: 1 developer frontend, 2 developer logic aplikasi (lihat §2) |
 | Desain layar | UI01–UI09 sudah selesai; frontend tinggal mengimplementasikan. UI10 Daftar & Login (ditambahkan 14 November 2026) belum didesain |
 | Backlog | PB01–PB20 dari PRD resmi, ditambah PB21–PB22 (akun, keputusan PM 6 dan 14 November 2026); ID tidak boleh diubah atau dinomori ulang |
-| Current focus | Track LA: seluruh logic LA Sprint 1–3 ada di source dan lulus unit test (10 November 2026), belum terintegrasi dengan UI/LB dan belum diuji di perangkat fisik. PB01, PB02, PB03, PB05, PB06, PB08, PB09, PB12 `in_progress`; Firestore (PB03) `blocked`; PB04 dikerjakan LB. 14 November 2026: PB21 (akun dan login wajib) dan PB22 (log aktivitas) ditambahkan ke Sprint 3, `planned`, menunggu project Firebase dan kontrak v1.1 |
+| Current focus | Track LA: seluruh logic LA Sprint 1–3 ada di source dan lulus unit test (10 November 2026), belum terintegrasi dengan UI/LB dan belum diuji di perangkat fisik. PB01, PB02, PB03, PB05, PB06, PB08, PB09, PB12 `in_progress`; Firestore (PB03) `blocked`; PB04 `in_progress` (pipeline tile LB-01 selesai, belum terintegrasi). 14 November 2026: PB21 (akun dan login wajib) dan PB22 (log aktivitas) ditambahkan ke Sprint 3, `planned`, menunggu project Firebase dan kontrak v1.1 |
 
 Dokumen ini menetapkan cara tim bekerja paralel, urutan pekerjaan per track, dependency, dan definition of done. Rencana bukan bukti implementasi.
 
@@ -302,8 +302,12 @@ Progres trail, POI dikunjungi, dan pengaturan disimpan per akun (PRD §15.1). Im
 ### PB04 — Explore Map dengan tile vektor dibundel
 
 - **Track:** LB (pipeline tile, style, `MapConfig`), FE (UI02) · **Requirement:** F01, A03
+- **Brief:** [PB04-LB-01 — pipeline OSM ke PMTiles](../task-implementation/backend/PB04-LB-01-tile-pipeline.md).
+- **Ada di source (4 November 2026):** pipeline PowerShell/Python di `tools/tiles/`, generator Planetiler v0.10.2 terverifikasi SHA-256, snapshot batas OSM `way/177629384`, coverage kampus + 200 m, validator arsip dan manifest. Tidak mengubah kontrak, UI, atau dependency Flutter.
+- **Verifikasi lokal:** 18 test tooling lulus; dua build data nyata/cache menghasilkan PMTiles identik (1.035.927 bytes, 13 tile zoom 12–16); validator penuh dan CLI resmi `pmtiles verify` lulus. Manifest di `assets/map/ganesha.manifest.json`; command, checksum, peringatan sumber, dan batas evidence di handoff.
+- **Sisa:** style AGAM, `MapConfig` asli, pendaftaran aset di APK, renderer bersama FE, serta uji offline/perangkat. Batas coverage tile tercatat di PRD §9.3; batas layanan belum diterapkan.
 - **Done:** peta tampil offline setelah login pertama; 10 POI dan posisi pengguna yang bergerak terlihat; script tile dapat dijalankan ulang; ukuran tile tercatat.
-- **Status:** `planned`
+- **Status:** `in_progress` — task pipeline LB-01 selesai secara teknis; PB04 belum terintegrasi
 
 ## 6. Sprint 2 — Geofence, Sesi, Trigger, Kartu POI, dan Audio
 

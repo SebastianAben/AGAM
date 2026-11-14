@@ -1,0 +1,106 @@
+{
+  "schemaVersion": 1,
+  "generatedAtUtc": "2026-11-04T13:06:52.501358+00:00",
+  "generator": {
+    "name": "Planetiler",
+    "version": "0.10.2",
+    "jarSha256": "f310bd0413e2e4512b27f4046d418664e8e1d3bf31603c2a70e23de06c167e4d",
+    "url": "https://github.com/onthegomap/planetiler/releases/download/v0.10.2/planetiler.jar",
+    "profile": "OpenMapTiles",
+    "java": "java version \"21.0.12\" 2026-07-21 LTS\nJava(TM) SE Runtime Environment (build 21.0.12+7-LTS-205)\nJava HotSpot(TM) 64-Bit Server VM (build 21.0.12+7-LTS-205, mixed mode, sharing)"
+  },
+  "source": {
+    "url": "https://download.geofabrik.de/asia/indonesia/java-latest.osm.pbf",
+    "filename": "java-latest.osm.pbf",
+    "sha256": "091e9183554ac4a91b399726dd85e6d1050ea4fe4b1f0b772962c3764a195d3c",
+    "sizeBytes": 899224839
+  },
+  "supportSources": [
+    {
+      "filename": "water-polygons-split-3857.zip",
+      "configuredUrl": "https://ftp.fau.de/mirrors/openstreetmapdata.com-archive/2026-10-31/water-polygons-split-3857.zip",
+      "originNote": "Configured generator URL; an operator-supplied cache may predate this URL.",
+      "sizeBytes": 931892733,
+      "sha256": "99619ac05f2d19771d522c868232b2a0373b86925d2c60fed9173bd31b7658e2"
+    },
+    {
+      "filename": "natural_earth_vector.sqlite.zip",
+      "configuredUrl": "https://naciscdn.org/naturalearth/packages/natural_earth_vector.sqlite.zip",
+      "originNote": "Configured generator URL; an operator-supplied cache may predate this URL.",
+      "sizeBytes": 434210731,
+      "sha256": "375da61836d4779dffa8b87887bc4faa94dac77745ba0ee3914bd7cbedf40a02"
+    },
+    {
+      "filename": "lake_centerline.shp.zip",
+      "configuredUrl": "https://github.com/acalcutt/osm-lakelines/releases/download/v12/lake_centerline.shp.zip",
+      "originNote": "Configured generator URL; an operator-supplied cache may predate this URL.",
+      "sizeBytes": 80906805,
+      "sha256": "6c900507c88fc9f5b5a386f90fd0a42d0495e8755a03d075538fb9a6801a3192"
+    }
+  ],
+  "boundary": {
+    "status": "verified_osm_snapshot",
+    "osmType": "way",
+    "osmId": 177629384,
+    "sourceUrl": "https://www.openstreetmap.org/api/0.6/way/177629384/full.json",
+    "verifiedOn": "2026-11-04",
+    "verifiedBy": "Inspeksi agent: nama Institut Teknologi Bandung, amenity university; lokasi Ganesha cocok dengan 10 POI PRD 9.1. Bukan survei batas resmi.",
+    "snapshot": "campus-boundary.osm.json",
+    "sha256": "253567b5d47f8f5cebc492cbec0d4760fcaffd2f6e3ab5cb195701a6070c0b2b",
+    "osmVersion": 19,
+    "osmTimestamp": "2026-07-24T05:11:05Z",
+    "marginM": 200,
+    "method": "OSM polygon envelope; spherical R=6371008.8 m; latitude margin 200/R, longitude margin at maximum absolute expanded latitude; outward rounding to 8 decimal places"
+  },
+  "requestedBounds": [
+    107.60635935,
+    -6.89545535,
+    107.61454265,
+    -6.88552795
+  ],
+  "attribution": "© OpenMapTiles © OpenStreetMap contributors",
+  "sourceLicense": "ODbL-1.0",
+  "sourceLicenseUrl": "https://www.openstreetmap.org/copyright",
+  "profileLicense": "CC-BY for cartography/schema; BSD for code",
+  "profileLicenseUrl": "https://github.com/openmaptiles/openmaptiles/blob/master/LICENSE.md",
+  "output": {
+    "filename": "ganesha.pmtiles",
+    "sizeBytes": 1035927,
+    "sha256": "8501f70bcc5d8b2624a4eaa12074006b99a4631d9deba21a5b91496087e844f3",
+    "bounds": [
+      107.6063593,
+      -6.8954553,
+      107.6145426,
+      -6.8855279
+    ],
+    "attributionHtml": "<a href=\"https://www.openmaptiles.org/\" target=\"_blank\">&copy; OpenMapTiles</a> <a href=\"https://www.openstreetmap.org/copyright\" target=\"_blank\">&copy; OpenStreetMap contributors</a>",
+    "minZoom": 12,
+    "maxZoom": 16,
+    "addressedTiles": 13,
+    "tileEntries": 13,
+    "tileContents": 13,
+    "featureCountsAcrossUniqueTiles": {
+      "boundary": 25,
+      "building": 99,
+      "housenumber": 773,
+      "landcover": 517,
+      "landuse": 742,
+      "place": 619,
+      "poi": 10293,
+      "transportation": 5703,
+      "transportation_name": 956,
+      "water": 108,
+      "waterway": 893,
+      "aerodrome_label": 2,
+      "aeroway": 40,
+      "mountain_peak": 14,
+      "park": 2,
+      "water_name": 5
+    }
+  },
+  "limitations": [
+    "Build-time artifact; belum terintegrasi renderer/APK.",
+    "Batas OSM bukan hasil survei lapangan.",
+    "Ukuran APK belum diukur."
+  ]
+}

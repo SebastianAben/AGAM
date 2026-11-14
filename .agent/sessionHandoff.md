@@ -83,6 +83,43 @@
 
 ---
 
+## Sebelumnya — Bagian LB PB04-LB-01 pipeline tile, 4 November 2026
+
+**Otorisasi dan publikasi:** rencana pengguna diimplementasikan berurutan. Migrasi folder brief di-commit sebagai `accddc1` (`docs: relocate implementation briefs to root directory`) dan di-push atomik melalui `git push --atomic -u origin main dev LA LB FE`. Hasil `git ls-remote --heads origin` memastikan kelima branch menunjuk `accddc1090d38338a558e396d8ecb19e88aa003f`; tree `task-implementation` semuanya `20b312a28580ab0178c166165d2cc13c8b0f9da1`. `LB`/`FE` dibuat dari `dev` yang telah diselaraskan. Branch historis PB03 lokal/remote tetap `b1b165b`. Checkout akhir pekerjaan ini adalah `LB`; implementasi di bawah **lokal, belum di-commit/push**. Tanpa PR, merge fitur, atau rilis.
+
+**Perubahan LB:** [brief PB04-LB-01](../task-implementation/backend/PB04-LB-01-tile-pipeline.md), entry PowerShell/Python, validator seluruh directory/payload MVT, test offline, snapshot/provenance batas, dan [panduan](../tools/tiles/README.md). Cache unduhan/scratch/log di `tools/tiles/.cache/` diabaikan Git. Tidak mengubah kontrak, UI, Android, `pubspec.yaml`, atau dependency Flutter. PRD §9.3 mencatat coverage tile; PB04 `in_progress`, bukan acceptance peta Android.
+
+**Batas terverifikasi:** snapshot API `way/177629384` versi 19, timestamp objek `2026-07-24T05:11:05Z`, diambil 4 November 2026; checksum `253567b5d47f8f5cebc492cbec0d4760fcaffd2f6e3ab5cb195701a6070c0b2b`. Seluruh 10 POI existing berada dalam poligon sumber. Envelope + 200 m menghasilkan west/south/east/north `107.60635935,-6.89545535,107.61454265,-6.88552795`. Ini coverage engineering OSM, bukan survei batas resmi atau implementasi `MapConfig`.
+
+**Tooling/sumber nyata:** Python 3.13.14 lokal, Windows PowerShell 5.1.26100.9818, Java 21.0.12, Planetiler v0.10.2 (JAR 93.278.824 bytes; SHA-256 resmi `f310bd0413e2e4512b27f4046d418664e8e1d3bf31603c2a70e23de06c167e4d`). Extract Jawa Geofabrik 899.224.839 bytes, checksum `091e9183554ac4a91b399726dd85e6d1050ea4fe4b1f0b772962c3764a195d3c`. Tidak mengubah Java/PATH sistem atau menambahkan package Python. Verifier independen `pmtiles` v1.31.2 di cache, binary dari release resmi (ZIP dicek terhadap digest GitHub).
+
+**Kegagalan dan pemulihan:** percobaan unduhan byte-range PBF gagal HTTP 502, kemudian strategi streaming berhasil. Build pertama gagal saat Planetiler mendapat timeout dari `osmdata.openstreetmap.de` untuk poligon laut. Natural Earth dan lake centerline berhasil di-cache. Mirror FAU bertanggal 31 Oktober 2026 dirujuk issue upstream #1642; akses Python ke mirror menolak chain sertifikat, sehingga pengambilan memakai `curl.exe` Schannel dengan validasi TLS normal (tanpa `--insecure`). Opsi `-WaterPolygonsUrl` mencatat URL konfigurasi mirror. Masalah default path wrapper Windows PowerShell 5.1 ditemukan lewat smoke test lalu diperbaiki dan diuji ulang.
+
+**Hasil task:** PB04-LB-01 **selesai secara teknis dan terverifikasi lokal**. `assets/map/ganesha.pmtiles` berukuran **1.035.927 bytes** (sekitar 1,04 MB), SHA-256 `8501f70bcc5d8b2624a4eaa12074006b99a4631d9deba21a5b91496087e844f3`. Dua build nyata menghasilkan arsip **identik byte demi byte**, 13 tile (zoom 12–16), layer `building` dan `transportation` bergeometri. Hitungan feature agregat pada tile unik: 99 building dan 5.703 transportation; ini **bukan** jumlah bangunan/jalan unik di kampus. Manifest mencatat sumber/checksum, ZIP pendukung, bounds, generator, statistik, dan HTML atribusi OpenMapTiles/OSM. Ukuran ini ukuran arsip, bukan ukuran akhir APK.
+
+| Command/check aktual | Hasil | Batas evidence |
+| --- | --- | --- |
+| `python -X utf8 -m unittest discover -s tools/tiles -p 'test_*.py' -v` | 18 test lulus; pemeriksaan terakhir setelah penyelarasan validator/atribusi juga 18 lulus | Offline/sintetis, kecuali regression snapshot coverage 10 POI existing |
+| `./tools/tiles/build-tiles.ps1 -BoundsOnly` dan pemanggilan melalui `powershell.exe -NoProfile -ExecutionPolicy Bypass -File ... -BoundsOnly` | Lulus setelah perbaikan default path | Tidak membuat/mengunduh aset |
+| Build pertama: `./tools/tiles/build-tiles.ps1 -WaterPolygonsUrl <mirror>` | Lulus pada data nyata; validasi seluruh directory/payload MVT sebelum publikasi | PBF default Geofabrik; sumber pendukung sudah di-cache saat pemulihan |
+| Build kedua: `powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/tiles/build-tiles.ps1 -OsmPbf tools/tiles/.cache/java-latest.osm.pbf -OsmSha256 <sha-pbf> -SourceUrl <geofabrik> -WaterPolygonsUrl <mirror> -Force` | Lulus; hash, ukuran, bounds, dan jumlah feature sama dengan build pertama | Membuktikan rerun dengan input/cache identik, bukan URL `latest` di masa mendatang |
+| `tools/tiles/.cache/pmtiles.exe verify assets/map/ganesha.pmtiles` | Lulus untuk kedua build | Verifier independen resmi v1.31.2; bukan render visual |
+| `pmtiles.exe show ... --header-json` dan `--metadata` | MVT, gzip, zoom 12–16, bounds sesuai; kredit OSM/OpenMapTiles tersedia | Presisi bounds PMTiles tersimpan 7 desimal sesuai format |
+| Pemanggilan wrapper tanpa `-Force` setelah output ada | Ditolak seperti diharapkan; SHA tile dan manifest tidak berubah | Dijalankan melalui Windows PowerShell 5.1; failure yang disengaja |
+| Pemeriksaan file/anchor Markdown, `git diff --check`, cache/staging ignore, cleanup staging/backup | Lulus | Tidak ada staging atau `.bak` tertinggal setelah rerun |
+
+Dalam tabel: `<mirror>` = `https://ftp.fau.de/mirrors/openstreetmapdata.com-archive/2026-10-31/water-polygons-split-3857.zip`; `<geofabrik>` = `https://download.geofabrik.de/asia/indonesia/java-latest.osm.pbf`; `<sha-pbf>` adalah checksum PBF pada paragraf tooling di atas. Command dijalankan dari root repository yang path-nya mengandung spasi. Manifest/log build pertama dan pemeriksaan no-force disimpan lokal pada `.cache/`; log terbaru `last-build.log` akan ditimpa oleh build berikutnya.
+
+**Peringatan generator yang teramati:** poligon US/IE/GB tidak tersedia untuk inferensi atribut regional; relasi OSM `304751` tidak dapat membentuk poligon tertutup. Inspeksi API OSM mengidentifikasi relasi tersebut sebagai batas administratif Indonesia (level 2), bukan way batas kampus `177629384`. Arsip lulus verifikasi struktur, bounds, dan layer; kualitas tampilan akhir dan kelengkapan data OSM tetap memerlukan inspeksi renderer/perangkat. Tidak mengklaim bahwa seluruh geometri sumber sudah lulus survei.
+
+**Langkah berikutnya:** review perubahan lokal LB; lanjutkan task style AGAM dan `MapConfig`, kemudian integrasi renderer/pendaftaran aset melalui review LA/FE sesuai ownership. Jangan meng-commit/push implementasi ini tanpa instruksi baru.
+
+**Sisa PB04:** style AGAM, `MapConfig`/batas layanan asli, pendaftaran aset APK dan renderer bersama FE, UI02, uji offline/emulator/perangkat/field test. Flutter analyze/test/build tidak dijalankan karena perubahan task berupa tooling dan data peta; bukan perubahan Dart atau bukti acceptance Android.
+
+**AI & Tools Disclosure (PB20):** agent membantu migrasi dokumentasi, menulis pipeline/validator/test/brief, memeriksa sumber publik, dan menjalankan verifikasi. Tim tetap perlu review serta memahami kode dan mendemonstrasikan integrasi perangkat.
+
+---
+
 ## Sebelumnya — Penyelarasan lokasi brief, 4 November 2026
 
 **Otorisasi:** pengguna meminta satu commit dokumentasi diselaraskan dan di-push ke lima branch tetap (`main`, `dev`, `LA`, `LB`, `FE`), kemudian PB04-LB-01 dikerjakan lokal pada `LB`. Branch historis PB03 tidak diubah; tanpa PR, merge fitur, atau rilis. Instruksi ini menggantikan pembatasan publikasi sesi sebelumnya khusus migrasi dokumentasi ini.

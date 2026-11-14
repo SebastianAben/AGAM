@@ -176,6 +176,18 @@ Keterbatasan yang diketahui: geolocator (5.2.1) menghentikan foreground service 
 - Di luar area: tampil pesan *"Anda berada di luar area Kampus Ganesha"*; trigger dan navigasi tidak aktif.
 - Batas poligon/bounding box ditetapkan saat PB04 dan dicatat di dokumen ini.
 
+**Coverage tile PB04-LB-01 (4 November 2026):** menggunakan envelope poligon
+[OSM way/177629384](https://www.openstreetmap.org/way/177629384), versi 19
+(timestamp objek `2026-07-24T05:11:05Z`), snapshot API diambil dan diperiksa pada
+4 November 2026. Seluruh 10 POI PRD berada di dalam poligon sumber. Envelope
+diperluas 200 m dengan pendekatan spherical dan pembulatan keluar; bounds tile
+`west=107.60635935`, `south=-6.89545535`, `east=107.61454265`,
+`north=-6.88552795`. Provenance, checksum snapshot, dan metode ada di
+`tools/tiles/campus-boundary.json` serta [brief pipeline](../task-implementation/backend/PB04-LB-01-tile-pipeline.md).
+Ini batas cakupan aset tile, bukan hasil survei batas resmi. Poligon area layanan
+pada `MapConfig` dan perilaku di luar area belum diimplementasikan oleh task ini.
+
+
 ## 10. Konten dan Media
 
 | Jenis | Sumber | Penyimpanan |
@@ -224,7 +236,7 @@ Aturan konten:
 - Pipeline pembuatan tile (unduh data OSM → konversi, mis. Planetiler/tilemaker → `.pmtiles`) wajib berupa script yang dapat dijalankan ulang.
 - Tampilan peta memakai file style (mis. turunan OSM Liberty/Protomaps) yang disesuaikan untuk AGAM; POI ditonjolkan.
 - Renderer Flutter (mis. `flutter_map` + `vector_map_tiles`) adalah pilihan engineering yang diverifikasi saat PB04.
-- **Atribusi OpenStreetMap (ODbL) wajib ditampilkan** di peta.
+- **Atribusi OpenStreetMap (ODbL) wajib ditampilkan** di peta. Profil OpenMapTiles yang dipakai pipeline PB04-LB-01 juga memerlukan kredit OpenMapTiles bertautan ke `https://openmaptiles.org/`; HTML atribusi lengkap dipertahankan dalam metadata arsip/manifest.
 
 ## 15. Data dan Penyimpanan
 
@@ -395,7 +407,7 @@ Item berikut **belum diputuskan atau belum tersedia**. Agent dilarang mengisinya
 | Konten teks, foto, audio, video P01–P10 | Belum tersedia di repository | Tim konten |
 | Daftar perangkat uji | Belum ditetapkan | QA |
 | Margin histeresis, kalibrasi radius per POI, dan parameter interval adaptif | Default engineering margin 5 m dan jeda sampel maksimum 10 detik (PB05-LA-01) serta parameter interval adaptif [§9.2](#92-logika-trigger) diterapkan; kalibrasi lapangan tetap tertunda | Developer / QA |
-| Batas area kampus (poligon/bounding box) | Ditetapkan saat PB04 | Developer |
+| Batas area kampus (poligon/bounding box) | Snapshot OSM dan coverage tile PB04-LB-01 tercatat di §9.3; `MapConfig`/batas layanan dan verifikasi lapangan tetap tertunda | Developer |
 | Success metric | Belum ditetapkan. Log §15.5 disusun agar dapat dipakai metrik umum (pengguna aktif, pemakaian mode dan fitur, trail selesai); event yang tidak dipakai metrik mana pun dihapus setelah metrik ditetapkan | PM |
 | Tanggal penghapusan log aktivitas | Paling lambat setelah penilaian akhir mata kuliah; tanggal pasti belum ditetapkan | PM |
 | Teks pemberitahuan privasi layar daftar (UI10) | Disusun FE, wajib disetujui PM | FE / PM |
