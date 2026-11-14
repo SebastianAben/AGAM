@@ -1,0 +1,10 @@
+{
+  "status": "verified_osm_snapshot",
+  "osmType": "way",
+  "osmId": 177629384,
+  "sourceUrl": "https://www.openstreetmap.org/api/0.6/way/177629384/full.json",
+  "verifiedOn": "2026-11-04",
+  "verifiedBy": "Inspeksi agent: nama Institut Teknologi Bandung, amenity university; lokasi Ganesha cocok dengan 10 POI PRD 9.1. Bukan survei batas resmi.",
+  "snapshot": "campus-boundary.osm.json",
+  "sha256": "253567b5d47f8f5cebc492cbec0d4760fcaffd2f6e3ab5cb195701a6070c0b2b"
+}

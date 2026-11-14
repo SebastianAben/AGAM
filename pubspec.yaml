@@ -69,6 +69,12 @@ flutter:
   # sebagai fallback offline — lihat .agent/PRD.md §15.2.
   assets:
     - assets/data/pois.json
+    - assets/media/logo.png
+
+  fonts:
+    - family: PlusJakartaSans
+      fonts:
+        - asset: assets/fonts/PlusJakartaSans-Variable.ttf
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
