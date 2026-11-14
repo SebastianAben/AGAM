@@ -235,9 +235,9 @@ Progres trail, POI dikunjungi, dan pengaturan disimpan per akun (PRD §15.1). Im
 | Sprint | Sprint goal | PBI | Status |
 | --- | --- | --- | --- |
 | S1 — Week 10 | Kontrak, fondasi aplikasi, lokasi, peta | PB01, PB02, PB03, PB04 | `in_progress` |
-| S2 — Week 11 | Geofence, sesi, trigger, kartu POI, audio | PB05, PB06, PB07, PB08, PB09 | `in_progress` — logic LA PB05/PB06/PB08 dan format PB09 ada di source (10 November 2026); UI, integrasi, dan uji perangkat belum |
-| S3 — Week 12 | Pencarian dan navigasi; akun dan log aktivitas | PB10, PB11, PB12, PB21, PB22 | `in_progress` — bagian LA PB12 ada di source (10 November 2026); PB10/PB11 (LB) dan UI belum; PB21/PB22 `planned` |
-| S4 — Week 13 | Eyes-free, rekomendasi, trail, fasilitas, offline; Feature Freeze | PB13, PB14, PB15, PB16, PB17 | `planned` |
+| S2 — Week 11 | Geofence, sesi, trigger, kartu POI, audio | PB05, PB06, PB07, PB08, PB09 | `in_progress` — logic LA PB05/PB06/PB08 dan format PB09 ada di source (10 November 2026); UI03/UI04 FE tersedia (14 November 2026); integrasi dan uji perangkat belum |
+| S3 — Week 12 | Pencarian dan navigasi; akun dan log aktivitas | PB10, PB11, PB12, PB21, PB22 | `in_progress` — bagian LA PB12 ada di source (10 November 2026); UI05/UI06 FE tersedia; PB10/PB11 (LB) belum; PB21/PB22 `planned` |
+| S4 — Week 13 | Eyes-free, rekomendasi, trail, fasilitas, offline; Feature Freeze | PB13, PB14, PB15, PB16, PB17 | `in_progress` — UI08 FE/PB15 mulai lebih awal; PBI Sprint 4 lainnya belum dimulai |
 | S5 — Week 14 | Uji acceptance, perbaikan, rilis v1.0 | PB18, PB19, PB20 | `planned` |
 
 ## 5. Sprint 1 — Kontrak, Fondasi, Lokasi, dan Peta
@@ -279,8 +279,9 @@ Progres trail, POI dikunjungi, dan pengaturan disimpan per akun (PRD §15.1). Im
   - `lib/logic/location/device_permission_service.dart`: `PermissionService` asli (geolocator + flutter_local_notifications + channel `site.agam/battery` di `MainActivity.kt`). Lokasi perkiraan → `approximateOnly`; permintaan ulang untuk lokasi akurat; tidak pernah meminta izin "sepanjang waktu".
   - `lib/logic/location/device_location_service.dart` + `position_source.dart`: `LocationService` asli. Peta biasa membaca lokasi hanya saat aplikasi tampil dan ada pendengar; berhenti saat diminimalkan; `lastFix` dihapus saat pembacaan berhenti.
   - Manifest: izin lokasi akurat, foreground service `location`/`mediaPlayback`, notifikasi; `ACCESS_BACKGROUND_LOCATION` dihapus eksplisit (`tools:node="remove"`), dijaga `test/android/manifest_privacy_test.dart`.
-- **Sisa:** UI01 (FE) dan penyambungan `AppServices`; uji perangkat fisik (izin, perkiraan, notifikasi Android 13+, optimasi baterai per merek).
-- **Status:** `in_progress` — logic LA selesai dan teruji unit, menunggu UI01 dan uji perangkat
+- **UI01/UI02 FE (14 November 2026):** onboarding meminta izin foreground lalu UI02 menampilkan posisi perangkat saat aplikasi aktif. FE sempat memakai adapter Geolocator sendiri di `lib/ui/device_location_services.dart`.
+- **Sisa:** uji perangkat fisik (izin, perkiraan, notifikasi Android 13+, optimasi baterai per merek).
+- **Status:** `in_progress` — logic LA dan UI01 tersedia; menunggu uji perangkat
 
 ### PB03 — Dataset 10 POI (Firestore + JSON bawaan)
 
@@ -306,8 +307,9 @@ Progres trail, POI dikunjungi, dan pengaturan disimpan per akun (PRD §15.1). Im
 - **Ada di source (4 November 2026):** pipeline PowerShell/Python di `tools/tiles/`, generator Planetiler v0.10.2 terverifikasi SHA-256, snapshot batas OSM `way/177629384`, coverage kampus + 200 m, validator arsip dan manifest. Tidak mengubah kontrak, UI, atau dependency Flutter.
 - **Verifikasi lokal:** 18 test tooling lulus; dua build data nyata/cache menghasilkan PMTiles identik (1.035.927 bytes, 13 tile zoom 12–16); validator penuh dan CLI resmi `pmtiles verify` lulus. Manifest di `assets/map/ganesha.manifest.json`; command, checksum, peringatan sumber, dan batas evidence di handoff.
 - **Sisa:** style AGAM, `MapConfig` asli, pendaftaran aset di APK, renderer bersama FE, serta uji offline/perangkat. Batas coverage tile tercatat di PRD §9.3; batas layanan belum diterapkan.
+- **UI02 FE (14 November 2026):** kerangka Explore Map dengan penanda POI dan posisi; peta masih ilustrasi skematis berlabel, belum merender PMTiles.
 - **Done:** peta tampil offline setelah login pertama; 10 POI dan posisi pengguna yang bergerak terlihat; script tile dapat dijalankan ulang; ukuran tile tercatat.
-- **Status:** `in_progress` — task pipeline LB-01 selesai secara teknis; PB04 belum terintegrasi
+- **Status:** `in_progress` — pipeline tile LB-01 selesai dan kerangka UI02 FE tersedia; style, `MapConfig` asli, dan renderer tile belum
 
 ## 6. Sprint 2 — Geofence, Sesi, Trigger, Kartu POI, dan Audio
 
@@ -341,22 +343,24 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
   - `lib/logic/session/device_session_controller.dart`: `SessionController` asli. Foreground service tipe `location` lewat geolocator; ganti mode tanpa memulai ulang service; `end()` menghentikan lokasi dan service; auto-end 30 menit di luar kampus (memakai `MapConfig.isInsideCampus` dari LB); izin dicabut → `permissionRevoked`; trigger nonaktif di luar area; Navigasi → `brief`, Explore/Trail → `full`; cooldown bertahan antar-sesi.
   - `lib/logic/session/trigger_notifier.dart`: notifikasi trigger (getar, prioritas tinggi, tombol Dengarkan/Lihat/Lewati, terlihat di lock screen) dan notifikasi ringkas tanpa suara. Tombol tanpa membuka aplikasi diteruskan dari isolate latar belakang plugin ke isolate utama lewat `IsolateNameServer`.
   - `lib/logic/session/trigger_responder.dart`: respons per mode; prompt audio atau narasi langsung bila auto-play aktif; `viewRequests` untuk FE membuka kartu POI.
-- **Belum:** UI03 dan kontrol sesi (FE); penyambungan `viewRequests` ke navigasi layar memerlukan keputusan FE (tidak ada di `AppServices` v1.0, sehingga butuh usulan perubahan kontrak §2.4 atau penyambungan di `main.dart`); uji perangkat fisik saat layar mati; teks notifikasi masih rumusan developer dari skenario PRD §5 dan dapat disesuaikan desain UI03.
-- **Status:** `in_progress` — logic LA selesai dan teruji unit, menunggu UI dan uji perangkat
+- **UI03 FE (14 November 2026):** kartu trigger Dengarkan/Lihat/Lewati di atas UI02 dan kontrol sesi.
+- **Belum:** penyambungan `viewRequests` ke navigasi layar memerlukan keputusan FE (tidak ada di `AppServices` v1.0, sehingga butuh usulan perubahan kontrak §2.4 atau penyambungan di `main.dart`); uji perangkat fisik saat layar mati; teks notifikasi masih rumusan developer dari skenario PRD §5 dan dapat disesuaikan desain UI03.
+- **Status:** `in_progress` — logic LA dan UI03 tersedia; menunggu penyambungan `viewRequests` dan uji perangkat
 
 ### PB07 — Kartu POI
 
 - **Track:** FE (UI04); data dari `PoiRepository` (LA) · **Requirement:** F03
 - **Done:** kartu terbuka dari trigger dan dari peta dengan konten sesuai; video GKUB/GKUT dapat diputar.
-- **Status:** `planned`
+- **Status:** `in_progress` — UI04 tersedia sebagai halaman detail penuh yang dapat dibuka dari tombol Details pada POI yang sudah tiba/check-in. Data teks, foto, fasilitas, trivia, sumber, dan audio tetap placeholder sampai tim konten menyediakan materi terverifikasi.
 
 ### PB08 — Pemutar narasi audio
 
 - **Track:** LA (`AudioService`), FE (kontrol di kartu) · **Requirement:** F03, F04
 - **Done:** narasi dapat dikendalikan dari kartu dan notifikasi.
 - **Ada di source (10 November 2026, LA):** `lib/logic/audio/device_audio_service.dart` (`AudioService` asli; path dari `Poi.media`; konten placeholder → `PlaybackStatus.error` tanpa crash) dan `lib/logic/audio/agam_audio_handler.dart` (`just_audio` + `audio_service`; putar/jeda/berhenti dari notifikasi media dan lock screen). `MainActivity` diturunkan dari `AudioServiceActivity`.
-- **Sisa:** file audio belum ada (PB09); kontrol di kartu (FE); uji perangkat fisik.
-- **Status:** `in_progress` — logic LA selesai dan teruji unit dengan backend palsu
+- **Kontrol di kartu (FE, 14 November 2026):** UI04 memanggil `AudioService`; kontrol aktif bila file narasi POI tersedia.
+- **Sisa:** file audio belum ada (PB09); uji perangkat fisik.
+- **Status:** `in_progress` — logic LA dan kontrol UI04 tersedia; menunggu file audio dan uji perangkat
 
 ### PB09 — Produksi konten 10 POI
 
@@ -382,14 +386,14 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
 
 - **Track:** LB (`SearchService`), FE (UI05) · **Requirement:** F05
 - **Done:** "labtek 5", "Labtek V", "lab 5" → Labtek V teratas; respons ≤1 detik.
-- **Status:** `planned`
+- **Status:** `in_progress` — UI05 FE tersedia dengan pencarian/filter lewat kontrak SearchService dan tujuan dari repository. Device shell masih memakai SearchService fake; integrasi LB dan verifikasi alias ≤1 detik belum dilakukan.
 
 ### PB11 — Navigasi jalan kaki di perangkat
 
 - **Track:** LB (graf, `RoutingService`, `NavigationController`), FE (UI06), LA (sesi Navigasi) · **Requirement:** F06, A01
 - **Dependency eksternal:** koordinat pintu masuk (survei).
 - **Done:** rute tampil ke pintu masuk tujuan; rerouting berjalan; tidak ada request routing ke server.
-- **Status:** `planned`
+- **Status:** `in_progress` — UI06 FE menampilkan pratinjau tujuan, jarak, ETA, dan langkah bila tersedia, serta memulai sesi/navigasi dari posisi perangkat. Shell masih memakai routing/navigation fake; graf jalur, pintu masuk survei, rerouting, dan verifikasi lapangan LB belum tersedia.
 
 ### PB12 — Arahan suara navigasi dan deteksi tiba
 
@@ -447,7 +451,7 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
 - **Track:** LB (`TrailService`), FE (UI08), LA (sesi Trail) · **Requirement:** F08
 - **Dependency eksternal:** urutan trail dari tim.
 - **Done:** progres tersimpan setelah aplikasi ditutup; lencana muncul saat 10/10.
-- **Status:** `planned`
+- **Status:** `in_progress` — layar scrollable UI08 FE tersedia dan membaca `TrailProgress`/POI dari kontrak fake. Urutan yang tampil sintetis dan berlabel; penyimpanan progres, urutan resmi, check-in integrasi, badge acceptance, serta logic sesi/navigasi LA/LB belum selesai.
 
 ### PB16 — Fasilitas terdekat
 
