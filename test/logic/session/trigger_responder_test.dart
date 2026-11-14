@@ -10,12 +10,19 @@ import '../support/synthetic.dart';
 
 class _ManualSession implements SessionController {
   final _triggers = StreamController<PoiTriggerEvent>.broadcast();
+  final _state = StreamController<SessionState>.broadcast();
+  SessionState _current = const SessionState(mode: SessionMode.explore);
+
+  void emitState(SessionState state) {
+    _current = state;
+    _state.add(state);
+  }
 
   @override
-  SessionState get current => const SessionState(mode: SessionMode.explore);
+  SessionState get current => _current;
 
   @override
-  Stream<SessionState> get state => const Stream.empty();
+  Stream<SessionState> get state => _state.stream;
 
   @override
   Stream<PoiTriggerEvent> get triggers => _triggers.stream;
@@ -56,6 +63,9 @@ class _RecordingNotifier implements TriggerNotifier {
 
   @override
   Future<void> dismiss(String poiId) async => calls.add('dismiss:$poiId');
+
+  @override
+  Future<void> dismissAll() async => calls.add('dismissAll');
 }
 
 void main() {
@@ -143,6 +153,34 @@ void main() {
     await pumpEventQueue();
     expect(audio.current.clip?.kind, AudioClipKind.narration);
     expect(audio.current.status, PlaybackStatus.playing);
+  });
+
+  test('sesi berakhir: seluruh notifikasi trigger dihapus', () async {
+    session.fire('synthetic-a', TriggerResponse.full);
+    await pumpEventQueue();
+    session.emitState(
+      const SessionState.idle(lastEndReason: SessionEndReason.userEnded),
+    );
+    await pumpEventQueue();
+    expect(notifier.calls, ['full:synthetic-a', 'dismissAll']);
+  });
+
+  test('auto-end juga menghapus notifikasi trigger', () async {
+    session.emitState(
+      const SessionState.idle(
+        lastEndReason: SessionEndReason.outsideCampusTimeout,
+      ),
+    );
+    await pumpEventQueue();
+    expect(notifier.calls, ['dismissAll']);
+  });
+
+  test('ganti mode selama sesi tidak menghapus notifikasi', () async {
+    session.fire('synthetic-a', TriggerResponse.full);
+    await pumpEventQueue();
+    session.emitState(SessionState(mode: SessionMode.navigation));
+    await pumpEventQueue();
+    expect(notifier.calls, ['full:synthetic-a']);
   });
 
   group('LocalTriggerNotifier', () {

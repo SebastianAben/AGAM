@@ -31,6 +31,11 @@ abstract interface class TriggerNotifier {
 
   Future<void> dismiss(String poiId);
 
+  /// Menghapus seluruh notifikasi trigger yang masih tampil, mis. saat sesi
+  /// berakhir. Notifikasi lain milik aplikasi (sesi aktif, audio) tidak
+  /// tersentuh.
+  Future<void> dismissAll();
+
   /// Tombol yang ditekan pengguna, termasuk dari lock screen.
   Stream<TriggerActionEvent> get actions;
 }
@@ -88,60 +93,80 @@ class LocalTriggerNotifier implements TriggerNotifier {
     );
   }
 
-  @override
-  Future<void> showFull(Poi poi) => _plugin.show(
-    id: notificationIdFor(poi.id),
-    title: 'Anda mendekati ${poi.name}',
-    body: 'Apakah Anda ingin mendengarkan ceritanya?',
-    payload: poi.id,
-    notificationDetails: const NotificationDetails(
-      android: AndroidNotificationDetails(
-        fullChannelId,
-        'Gedung di sekitar',
-        channelDescription: 'Pemberitahuan saat Anda mendekati gedung.',
-        importance: Importance.high,
-        priority: Priority.high,
-        enableVibration: true,
-        playSound: true,
-        category: AndroidNotificationCategory.recommendation,
-        visibility: NotificationVisibility.public,
-        actions: [
-          AndroidNotificationAction(listenActionId, 'Dengarkan'),
-          AndroidNotificationAction(
-            viewActionId,
-            'Lihat',
-            showsUserInterface: true,
-          ),
-          AndroidNotificationAction(skipActionId, 'Lewati'),
-        ],
-      ),
-    ),
-  );
+  /// ID POI yang notifikasinya mungkin masih tampil.
+  final _shown = <String>{};
 
   @override
-  Future<void> showBrief(Poi poi) => _plugin.show(
-    id: notificationIdFor(poi.id),
-    title: poi.name,
-    body: 'Anda melewati ${poi.name}.',
-    payload: poi.id,
-    notificationDetails: const NotificationDetails(
-      android: AndroidNotificationDetails(
-        briefChannelId,
-        'Gedung yang dilewati',
-        channelDescription:
-            'Pemberitahuan ringkas tanpa suara selama navigasi.',
-        importance: Importance.low,
-        priority: Priority.low,
-        enableVibration: false,
-        playSound: false,
-        visibility: NotificationVisibility.public,
+  Future<void> showFull(Poi poi) {
+    _shown.add(poi.id);
+    return _plugin.show(
+      id: notificationIdFor(poi.id),
+      title: 'Anda mendekati ${poi.name}',
+      body: 'Apakah Anda ingin mendengarkan ceritanya?',
+      payload: poi.id,
+      notificationDetails: const NotificationDetails(
+        android: AndroidNotificationDetails(
+          fullChannelId,
+          'Gedung di sekitar',
+          channelDescription: 'Pemberitahuan saat Anda mendekati gedung.',
+          importance: Importance.high,
+          priority: Priority.high,
+          enableVibration: true,
+          playSound: true,
+          category: AndroidNotificationCategory.recommendation,
+          visibility: NotificationVisibility.public,
+          actions: [
+            AndroidNotificationAction(listenActionId, 'Dengarkan'),
+            AndroidNotificationAction(
+              viewActionId,
+              'Lihat',
+              showsUserInterface: true,
+            ),
+            AndroidNotificationAction(skipActionId, 'Lewati'),
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 
   @override
-  Future<void> dismiss(String poiId) =>
-      _plugin.cancel(id: notificationIdFor(poiId));
+  Future<void> showBrief(Poi poi) {
+    _shown.add(poi.id);
+    return _plugin.show(
+      id: notificationIdFor(poi.id),
+      title: poi.name,
+      body: 'Anda melewati ${poi.name}.',
+      payload: poi.id,
+      notificationDetails: const NotificationDetails(
+        android: AndroidNotificationDetails(
+          briefChannelId,
+          'Gedung yang dilewati',
+          channelDescription:
+              'Pemberitahuan ringkas tanpa suara selama navigasi.',
+          importance: Importance.low,
+          priority: Priority.low,
+          enableVibration: false,
+          playSound: false,
+          visibility: NotificationVisibility.public,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Future<void> dismiss(String poiId) {
+    _shown.remove(poiId);
+    return _plugin.cancel(id: notificationIdFor(poiId));
+  }
+
+  @override
+  Future<void> dismissAll() async {
+    final ids = _shown.toList();
+    _shown.clear();
+    for (final id in ids) {
+      await _plugin.cancel(id: notificationIdFor(id));
+    }
+  }
 
   Future<void> dispose() async {
     IsolateNameServer.removePortNameMapping(_actionPortName);
