@@ -111,25 +111,23 @@ class InMemoryDatasetCache implements DatasetCache {
 
 /// Sumber remote dataset (Firestore).
 ///
-/// Implementasi Firestore **belum dibuat**: project Firebase belum tersedia
-/// (PRD §22). Antarmuka ini memisahkan `PoiRepository` dari Firestore
-/// sehingga sisa PB03 dapat diselesaikan dan diuji lebih dulu.
+/// Implementasi aplikasi: `FirestoreDatasetSource`. Antarmuka ini
+/// memisahkan `PoiRepository` dari Firestore agar dapat diuji tanpa jaringan.
 abstract interface class RemoteDatasetSource {
   /// Mengambil dataset terbaru. Melempar error bila gagal; pemanggil yang
   /// menentukan fallback.
   Future<RawDataset> fetch();
 }
 
-/// Sumber remote yang selalu gagal, dipakai selama project Firebase belum
-/// dibuat. Dengan ini aplikasi berjalan memakai dataset bawaan dan cache,
-/// sesuai jalur fallback PRD §15.2 butir 4.
+/// Sumber remote yang selalu gagal: default `PoiRepositoryImpl` dan test.
+/// Dengan ini aplikasi berjalan memakai dataset bawaan dan cache, sesuai
+/// jalur fallback PRD §15.2 butir 4.
 class UnavailableRemoteSource implements RemoteDatasetSource {
   const UnavailableRemoteSource();
 
   @override
-  Future<RawDataset> fetch() async => throw const RemoteDatasetUnavailable(
-    'Project Firebase belum dibuat (PRD §22)',
-  );
+  Future<RawDataset> fetch() async =>
+      throw const RemoteDatasetUnavailable('Sumber remote tidak dipasang');
 }
 
 class RemoteDatasetUnavailable implements Exception {
