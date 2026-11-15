@@ -31,9 +31,9 @@ void main() {
     );
   });
 
-  test('tidak ada izin internet tambahan dari manifest aplikasi', () {
-    // Firestore (PB03) belum ditambahkan; jika nanti dibutuhkan, test ini
-    // diperbarui bersamaan dengan keputusan tersebut.
-    expect(manifest, isNot(contains('android.permission.INTERNET')));
+  test('izin internet dideklarasikan untuk Firebase', () {
+    // Dibutuhkan Firestore dan Firebase Auth (PRD §15). Isi yang boleh
+    // dikirim dibatasi PRD §15.5 dan A01, bukan oleh manifest.
+    expect(manifest, contains('android.permission.INTERNET'));
   });
 }

@@ -9,7 +9,7 @@
 | Pembagian kerja | Tiga track paralel: 1 developer frontend, 2 developer logic aplikasi (lihat §2) |
 | Desain layar | UI01–UI09 sudah selesai; frontend tinggal mengimplementasikan. UI10 Daftar & Login (ditambahkan 14 November 2026) belum didesain |
 | Backlog | PB01–PB20 dari PRD resmi, ditambah PB21–PB22 (akun, keputusan PM 6 dan 14 November 2026); ID tidak boleh diubah atau dinomori ulang |
-| Current focus | 14 November 2026: LA, LB, dan FE digabung pada branch `chore/integration-fe-la-lb`; `lib/main.dart` memakai layanan LA asli dengan layanan LB fake, belum di-PR ke `dev` dan belum diuji di perangkat fisik. PB01–PB12 dan PB15 `in_progress` (lihat status per PBI); Firestore (PB03) `blocked`. PB21 (akun dan login wajib) dan PB22 (log aktivitas) di Sprint 3, `planned`, menunggu project Firebase dan kontrak v1.1 |
+| Current focus | LA, LB, dan FE terintegrasi di `dev` (PR #3, 14 November 2026); `lib/main.dart` memakai layanan LA asli dengan layanan LB fake, belum diuji di perangkat fisik. 15 November 2026: project Firebase `agam-9e704` dibuat dan sumber Firestore PB03 dikerjakan di branch `feat/pb03-firestore-setup`. PB01–PB12 dan PB15 `in_progress` (lihat status per PBI). PB21 (akun dan login wajib) dan PB22 (log aktivitas) di Sprint 3, `planned`, menunggu kontrak v1.1 |
 
 Dokumen ini menetapkan cara tim bekerja paralel, urutan pekerjaan per track, dependency, dan definition of done. Rencana bukan bukti implementasi.
 
@@ -254,7 +254,7 @@ Progres trail, POI dikunjungi, dan pengaturan disimpan per akun (PRD §15.1). Im
 | Track | Langkah |
 | --- | --- |
 | FE | 1. Kerangka aplikasi: tema, navigasi antarlayar. 2. UI01 Onboarding & izin (PB02) dengan `PermissionService` fake. 3. UI02 Explore Map (PB04): peta, penanda 10 POI, titik posisi, pesan di luar area, atribusi OSM; awalnya dengan `MapConfig` dan `LocationService` fake. |
-| LA | 1. Workflow rilis APK ke GitHub Releases (PB01). 2. `PermissionService` dan `LocationService` asli: izin akurat, notifikasi, berhenti saat aplikasi diminimalkan (PB02). 3. `PoiRepository`: JSON bawaan 10 POI dari PRD §9.1, validasi, cache lokal, sinkronisasi Firestore (PB03; bagian Firestore `blocked` sampai project Firebase dibuat). |
+| LA | 1. Workflow rilis APK ke GitHub Releases (PB01). 2. `PermissionService` dan `LocationService` asli: izin akurat, notifikasi, berhenti saat aplikasi diminimalkan (PB02). 3. `PoiRepository`: JSON bawaan 10 POI dari PRD §9.1, validasi, cache lokal, sinkronisasi Firestore (PB03; bagian Firestore dikerjakan setelah project Firebase dibuat 15 November 2026). |
 | LB | 1. Script pipeline tile: data OSM → PMTiles area kampus + ±200 m (PB04). 2. File style AGAM. 3. `MapConfig` asli: sumber tile, style, poligon/batas kampus, cek di dalam area; catat batas di PRD §9.3. 4. Verifikasi renderer tile vektor bersama FE. |
 
 **Integrasi akhir sprint:** aplikasi menampilkan peta offline, 10 POI, dan posisi pengguna asli di perangkat fisik.
@@ -288,7 +288,7 @@ Progres trail, POI dikunjungi, dan pengaturan disimpan per akun (PRD §15.1). Im
 
 - **Track:** LA · **Requirement:** F01, F02, F05, A02
 - **Scope:** skema final (PRD §15.3); JSON bawaan; validasi dokumen; sinkronisasi Firestore → cache lokal; fallback ke salinan lokal.
-- **Dependency eksternal:** project Firebase (belum dibuat).
+- **Dependency eksternal:** project Firebase (`agam-9e704`, dibuat 15 November 2026).
 - **Sudah dibuat (3 November 2026, branch `feat/pb03-la-poi-repository`):**
   - Skema final dicatat di PRD §15.3, termasuk tabel aturan validasi dan nilai enum `category`.
   - `assets/data/pois.json`: 10 POI dari PRD §9.1 (id, nama, alias, kategori, koordinat, radius 15 m). Teks dan media berlabel `PLACEHOLDER`, `entrances` kosong, `trailOrder` null, metadata belum disetujui. Didaftarkan di `pubspec.yaml`.
@@ -296,10 +296,17 @@ Progres trail, POI dikunjungi, dan pengaturan disimpan per akun (PRD §15.1). Im
   - `lib/logic/data/poi_sources.dart`: `BundledDataset`, `DatasetCache` (`FileDatasetCache` dan `InMemoryDatasetCache`), serta `RemoteDatasetSource` dengan `UnavailableRemoteSource` selama project Firebase belum ada.
   - `lib/logic/data/poi_repository_impl.dart`: `PoiRepository` asli dengan urutan cache → bawaan, `refresh()` yang tidak pernah melempar, dan dataset tanpa POI valid tidak dipakai maupun di-cache.
 - **Pemeriksaan (lokal, Flutter 3.47.9 via FVM):** `dart format --set-exit-if-changed` tanpa perubahan; `flutter analyze` tanpa issue; `flutter test` 67 test lulus (56 baru + 11 test kontrak). Test dataset bawaan diverifikasi benar-benar menangkap kesalahan dengan sengaja mengubah satu koordinat, lalu dipulihkan.
-- **Sisa (`blocked`):** sinkronisasi Firestore belum dibuat (project Firebase belum ada, PRD §22); `cloud_firestore` belum ditambahkan ke `pubspec.yaml`. Direktori cache saat integrasi masih perlu package penyedia path yang versinya wajib diverifikasi. Belum diuji di perangkat fisik.
+- **Sisa saat itu (3 November 2026):** sinkronisasi Firestore menunggu project Firebase; direktori cache menunggu package penyedia path (diselesaikan 10 November 2026). Sisa terkini ada di bawah.
 - **Done:** data 10 POI terbaca dari server dan dari cache lokal; dokumen tidak valid diabaikan; aplikasi berjalan saat offline.
 - **Pembaruan 10 November 2026:** `path_provider` ^2.1.6 ditambahkan; `lib/logic/la_bootstrap.dart` memakai `getApplicationSupportDirectory()` untuk `FileDatasetCache`.
-- **Status:** `in_progress` — JSON bawaan, validasi, cache, dan fallback selesai dan teruji; bagian Firestore `blocked`, dan belum terintegrasi dengan UI.
+- **Firestore (15 November 2026, branch `feat/pb03-firestore-setup`):**
+  - FlutterFire CLI mendaftarkan `site.agam` ke `agam-9e704` (`lib/firebase_options.dart`, `android/app/google-services.json`, plugin Gradle Google Services); `Firebase.initializeApp` di `lib/main.dart`; izin `INTERNET` di manifest.
+  - `lib/logic/data/firestore_dataset_source.dart`: `FirestoreDatasetSource` membaca `pois` dan `facilities` dari server; `la_bootstrap.dart` memasangnya dan menjalankan `refresh()` di latar setelah data lokal dimuat. Sebelumnya `refresh()` tidak dipanggil di mana pun.
+  - `firestore.rules` (PRD §15.4–§15.5) dengan 21 test emulator di `tools/firestore/rules.test.mjs`; sudah di-deploy ke `agam-9e704`.
+  - Seed `tools/firestore/seed_pois.mjs` dan workflow `.github/workflows/seed-firestore.yml` (PRD §15.2); diuji di emulator.
+- **Seed pertama (15 November 2026):** dari `pois.json` `dev` `d602fed` memakai service account `agam-seed` (Cloud Datastore User); 10 dokumen `pois`, 0 `facilities`. Pemeriksaan REST: `pois` terbaca tanpa login, `users` ditolak (HTTP 403).
+- **Sisa:** secret `FIREBASE_SERVICE_ACCOUNT` dan GitHub Actions (terkunci billing) untuk seed otomatis; build APK dan uji perangkat (membaca dari server, cache, offline). Usulan untuk LA: pembanding versi dataset agar cache lama tidak menutupi JSON bawaan yang lebih baru (PRD §15.2).
+- **Status:** `in_progress` — JSON bawaan, validasi, cache, fallback, dan sumber Firestore selesai dan teruji unit; menunggu uji perangkat.
 
 ### PB04 — Explore Map dengan tile vektor dibundel
 
@@ -513,7 +520,7 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
 
 | Dependency | Dibutuhkan oleh | Status |
 | --- | --- | --- |
-| Project Firebase (Firestore + Authentication Email/Password) | PB03, PB21, PB22 (LA) | Belum dibuat |
+| Project Firebase (Firestore + Authentication Email/Password) | PB03, PB21, PB22 (LA) | Dibuat 15 November 2026 (`agam-9e704`) |
 | Desain UI10 Daftar & Login dan teks pemberitahuan privasi | PB21 (FE) | Belum ada; teks wajib disetujui PM |
 | Success metric | PB22 (finalisasi daftar event) | Belum ditetapkan |
 | Konten P01–P10 (teks, foto, audio, video, metadata) | PB07, PB08, PB09 | Belum tersedia |

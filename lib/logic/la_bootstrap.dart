@@ -4,6 +4,8 @@
 /// memakai fake (`.agent/implementationPhases.md` §2.6).
 library;
 
+import 'dart:async';
+
 import 'package:path_provider/path_provider.dart';
 
 import '../contracts/contracts.dart';
@@ -54,7 +56,8 @@ class LaServices {
 /// arahan suara serta pengumuman tiba. [navigation] berupa factory karena
 /// navigasi membaca posisi dari `LocationService` asli yang dibuat di sini.
 ///
-/// Wajib dipanggil sekali setelah `WidgetsFlutterBinding.ensureInitialized()`.
+/// Wajib dipanggil sekali setelah `WidgetsFlutterBinding.ensureInitialized()`
+/// dan `Firebase.initializeApp()`.
 Future<LaServices> createLaServices({
   required MapConfig map,
   required NavigationController Function(LocationService location) navigation,
@@ -63,8 +66,12 @@ Future<LaServices> createLaServices({
   final pois = PoiRepositoryImpl(
     bundled: const BundledDataset(),
     cache: FileDatasetCache(cacheDir),
+    remote: FirestoreDatasetSource(),
   );
   await pois.ensureLoaded();
+  // Pembaruan dari Firestore berjalan di latar; aplikasi tidak menunggu
+  // jaringan dan tetap memakai cache/dataset bawaan bila gagal (PRD §15.2).
+  unawaited(pois.refresh());
 
   final settings = DeviceSettingsStore();
   await settings.load();

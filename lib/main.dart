@@ -1,12 +1,15 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
 import 'contracts/contracts.dart';
 import 'contracts/fakes/fake_lb_services.dart';
+import 'firebase_options.dart';
 import 'logic/la_bootstrap.dart';
 import 'ui/app.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(AgamApp(services: await _createAppServices()));
 }
 
