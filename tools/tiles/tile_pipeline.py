@@ -22,6 +22,8 @@ import tempfile
 import urllib.request
 import uuid
 
+from cluster_pmtiles import cluster_archive
+
 VERSION = '0.10.2'
 JAR_SHA256 = 'f310bd0413e2e4512b27f4046d418664e8e1d3bf31603c2a70e23de06c167e4d'
 JAR_URL = f'https://github.com/onthegomap/planetiler/releases/download/v{VERSION}/planetiler.jar'
@@ -381,6 +383,8 @@ def build(args) -> dict:
         print('Menjalankan Planetiler; log: ' + str(log), flush=True)
         with log.open('w', encoding='utf-8') as stream:
             subprocess.run(command, cwd=cache, stdout=stream, stderr=subprocess.STDOUT, check=True)
+        validate_pmtiles(staged, bounds)
+        cluster_archive(staged)
         evidence = validate_pmtiles(staged, bounds)
         support_sources = []
         for filename, url in [
@@ -396,6 +400,7 @@ def build(args) -> dict:
         result = {'schemaVersion': 1, 'generatedAtUtc': dt.datetime.now(dt.timezone.utc).isoformat(),
                   'generator': {'name': 'Planetiler', 'version': VERSION, 'jarSha256': JAR_SHA256,
                                 'url': JAR_URL, 'profile': 'OpenMapTiles', 'java': java_version.strip()},
+                  'postprocess': {'name': 'AGAM deterministic clustering', 'version': 1},
                   'source': {'url': source, 'filename': pbf.name, 'sha256': input_hash,
                              'sizeBytes': pbf.stat().st_size},
                   'supportSources': support_sources,

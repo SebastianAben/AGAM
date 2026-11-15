@@ -29,11 +29,21 @@ jobs:
       - run: dart format --output=none --set-exit-if-changed lib test
       - run: flutter analyze
       - run: flutter test
+      - run: python3 -X utf8 -m unittest discover -s tools/tiles -p 'test_*.py' -q
 
       - run: flutter build apk --debug
 
       - uses: actions/upload-artifact@v7
         with:
           name: agam-debug-apk
+          path: build/app/outputs/flutter-apk/app-debug.apk
+          retention-days: 14
+
+      - run: flutter build apk --debug --dart-define=AGAM_INTERNAL_DEMO=true
+      - run: python3 tools/tiles/audit_assets.py --apk build/app/outputs/flutter-apk/app-debug.apk
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: agam-internal-demo-debug-apk
           path: build/app/outputs/flutter-apk/app-debug.apk
           retention-days: 14

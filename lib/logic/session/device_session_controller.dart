@@ -171,6 +171,7 @@ class DeviceSessionController implements SessionController {
   }
 
   void _onIssue(LocationIssue issue) {
+    _engine?.interruptDwell();
     if (issue == LocationIssue.permissionDenied) {
       _end(SessionEndReason.permissionRevoked);
     }

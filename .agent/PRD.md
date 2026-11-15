@@ -3,7 +3,7 @@
 | Atribut | Nilai |
 | --- | --- |
 | Status dokumen | **Kontrak produk kerja v1.0** untuk tim dan coding agent; diturunkan dari PRD resmi dan diperbarui dengan keputusan tim |
-| Status implementasi | Source tersedia sebagian (10 November 2026): scaffolding, kontrak v1.0, data POI (PB03), engine geofence (PB05), serta layanan LA Sprint 1–2 (izin, lokasi, sesi, notifikasi trigger, audio, pengaturan). Belum terintegrasi dengan UI dan belum diuji di perangkat; status per PBI di `.agent/implementationPhases.md` |
+| Status implementasi | Source tersedia sebagian (16 November 2026): layanan LA/UI, sumber Firestore PB03, dan demo internal PMTiles offline → posisi → Explore → trigger/kartu POI tersedia. Sebelum sinkronisasi terbaru, demo diuji widget dan APK debug berflag demo dibangun/audit aset lulus; tree gabungan setelah Firestore, konten, dan WIP peta belum diverifikasi ulang. Login produk, routing/trail asli, dan uji acceptance perangkat/lapangan belum selesai; status per PBI di `.agent/implementationPhases.md` |
 | Tanggal | 2 November 2026 |
 | Sumber resmi | Draft PRD W9 (`Kelompok 03_Draft PRD.docx.pdf`, bagian 1–4) dan presentasi PRD lengkap (`Transformasi Digital-PRD-Kel.Warung.pdf`, halaman 1–23). Keduanya berada di luar repository |
 | Mata kuliah | II4011 Transformasi Digital — Prof. Ir. Kridanto Surendro, M.Sc., Ph.D. |
@@ -62,6 +62,14 @@ Seluruh perhitungan (lokasi, geofence, rute, pencarian, rekomendasi) dilakukan *
 Di luar lingkup v1 (keputusan tim): **bahasa selain Bahasa Indonesia** dan **backend/server milik tim**. Akun pengguna memakai layanan terkelola Firebase (Auth + Firestore), bukan server milik tim.
 
 **[CL] Akun wajib (keputusan PM 6 November 2026).** Pengguna wajib daftar atau login sebelum memakai aplikasi. Login tidak membuka fitur tambahan. Data akun dipakai internal oleh tim developer untuk menghitung jumlah pengguna, success metric, dan log aktivitas ([§15.5](#155-log-aktivitas)). Seluruh batas privasi NG04 dan A01 tetap berlaku.
+
+**Pengecualian demo internal (instruksi PM 14 November 2026):** login boleh
+dilewati sementara untuk integrasi peta/lokasi/Explore/trigger/kartu POI, dengan
+Labtek V (P01) sebagai POI uji pertama. Pengecualian hanya diaktifkan lewat
+`--dart-define=AGAM_INTERNAL_DEMO=true` dan terlihat pada UI. Default flag false;
+selama PB21 belum tersedia, build biasa menampilkan gerbang login belum tersedia.
+Tidak membuat akun tamu, tidak menambahkan log/server, dan tidak mengganti
+keputusan login wajib produk. Fitur fake di luar alur demo tidak ditampilkan.
 
 ## 5. Skenario Utama
 
@@ -187,6 +195,15 @@ diperluas 200 m dengan pendekatan spherical dan pembulatan keluar; bounds tile
 Ini batas cakupan aset tile, bukan hasil survei batas resmi. Poligon area layanan
 pada `MapConfig` dan perilaku di luar area belum diimplementasikan oleh task ini.
 
+**Area demo internal (14 November 2026):** dalam mandat PM untuk menyesuaikan
+kebutuhan integrasi demo, `AgamMapConfig.internalDemo()` memakai empat sudut
+bounds engineering di atas sebagai area demo sementara. UI memberi label
+engineering OSM dan belum diverifikasi lapangan. Ini hanya dipakai oleh flag
+demo, bukan penetapan batas layanan produk. `pendingServiceArea()` tetap
+menolak semua titik selama batas produk TBD; tidak ada koordinat baru yang
+dikira sebagai hasil survei. Radius, dwell, cooldown, dan filter akurasi §9.2
+tidak berubah.
+
 
 ## 10. Konten dan Media
 
@@ -237,6 +254,19 @@ Aturan konten:
 - Tampilan peta memakai file style (mis. turunan OSM Liberty/Protomaps) yang disesuaikan untuk AGAM; POI ditonjolkan.
 - Renderer Flutter (mis. `flutter_map` + `vector_map_tiles`) adalah pilihan engineering yang diverifikasi saat PB04.
 - **Atribusi OpenStreetMap (ODbL) wajib ditampilkan** di peta. Profil OpenMapTiles yang dipakai pipeline PB04-LB-01 juga memerlukan kredit OpenMapTiles bertautan ke `https://openmaptiles.org/`; HTML atribusi lengkap dipertahankan dalam metadata arsip/manifest.
+
+**Implementasi demo 14 November 2026:** `flutter_map 7.0.2` dan
+`vector_tile_renderer 5.2.0`, pembaca `pmtiles 1.3.0` serta `latlong2 0.9.1`.
+`url_launcher` ^6.3.2 (lockfile 6.3.3) hanya membuka tautan atribusi statis atas
+ketukan pengguna. Seluruh 13 tile vektor dibaca dari APK dan dirender ke PNG
+di memori sebelum dipakai peta; tidak ada fallback jaringan, cache tile ke disk,
+glyph/sprite remote, atau penyimpanan viewport/posisi. Native zoom 12–16,
+overzoom sampai 20. `VectorTileLayer` dari `vector_map_tiles` tidak dipakai
+karena source package tetap menulis cache filesystem saat TTL nol. Pipeline
+menjalankan clustering deterministik sebelum validasi/publikasi; format
+unclustered Planetiler tidak didukung pembaca Dart yang dipakai. Detail teknis
+dan perintah audit ada di `tools/tiles/README.md`. Bukti widget bukan acceptance
+Android/offline pada perangkat.
 
 ## 15. Data dan Penyimpanan
 
@@ -411,7 +441,7 @@ Item berikut **belum diputuskan atau belum tersedia**. Agent dilarang mengisinya
 | Konten teks, foto, audio, video P01–P10 | Belum tersedia di repository | Tim konten |
 | Daftar perangkat uji | Belum ditetapkan | QA |
 | Margin histeresis, kalibrasi radius per POI, dan parameter interval adaptif | Default engineering margin 5 m dan jeda sampel maksimum 10 detik (PB05-LA-01) serta parameter interval adaptif [§9.2](#92-logika-trigger) diterapkan; kalibrasi lapangan tetap tertunda | Developer / QA |
-| Batas area kampus (poligon/bounding box) | Snapshot OSM dan coverage tile PB04-LB-01 tercatat di §9.3; `MapConfig`/batas layanan dan verifikasi lapangan tetap tertunda | Developer |
+| Batas area kampus (poligon/bounding box) | Snapshot OSM/coverage tile dan area engineering khusus demo tercatat di §9.3; batas layanan produk dan verifikasi lapangan tetap tertunda | Developer |
 | Success metric | Belum ditetapkan. Log §15.5 disusun agar dapat dipakai metrik umum (pengguna aktif, pemakaian mode dan fitur, trail selesai); event yang tidak dipakai metrik mana pun dihapus setelah metrik ditetapkan | PM |
 | Tanggal penghapusan log aktivitas | Paling lambat setelah penilaian akhir mata kuliah; tanggal pasti belum ditetapkan | PM |
 | Teks pemberitahuan privasi layar daftar (UI10) | Disusun FE, wajib disetujui PM | FE / PM |
@@ -433,6 +463,7 @@ Perubahan berikut wajib dicatat PM pada Change Log PRD resmi.
 | Mode aplikasi | Tidak dirinci | Empat mode (§6) dan auto-end 30 menit | Memperjelas kapan lokasi dibaca dan trigger aktif |
 | PB17 | Cache konten & tile peta saat offline | Tile sudah dibundel sejak S1; PB17 menjadi verifikasi offline konten | Keputusan tile |
 | Akun pengguna | Tidak disebut di requirement, backlog, maupun sprint plan | Login wajib (email + password), role Mahasiswa ITB/Pengunjung, hapus akun (§4, §16) | Pencatatan jumlah pengguna dan success metric oleh tim (keputusan PM 6 November 2026) |
+| Demo internal sementara | Tidak dirinci | Flag eksplisit melewati login untuk demo integrasi dengan P01; area demo memakai coverage engineering OSM berlabel. Keputusan produk login wajib/batas layanan final tetap berlaku | Instruksi PM 14 November 2026 untuk memprioritaskan integrasi FE/logic, menyesuaikan kebutuhan demo, dan skip login sementara |
 | Log aktivitas | Tidak disebut | Daftar event tertutup tanpa data lokasi (§15.5) | Success metric; tetap mematuhi NG04/A01 |
 | Backlog | PB01–PB20 | Ditambah PB21 (akun dan login wajib) dan PB22 (log aktivitas) pada Sprint 3; nomor PB01–PB20 tidak berubah | Fitur akun sebelum Feature Freeze |
 | Layar | UI01–UI09 | Ditambah UI10 Daftar & Login; UI09 memuat akun, logout, dan hapus akun | Akun |

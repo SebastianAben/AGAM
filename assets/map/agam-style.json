@@ -1,0 +1,104 @@
+{
+  "version": 8,
+  "name": "AGAM — style OpenMapTiles lokal",
+  "metadata": {
+    "agam:status": "integrated_memory_renderer_pending_device_test",
+    "agam:sourceAsset": "assets/map/ganesha.pmtiles",
+    "agam:binding": "OfflineMapTiles membaca PMTiles aset dan merender seluruh tile ke memori sebagai openmaptiles; tidak ada provider jaringan atau cache filesystem.",
+    "agam:attribution": [
+      {
+        "label": "© OpenStreetMap contributors (ODbL)",
+        "url": "https://www.openstreetmap.org/copyright"
+      },
+      {
+        "label": "© OpenMapTiles",
+        "url": "https://openmaptiles.org/"
+      }
+    ]
+  },
+  "sources": {
+    "openmaptiles": {
+      "type": "vector",
+      "tiles": [],
+      "minzoom": 12,
+      "maxzoom": 16
+    }
+  },
+  "layers": [
+    {
+      "id": "background",
+      "type": "background",
+      "paint": {
+        "background-color": "#f5f3eb"
+      }
+    },
+    {
+      "id": "landcover",
+      "type": "fill",
+      "source": "openmaptiles",
+      "source-layer": "landcover",
+      "paint": {
+        "fill-color": "#dbe6cc",
+        "fill-opacity": 0.6
+      }
+    },
+    {
+      "id": "park",
+      "type": "fill",
+      "source": "openmaptiles",
+      "source-layer": "park",
+      "paint": {
+        "fill-color": "#c7dcb7"
+      }
+    },
+    {
+      "id": "water",
+      "type": "fill",
+      "source": "openmaptiles",
+      "source-layer": "water",
+      "paint": {
+        "fill-color": "#b8d9e5"
+      }
+    },
+    {
+      "id": "waterway",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "waterway",
+      "paint": {
+        "line-color": "#9ac6d8",
+        "line-width": 1.5
+      }
+    },
+    {
+      "id": "building",
+      "type": "fill",
+      "source": "openmaptiles",
+      "source-layer": "building",
+      "paint": {
+        "fill-color": "#d3c9b9",
+        "fill-outline-color": "#b0a391"
+      }
+    },
+    {
+      "id": "road-casing",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "paint": {
+        "line-color": "#c4bcae",
+        "line-width": 5
+      }
+    },
+    {
+      "id": "road",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "paint": {
+        "line-color": "#fffdf7",
+        "line-width": 3
+      }
+    }
+  ]
+}

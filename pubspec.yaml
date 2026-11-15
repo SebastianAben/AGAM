@@ -43,6 +43,11 @@ dependencies:
   flutter_tts: ^4.2.5
   firebase_core: ^5.1.0
   cloud_firestore: ^7.1.0
+  flutter_map: 7.0.2
+  vector_tile_renderer: 5.2.0
+  pmtiles: 1.3.0
+  latlong2: 0.9.1
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:
@@ -83,6 +88,9 @@ flutter:
     - assets/media/P09/
     - assets/media/P10/
     - assets/media/logo.png
+    - assets/map/ganesha.pmtiles
+    - assets/map/agam-style.json
+    - assets/map/ganesha.manifest.json
 
   fonts:
     - family: PlusJakartaSans

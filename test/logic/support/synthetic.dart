@@ -69,4 +69,6 @@ class RecordingPositionSource implements PositionSource {
 
   void fail(LocationIssue issue) =>
       _controller!.addError(LocationSourceException(issue));
+
+  Future<void> finish() => _controller!.close();
 }

@@ -12,8 +12,12 @@ void main() {
   late RecordingPositionSource source;
   late DeviceLocationService service;
 
-  DeviceLocationService create({bool visible = true}) =>
-      DeviceLocationService(source: source, appVisible: visible);
+  DeviceLocationService create({bool visible = true, Stream<bool>? status}) =>
+      DeviceLocationService(
+        source: source,
+        appVisible: visible,
+        serviceStatus: status,
+      );
 
   setUp(() => source = RecordingPositionSource());
   tearDown(() => service.dispose());
@@ -146,6 +150,34 @@ void main() {
       expect(issues, [LocationIssue.permissionDenied]);
       await sub.cancel();
     });
+
+    test('error menghapus lastFix agar posisi lama tidak dipakai', () async {
+      service = create();
+      await service.beginSession();
+      source.emit(syntheticFix(0));
+      await pumpEventQueue();
+      expect(service.lastFix, isNotNull);
+      source.fail(LocationIssue.serviceDisabled);
+      await pumpEventQueue();
+      expect(service.lastFix, isNull);
+    });
+
+    test('stream berakhir setelah error GPS dapat pulih saat resume', () async {
+      service = create();
+      await service.beginSession();
+      source.fail(LocationIssue.serviceDisabled);
+      await source.finish();
+      await pumpEventQueue();
+      expect(service.activeRequest, isNull);
+      expect(source.activeSubscriptions, 0);
+      await service.setAppVisible(false);
+      await service.setAppVisible(true);
+      expect(source.activeSubscriptions, 1);
+      expect(service.activeRequest!.sessionService, isTrue);
+      source.emit(syntheticFix(10));
+      await pumpEventQueue();
+      expect(service.lastFix, isNotNull);
+    });
   });
 
   group('interval adaptif', () {
@@ -176,6 +208,67 @@ void main() {
 
       await service.setAppVisible(true);
       expect(service.activeRequest!.interval, const Duration(seconds: 10));
+    });
+  });
+
+  group('pemulihan status GPS', () {
+    test('GPS aktif memulihkan peta tanpa harus background/resume', () async {
+      final status = StreamController<bool>.broadcast();
+      service = create(status: status.stream);
+      final sub = service.positions.listen((_) {});
+      await pumpEventQueue();
+      source.emit(syntheticFix(0));
+      await pumpEventQueue();
+      status.add(false);
+      source.fail(LocationIssue.serviceDisabled);
+      await source.finish();
+      await pumpEventQueue();
+      expect(service.lastFix, isNull);
+      expect(source.activeSubscriptions, 0);
+      status.add(true);
+      await pumpEventQueue();
+      expect(source.activeSubscriptions, 1);
+      source.emit(syntheticFix(10));
+      await pumpEventQueue();
+      expect(service.lastFix, isNotNull);
+      await sub.cancel();
+      await status.close();
+    });
+
+    test(
+      'GPS aktif di background tidak memulai foreground service baru',
+      () async {
+        final status = StreamController<bool>.broadcast();
+        service = create(status: status.stream);
+        await service.beginSession();
+        await service.setAppVisible(false);
+        status.add(false);
+        source.fail(LocationIssue.serviceDisabled);
+        await source.finish();
+        await pumpEventQueue();
+        final requests = source.requests.length;
+        status.add(true);
+        await pumpEventQueue();
+        expect(source.requests, hasLength(requests));
+        expect(source.activeSubscriptions, 0);
+        await service.setAppVisible(true);
+        expect(source.activeSubscriptions, 1);
+        expect(service.activeRequest!.sessionService, isTrue);
+        await status.close();
+      },
+    );
+
+    test('status GPS tidak membaca posisi tanpa pendengar atau sesi', () async {
+      final status = StreamController<bool>.broadcast();
+      service = create(status: status.stream);
+      status.add(false);
+      status.add(true);
+      await pumpEventQueue();
+      expect(source.requests, isEmpty);
+      await service.dispose();
+      expect(status.hasListener, isFalse);
+      await status.close();
+      service = create();
     });
   });
 

@@ -7,6 +7,7 @@ library;
 import 'dart:async';
 
 import 'package:path_provider/path_provider.dart';
+import 'package:geolocator/geolocator.dart';
 
 import '../contracts/contracts.dart';
 import 'audio/agam_audio_handler.dart';
@@ -80,7 +81,10 @@ Future<LaServices> createLaServices({
   await notifier.init();
 
   final location = DeviceLocationService(
-    source: const GeolocatorPositionSource(),
+    source: GeolocatorPositionSource(),
+    serviceStatus: Geolocator.getServiceStatusStream().map(
+      (status) => status == ServiceStatus.enabled,
+    ),
   )..attachToAppLifecycle();
 
   final session = DeviceSessionController(

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../contracts/app_services.dart';
@@ -12,10 +14,17 @@ import 'widgets/agam_scroll_behavior.dart';
 
 /// Root widget AGAM.
 class AgamApp extends StatefulWidget {
-  const AgamApp({super.key, this.services});
+  const AgamApp({
+    super.key,
+    this.services,
+    this.poiViewRequests = const Stream.empty(),
+    this.internalDemo = false,
+  });
 
   /// Services can be injected; otherwise device location and permission are real.
   final AppServices? services;
+  final Stream<String> poiViewRequests;
+  final bool internalDemo;
 
   @override
   State<AgamApp> createState() => _AgamAppState();
@@ -58,7 +67,11 @@ class _AgamAppState extends State<AgamApp> {
           onAccessGranted: () {
             Navigator.of(context).pushReplacement(
               MaterialPageRoute<void>(
-                builder: (_) => AgamMainShell(services: _appServices),
+                builder: (_) => AgamMainShell(
+                  services: _appServices,
+                  poiViewRequests: widget.poiViewRequests,
+                  internalDemo: widget.internalDemo,
+                ),
               ),
             );
           },
@@ -69,9 +82,16 @@ class _AgamAppState extends State<AgamApp> {
 }
 
 class AgamMainShell extends StatefulWidget {
-  const AgamMainShell({super.key, required this.services});
+  const AgamMainShell({
+    super.key,
+    required this.services,
+    this.poiViewRequests = const Stream.empty(),
+    this.internalDemo = false,
+  });
 
   final AppServices services;
+  final Stream<String> poiViewRequests;
+  final bool internalDemo;
 
   @override
   State<AgamMainShell> createState() => _AgamMainShellState();
@@ -79,6 +99,21 @@ class AgamMainShell extends StatefulWidget {
 
 class _AgamMainShellState extends State<AgamMainShell> {
   int _selectedIndex = 0;
+  StreamSubscription<String>? _views;
+
+  @override
+  void initState() {
+    super.initState();
+    _views = widget.poiViewRequests.listen((_) {
+      if (mounted) setState(() => _selectedIndex = 0);
+    });
+  }
+
+  @override
+  void dispose() {
+    unawaited(_views?.cancel());
+    super.dispose();
+  }
 
   void _selectTab(int index) {
     if (index >= 0 && index <= 3) {
@@ -90,39 +125,59 @@ class _AgamMainShellState extends State<AgamMainShell> {
   @override
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: const Color(0xFFFAF8FF),
-    appBar: AgamAppHeader(showProfile: _selectedIndex != 3),
+    appBar: AgamAppHeader(
+      showProfile: !widget.internalDemo && _selectedIndex != 3,
+    ),
     body: Column(
       children: [
+        if (widget.internalDemo)
+          const MaterialBanner(
+            content: Text(
+              'DEMO INTERNAL · Labtek V · login dilewati. '
+              'Batas area engineering OSM; belum diverifikasi lapangan.',
+            ),
+            actions: [SizedBox.shrink()],
+          ),
         Expanded(
-          child: IndexedStack(
-            index: _selectedIndex,
-            children: [
-              ExploreMapScreen(
-                services: widget.services,
-                embedded: true,
-                isActive: _selectedIndex == 0,
-                onTabSelected: _selectTab,
-              ),
-              OrientationTrailScreen(
-                services: widget.services,
-                embedded: true,
-                onTabSelected: _selectTab,
-              ),
-              SearchRouteScreen(
-                services: widget.services,
-                onTabSelected: _selectTab,
-              ),
-              const ProfilePreviewScreen(),
-            ],
-          ),
+          child: widget.internalDemo
+              ? ExploreMapScreen(
+                  services: widget.services,
+                  embedded: true,
+                  poiViewRequests: widget.poiViewRequests,
+                  internalDemo: true,
+                )
+              : IndexedStack(
+                  index: _selectedIndex,
+                  children: [
+                    ExploreMapScreen(
+                      services: widget.services,
+                      embedded: true,
+                      isActive: _selectedIndex == 0,
+                      onTabSelected: _selectTab,
+                      poiViewRequests: widget.poiViewRequests,
+                      internalDemo: widget.internalDemo,
+                    ),
+                    OrientationTrailScreen(
+                      services: widget.services,
+                      embedded: true,
+                      onTabSelected: _selectTab,
+                    ),
+                    SearchRouteScreen(
+                      services: widget.services,
+                      onTabSelected: _selectTab,
+                    ),
+                    const ProfilePreviewScreen(),
+                  ],
+                ),
         ),
-        SafeArea(
-          top: false,
-          child: AgamBottomNavigation(
-            selectedIndex: _selectedIndex,
-            onSelect: _selectTab,
+        if (!widget.internalDemo)
+          SafeArea(
+            top: false,
+            child: AgamBottomNavigation(
+              selectedIndex: _selectedIndex,
+              onSelect: _selectTab,
+            ),
           ),
-        ),
       ],
     ),
   );

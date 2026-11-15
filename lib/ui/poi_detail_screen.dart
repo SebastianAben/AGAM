@@ -14,12 +14,14 @@ class PoiDetailScreen extends StatefulWidget {
     required this.audio,
     required this.onNavigate,
     required this.checkedIn,
+    this.navigationAvailable = true,
   });
 
   final Poi poi;
   final AudioService audio;
   final Future<void> Function() onNavigate;
   final bool checkedIn;
+  final bool navigationAvailable;
 
   @override
   State<PoiDetailScreen> createState() => _PoiDetailScreenState();
@@ -667,7 +669,9 @@ class _PoiDetailScreenState extends State<PoiDetailScreen> {
             child: SizedBox(
               height: 44,
               child: FilledButton.icon(
-                onPressed: _navigating ? null : _navigate,
+                onPressed: _navigating || !widget.navigationAvailable
+                    ? null
+                    : _navigate,
                 style: FilledButton.styleFrom(
                   backgroundColor: _navy,
                   foregroundColor: Colors.white,
@@ -684,9 +688,14 @@ class _PoiDetailScreenState extends State<PoiDetailScreen> {
                         ),
                       )
                     : const Icon(Icons.directions_walk_rounded, size: 17),
-                label: const Text(
-                  'Navigasi Jalan Kaki',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                label: Text(
+                  widget.navigationAvailable
+                      ? 'Navigasi Jalan Kaki'
+                      : 'Navigasi belum tersedia',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ),

@@ -32,6 +32,7 @@ class DeviceLocationService implements LocationService {
     required this._source,
     AdaptiveIntervalPolicy? policy,
     bool appVisible = true,
+    Stream<bool>? serviceStatus,
   }) : _policy = policy ?? AdaptiveIntervalPolicy(),
        _visible = appVisible {
     _desiredInterval = _policy.normal;
@@ -39,6 +40,7 @@ class DeviceLocationService implements LocationService {
       onListen: _schedule,
       onCancel: _schedule,
     );
+    _serviceStatusSubscription = serviceStatus?.listen(_onServiceStatus);
   }
 
   final PositionSource _source;
@@ -57,6 +59,8 @@ class DeviceLocationService implements LocationService {
   LocationFix? _lastFix;
   Future<void> _queue = Future.value();
   AppLifecycleListener? _lifecycle;
+  StreamSubscription<bool>? _serviceStatusSubscription;
+  LocationIssue? _lastIssue;
 
   @override
   Stream<LocationFix> get positions => _controller.stream;
@@ -89,7 +93,32 @@ class DeviceLocationService implements LocationService {
   /// Dipanggil saat aplikasi tampil/tidak tampil di layar.
   Future<void> setAppVisible(bool visible) {
     _visible = visible;
+    if (visible && _lastIssue == LocationIssue.serviceDisabled) {
+      return _restartAfterServiceEnabled();
+    }
     return _schedule();
+  }
+
+  void _onServiceStatus(bool enabled) {
+    if (_disposed) return;
+    if (!enabled) {
+      _lastFix = null;
+      _lastIssue = LocationIssue.serviceDisabled;
+      _issues.add(LocationIssue.serviceDisabled);
+    } else if (_visible && _lastIssue == LocationIssue.serviceDisabled) {
+      unawaited(_restartAfterServiceEnabled());
+    }
+  }
+
+  Future<void> _restartAfterServiceEnabled() {
+    _lastIssue = null;
+    return _queue = _queue.then((_) async {
+      // Android membatasi start foreground service dari background. Pulihkan
+      // hanya saat aplikasi tampil; resume akan menyelaraskan kembali sesi.
+      if (_disposed || !_visible) return;
+      await _stop();
+      await _reconcile();
+    });
   }
 
   /// POI untuk interval adaptif. Dipanggil lapisan sesi saat dataset berubah.
@@ -112,6 +141,7 @@ class DeviceLocationService implements LocationService {
   Future<void> dispose() async {
     _disposed = true;
     _lifecycle?.dispose();
+    await _serviceStatusSubscription?.cancel();
     await _schedule();
     await _controller.close();
     await _issues.close();
@@ -146,7 +176,12 @@ class DeviceLocationService implements LocationService {
     _active = request;
     _subscription = _source
         .watch(request)
-        .listen(_onFix, onError: _onError, cancelOnError: false);
+        .listen(
+          _onFix,
+          onError: _onError,
+          onDone: _onDone,
+          cancelOnError: false,
+        );
   }
 
   Future<void> _stop() async {
@@ -161,6 +196,7 @@ class DeviceLocationService implements LocationService {
 
   void _onFix(LocationFix fix) {
     if (_subscription == null) return;
+    _lastIssue = null;
     _lastFix = fix;
     _controller.add(fix);
     final desired = _policy.evaluate(fix, _pois);
@@ -171,9 +207,19 @@ class DeviceLocationService implements LocationService {
   }
 
   void _onError(Object error) {
+    _lastFix = null;
     final issue = error is LocationSourceException
         ? error.issue
         : LocationIssue.other;
+    _lastIssue = issue;
     _issues.add(issue);
+  }
+
+  void _onDone() {
+    // Stream native yang sudah berakhir bukan permintaan aktif. Saat kembali
+    // dari pengaturan GPS/izin, reconcile wajib membuka langganan baru.
+    _subscription = null;
+    _active = null;
+    _lastFix = null;
   }
 }

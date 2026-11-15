@@ -5,10 +5,14 @@ import 'package:flutter/material.dart';
 
 import '../contracts/app_services.dart';
 import '../contracts/models/content.dart';
-import '../contracts/models/geo.dart';
+import '../contracts/models/audio.dart';
 import '../contracts/models/location.dart';
 import '../contracts/models/session.dart';
+import '../logic/location/device_location_service.dart';
+import '../logic/location/position_source.dart';
 import 'orientation_trail_screen.dart';
+import 'poi_detail_screen.dart';
+import 'widgets/offline_campus_map.dart';
 import 'widgets/agam_bottom_navigation.dart';
 
 /// UI02 Explore Map. UI03 trigger and UI04 detail are states layered over it.
@@ -19,18 +23,23 @@ class ExploreMapScreen extends StatefulWidget {
     this.embedded = false,
     this.isActive = true,
     this.onTabSelected,
+    this.poiViewRequests = const Stream.empty(),
+    this.internalDemo = false,
   });
 
   final AppServices services;
   final bool embedded;
   final bool isActive;
   final ValueChanged<int>? onTabSelected;
+  final Stream<String> poiViewRequests;
+  final bool internalDemo;
 
   @override
   State<ExploreMapScreen> createState() => _ExploreMapScreenState();
 }
 
-class _ExploreMapScreenState extends State<ExploreMapScreen> {
+class _ExploreMapScreenState extends State<ExploreMapScreen>
+    with WidgetsBindingObserver {
   static const _navy = Color(0xFF073B82);
   static const _blue = Color(0xFF1553A6);
 
@@ -41,19 +50,42 @@ class _ExploreMapScreenState extends State<ExploreMapScreen> {
   LocationFix? _fix;
   Poi? _selectedPoi;
   bool _sessionActive = false;
-  bool _showDetail = true;
+  bool _showDetail = false;
   bool _expandedDetail = false;
-  bool _isUiPreview = true;
+  bool _isUiPreview = false;
+  bool _changingSession = false;
+  bool _appVisible = true;
+  String? _locationMessage;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    if (widget.services.location case DeviceLocationService device) {
+      _subscriptions.add(
+        device.issues.listen((issue) {
+          if (!mounted) return;
+          setState(() {
+            _fix = null;
+            _locationMessage = switch (issue) {
+              LocationIssue.permissionDenied =>
+                'Izin lokasi dicabut. Izinkan lokasi akurat.',
+              LocationIssue.serviceDisabled =>
+                'GPS perangkat mati. Aktifkan lokasi.',
+              LocationIssue.other => 'Posisi belum tersedia. Coba lagi.',
+            };
+          });
+        }),
+      );
+    }
+    _sessionActive = widget.services.session.current.isActive;
+    _subscriptions.add(widget.poiViewRequests.listen(_openPoiById));
     _subscriptions.add(
       widget.services.pois.watchPois().listen((pois) {
         if (!mounted) return;
         setState(() {
           _pois = pois;
-          _selectedPoi ??= _findPoi('P07');
+          _selectedPoi ??= _findPoi('P01');
         });
         _loadFacilities();
       }),
@@ -90,18 +122,30 @@ class _ExploreMapScreenState extends State<ExploreMapScreen> {
   }
 
   void _syncLocationSubscription() {
-    if (widget.isActive) {
+    if (widget.isActive && _appVisible) {
       _locationSubscription ??= widget.services.location.positions.listen((
         fix,
       ) {
         if (!mounted) return;
-        setState(() => _fix = fix);
+        setState(() {
+          _fix = fix;
+          _locationMessage = null;
+        });
       });
     } else {
       final subscription = _locationSubscription;
       _locationSubscription = null;
       unawaited(subscription?.cancel());
     }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _appVisible =
+        state == AppLifecycleState.resumed ||
+        state == AppLifecycleState.inactive;
+    if (!_appVisible && mounted) setState(() => _fix = null);
+    _syncLocationSubscription();
   }
 
   Poi? _findPoi(String id) {
@@ -113,7 +157,7 @@ class _ExploreMapScreenState extends State<ExploreMapScreen> {
 
   Future<void> _loadFacilities() async {
     final poi = _selectedPoi;
-    if (poi == null) return;
+    if (poi == null || widget.internalDemo) return;
     final facilities = await widget.services.facilities.nearby(
       from: poi.position,
       limit: 4,
@@ -128,12 +172,51 @@ class _ExploreMapScreenState extends State<ExploreMapScreen> {
   }
 
   Future<void> _toggleSession() async {
-    if (_sessionActive) {
-      await widget.services.session.end();
-    } else {
-      setState(() => _isUiPreview = false);
-      await widget.services.session.start(SessionMode.explore);
+    if (_changingSession) return;
+    _changingSession = true;
+    try {
+      if (_sessionActive) {
+        await widget.services.session.end();
+      } else {
+        final permission = await widget.services.permissions.requestLocation();
+        if (!mounted) return;
+        if (permission != LocationPermissionStatus.granted) {
+          _showNotice(
+            permission == LocationPermissionStatus.serviceDisabled
+                ? 'Aktifkan GPS perangkat untuk memulai Explore.'
+                : 'Izin lokasi akurat saat aplikasi digunakan diperlukan.',
+          );
+          return;
+        }
+        await widget.services.session.start(SessionMode.explore);
+      }
+    } catch (_) {
+      if (mounted) {
+        _showNotice('Sesi belum dapat diubah. Periksa izin lokasi dan GPS.');
+      }
+    } finally {
+      _changingSession = false;
     }
+  }
+
+  Future<void> _openPoiById(String id) async {
+    final poi = await widget.services.pois.poiById(id);
+    if (mounted && poi != null) _openDetail(poi);
+  }
+
+  void _openDetail(Poi poi) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => PoiDetailScreen(
+          poi: poi,
+          audio: widget.services.audio,
+          checkedIn: false,
+          navigationAvailable: !widget.internalDemo,
+          onNavigate: () async =>
+              _showNotice('Navigasi belum tersedia pada demo ini.'),
+        ),
+      ),
+    );
   }
 
   void _selectPoi(Poi poi) {
@@ -141,13 +224,14 @@ class _ExploreMapScreenState extends State<ExploreMapScreen> {
       _selectedPoi = poi;
       _showDetail = true;
       _expandedDetail = false;
-      _isUiPreview = false;
+      _isUiPreview = true;
     });
     _loadFacilities();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     unawaited(_locationSubscription?.cancel());
     for (final subscription in _subscriptions) {
       subscription.cancel();
@@ -166,18 +250,27 @@ class _ExploreMapScreenState extends State<ExploreMapScreen> {
           children: [
             if (!widget.embedded)
               _TopBar(onProfile: () => _showNotice('Profil belum tersedia')),
-            _LocationStatus(fix: _fix, pois: _pois),
+            _LocationStatus(
+              fix: _fix,
+              pois: _pois,
+              message:
+                  _locationMessage ??
+                  (_fix != null &&
+                          !widget.services.map.isInsideCampus(_fix!.position)
+                      ? 'Anda berada di luar area Kampus Ganesha'
+                      : null),
+            ),
             Expanded(
               child: LayoutBuilder(
                 builder: (context, constraints) => Stack(
                   fit: StackFit.expand,
                   children: [
-                    _MapCanvas(
+                    OfflineCampusMap(
+                      config: widget.services.map,
                       pois: _pois,
-                      selectedPoi: poi,
+                      selectedPoiId: poi?.id,
                       userPosition: _fix?.position,
                       onSelectPoi: _selectPoi,
-                      preview: _isUiPreview,
                     ),
                     Positioned(
                       top: 12,
@@ -185,14 +278,13 @@ class _ExploreMapScreenState extends State<ExploreMapScreen> {
                       child: _MapControls(
                         sessionActive: _sessionActive,
                         onSession: _toggleSession,
-                        onNotice: _showNotice,
                       ),
                     ),
                     if (poi != null && _showDetail)
                       Positioned(
                         left: 8,
                         right: 8,
-                        bottom: 0,
+                        bottom: 72,
                         height: math.min(452, constraints.maxHeight * 0.65),
                         child: _PoiSheet(
                           poi: poi,
@@ -207,7 +299,13 @@ class _ExploreMapScreenState extends State<ExploreMapScreen> {
                             _showDetail = false;
                             _isUiPreview = false;
                           }),
-                          onNotice: _showNotice,
+                          onView: () => _openDetail(poi),
+                          onListen: () => widget.services.audio.play(
+                            AudioClip(
+                              poiId: poi.id,
+                              kind: AudioClipKind.narration,
+                            ),
+                          ),
                         ),
                       ),
                   ],
@@ -300,10 +398,11 @@ class _TopBar extends StatelessWidget {
 }
 
 class _LocationStatus extends StatelessWidget {
-  const _LocationStatus({required this.fix, required this.pois});
+  const _LocationStatus({required this.fix, required this.pois, this.message});
 
   final LocationFix? fix;
   final List<Poi> pois;
+  final String? message;
 
   @override
   Widget build(BuildContext context) {
@@ -335,9 +434,10 @@ class _LocationStatus extends StatelessWidget {
             const SizedBox(width: 7),
             Expanded(
               child: Text(
-                nearest == null
-                    ? 'Mencari posisi Anda'
-                    : 'Dekat ${nearest.name}',
+                message ??
+                    (nearest == null
+                        ? 'Lokasi belum tersedia · periksa izin/GPS'
+                        : 'Dekat ${nearest.name}'),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
@@ -372,337 +472,21 @@ class _LocationStatus extends StatelessWidget {
   }
 }
 
-class _MapCanvas extends StatelessWidget {
-  const _MapCanvas({
-    required this.pois,
-    required this.selectedPoi,
-    required this.userPosition,
-    required this.onSelectPoi,
-    required this.preview,
-  });
-
-  final List<Poi> pois;
-  final Poi? selectedPoi;
-  final GeoPoint? userPosition;
-  final ValueChanged<Poi> onSelectPoi;
-  final bool preview;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final size = Size(constraints.maxWidth, constraints.maxHeight);
-        final points = pois.isEmpty
-            ? const <GeoPoint>[]
-            : pois.map((poi) => poi.position).toList();
-        return Stack(
-          fit: StackFit.expand,
-          children: [
-            CustomPaint(
-              painter: _SchematicMapPainter(
-                pois: pois,
-                userPosition: userPosition,
-              ),
-            ),
-            Positioned(
-              left: 12,
-              top: 10,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.86),
-                  borderRadius: BorderRadius.circular(7),
-                ),
-                child: Text(
-                  preview ? 'PRATINJAU UI • PETA ILUSTRASI' : 'PETA ILUSTRASI',
-                  style: const TextStyle(
-                    color: Color(0xFF68708A),
-                    fontSize: 8,
-                    letterSpacing: 0.55,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ),
-            for (final poi in pois)
-              if (poi != selectedPoi)
-                _poiMarker(poi, _project(poi.position, points, size)),
-            if (selectedPoi != null)
-              _selectedMarker(
-                selectedPoi!,
-                _project(selectedPoi!.position, points, size),
-              ),
-            if (userPosition != null)
-              _userMarker(_project(userPosition!, points, size)),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _poiMarker(Poi poi, Offset point) => Positioned(
-    left: (point.dx - 33).clamp(2, double.infinity),
-    top: (point.dy - 15).clamp(44, double.infinity),
-    child: GestureDetector(
-      onTap: () => onSelectPoi(poi),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(7),
-          boxShadow: const [BoxShadow(color: Color(0x18000000), blurRadius: 5)],
-        ),
-        child: Text(
-          poi.name,
-          style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w600),
-        ),
-      ),
-    ),
-  );
-
-  Widget _selectedMarker(Poi poi, Offset point) => Positioned(
-    left: (point.dx - 56).clamp(4, double.infinity),
-    top: (point.dy - 34).clamp(50, double.infinity),
-    child: GestureDetector(
-      onTap: () => onSelectPoi(poi),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: const Color(0xFF073B82),
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: const [BoxShadow(color: Color(0x33000000), blurRadius: 6)],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.location_on_outlined,
-              size: 14,
-              color: Colors.white,
-            ),
-            const SizedBox(width: 3),
-            Text(
-              poi.aliases.isEmpty ? poi.name : poi.aliases.first.toUpperCase(),
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
-
-  Widget _userMarker(Offset point) => Positioned(
-    left: point.dx - 15,
-    top: point.dy - 15,
-    child: Container(
-      width: 30,
-      height: 30,
-      decoration: BoxDecoration(
-        color: const Color(0x3329B6F6),
-        shape: BoxShape.circle,
-        border: Border.all(color: const Color(0x6642BDF5), width: 2),
-      ),
-      child: Center(
-        child: Container(
-          width: 15,
-          height: 15,
-          decoration: BoxDecoration(
-            color: const Color(0xFF073B82),
-            shape: BoxShape.circle,
-            border: Border.all(color: Colors.white, width: 3),
-          ),
-        ),
-      ),
-    ),
-  );
-
-  Offset _project(GeoPoint point, List<GeoPoint> all, Size size) {
-    if (all.isEmpty) return Offset(size.width / 2, size.height / 2);
-    final minLat = all.map((item) => item.lat).reduce(math.min);
-    final maxLat = all.map((item) => item.lat).reduce(math.max);
-    final minLng = all.map((item) => item.lng).reduce(math.min);
-    final maxLng = all.map((item) => item.lng).reduce(math.max);
-    final lngRange = math.max(maxLng - minLng, 0.00001);
-    final latRange = math.max(maxLat - minLat, 0.00001);
-    final x = 22 + ((point.lng - minLng) / lngRange) * (size.width - 60);
-    final y = 65 + ((maxLat - point.lat) / latRange) * (size.height * 0.48);
-    return Offset(x, y);
-  }
-}
-
-class _SchematicMapPainter extends CustomPainter {
-  const _SchematicMapPainter({required this.pois, required this.userPosition});
-
-  final List<Poi> pois;
-  final GeoPoint? userPosition;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    canvas.drawColor(const Color(0xFFF1F3FF), BlendMode.src);
-    final road = Paint()
-      ..color = Colors.white
-      ..strokeWidth = 18
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-    final roadEdge = Paint()
-      ..color = const Color(0xFFD7E0FF)
-      ..strokeWidth = 2
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-
-    // Decorative road geometry is explicitly marked as an illustration.
-    final paths = [
-      Path()
-        ..moveTo(size.width * 0.49, 0)
-        ..lineTo(size.width * 0.49, size.height),
-      Path()
-        ..moveTo(size.width * 0.08, size.height * 0.40)
-        ..lineTo(size.width * 0.92, size.height * 0.40),
-      Path()
-        ..moveTo(size.width * 0.13, size.height * 0.70)
-        ..lineTo(size.width * 0.90, size.height * 0.70),
-      Path()
-        ..moveTo(size.width * 0.24, size.height * 0.27)
-        ..lineTo(size.width * 0.82, size.height * 0.64),
-      Path()
-        ..moveTo(size.width * 0.78, size.height * 0.25)
-        ..lineTo(size.width * 0.23, size.height * 0.70),
-    ];
-    for (final path in paths) {
-      canvas.drawPath(path, road);
-      canvas.drawPath(path, roadEdge);
-    }
-
-    final parkPaint = Paint()..color = const Color(0xFFD9F3EF);
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(
-          size.width * 0.18,
-          size.height * 0.14,
-          size.width * 0.64,
-          30,
-        ),
-        const Radius.circular(10),
-      ),
-      parkPaint,
-    );
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(
-          size.width * 0.34,
-          size.height * 0.52,
-          size.width * 0.16,
-          44,
-        ),
-        const Radius.circular(22),
-      ),
-      parkPaint,
-    );
-
-    final label = TextPainter(
-      text: const TextSpan(
-        text: 'PETA SKEMATIS',
-        style: TextStyle(
-          color: Color(0x99717A96),
-          fontSize: 8,
-          letterSpacing: 1,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    label.paint(
-      canvas,
-      Offset(size.width - label.width - 14, size.height - 18),
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _SchematicMapPainter oldDelegate) =>
-      oldDelegate.pois != pois || oldDelegate.userPosition != userPosition;
-}
-
 class _MapControls extends StatelessWidget {
-  const _MapControls({
-    required this.sessionActive,
-    required this.onSession,
-    required this.onNotice,
-  });
-
+  const _MapControls({required this.sessionActive, required this.onSession});
   final bool sessionActive;
   final VoidCallback onSession;
-  final ValueChanged<String> onNotice;
 
   @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        _ControlButton(
-          icon: Icons.explore_outlined,
-          onTap: () => onNotice('Kompas peta'),
-        ),
-        const SizedBox(height: 7),
-        _ControlButton(
-          icon: Icons.my_location_rounded,
-          onTap: () => onNotice('Posisi diperbarui'),
-        ),
-        const SizedBox(height: 7),
-        _ControlButton(
-          icon: Icons.layers_outlined,
-          onTap: () => onNotice('Pilihan lapisan peta'),
-        ),
-        const SizedBox(height: 7),
-        Material(
-          color: sessionActive
-              ? const Color(0xFFB33D55)
-              : const Color(0xFF007C83),
-          shape: const CircleBorder(),
-          elevation: 3,
-          child: InkWell(
-            onTap: onSession,
-            customBorder: const CircleBorder(),
-            child: SizedBox(
-              width: 42,
-              height: 42,
-              child: Icon(
-                sessionActive
-                    ? Icons.stop_rounded
-                    : Icons.people_outline_rounded,
-                color: Colors.white,
-                size: 21,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _ControlButton extends StatelessWidget {
-  const _ControlButton({required this.icon, required this.onTap});
-
-  final IconData icon;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => Material(
-    color: Colors.white,
-    shape: const CircleBorder(),
-    elevation: 2,
-    child: InkWell(
-      onTap: onTap,
-      customBorder: const CircleBorder(),
-      child: SizedBox(
-        width: 39,
-        height: 39,
-        child: Icon(icon, color: const Color(0xFF174F9E), size: 20),
-      ),
+  Widget build(BuildContext context) => FilledButton.icon(
+    style: FilledButton.styleFrom(
+      backgroundColor: sessionActive
+          ? const Color(0xFFB33D55)
+          : const Color(0xFF007C83),
     ),
+    onPressed: onSession,
+    icon: Icon(sessionActive ? Icons.stop : Icons.explore_outlined),
+    label: Text(sessionActive ? 'Akhiri sesi' : 'Mulai Explore'),
   );
 }
 
@@ -715,7 +499,8 @@ class _PoiSheet extends StatelessWidget {
     required this.onToggleExpanded,
     required this.onClose,
     required this.onSkip,
-    required this.onNotice,
+    required this.onView,
+    required this.onListen,
   });
 
   final Poi poi;
@@ -725,7 +510,8 @@ class _PoiSheet extends StatelessWidget {
   final VoidCallback onToggleExpanded;
   final VoidCallback onClose;
   final VoidCallback onSkip;
-  final ValueChanged<String> onNotice;
+  final VoidCallback onView;
+  final VoidCallback onListen;
 
   @override
   Widget build(BuildContext context) {
@@ -924,9 +710,7 @@ class _PoiSheet extends StatelessWidget {
                     child: FilledButton.icon(
                       onPressed: poi.media.narrationAudio == null
                           ? null
-                          : () => onNotice(
-                              'Pemutar narasi akan dihubungkan pada PB08',
-                            ),
+                          : onListen,
                       style: FilledButton.styleFrom(
                         backgroundColor: const Color(0xFF063B82),
                         foregroundColor: Colors.white,
@@ -953,8 +737,7 @@ class _PoiSheet extends StatelessWidget {
                     children: [
                       Expanded(
                         child: OutlinedButton.icon(
-                          onPressed: () =>
-                              onNotice('Konten detail masih placeholder'),
+                          onPressed: onView,
                           style: OutlinedButton.styleFrom(
                             backgroundColor: const Color(0xFFE7EAFF),
                             foregroundColor: _ExploreMapScreenState._navy,
@@ -966,7 +749,7 @@ class _PoiSheet extends StatelessWidget {
                           ),
                           icon: const Icon(Icons.info_outline, size: 17),
                           label: const Text(
-                            'Info Lengkap',
+                            'Lihat',
                             style: TextStyle(fontSize: 12),
                           ),
                         ),
@@ -996,7 +779,7 @@ class _PoiSheet extends StatelessWidget {
                   const SizedBox(height: 7),
                   const Center(
                     child: Text(
-                      'Ketuk dua kali di layar untuk perintah suara instan',
+                      'Konten yang belum diverifikasi ditandai PLACEHOLDER',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Color(0xFF747B8B),

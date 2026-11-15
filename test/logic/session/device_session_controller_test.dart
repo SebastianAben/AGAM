@@ -127,6 +127,30 @@ void main() {
       );
     });
 
+    test('GPS hilang membatalkan dwell yang belum selesai', () async {
+      await session.start(SessionMode.explore);
+      await dwell(0, 4);
+      source.fail(LocationIssue.serviceDisabled);
+      await pumpEventQueue();
+      await dwell(5, 4);
+      expect(triggers, isEmpty);
+      await dwell(10, 0);
+      expect(triggers, hasLength(1));
+    });
+
+    test(
+      'GPS hilang bukan bukti keluar, pengunci kunjungan bertahan',
+      () async {
+        await session.start(SessionMode.explore);
+        await dwell(0, 5);
+        expect(triggers, hasLength(1));
+        source.fail(LocationIssue.serviceDisabled);
+        await pumpEventQueue();
+        await dwell(610, 5);
+        expect(triggers, hasLength(1));
+      },
+    );
+
     test('Trail: respons penuh', () async {
       await session.start(SessionMode.trail);
       await dwell(0, 5);

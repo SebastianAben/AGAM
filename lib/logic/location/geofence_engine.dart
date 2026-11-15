@@ -62,9 +62,7 @@ class GeofenceEngine {
         !fix.accuracyM.isFinite ||
         fix.accuracyM < 0 ||
         fix.accuracyM > kTriggerMaxAccuracyM) {
-      for (final poi in _pois) {
-        poi.clearCandidate();
-      }
+      interruptDwell();
       return const [];
     }
 
@@ -111,6 +109,14 @@ class GeofenceEngine {
     for (final poi in _pois) {
       poi.clearCandidate();
       poi.triggeredInside = false;
+    }
+  }
+
+  /// Kehilangan GPS membatalkan kontinuitas dwell, tetapi bukan bukti keluar.
+  /// Pengunci kunjungan dan cooldown tetap bertahan tanpa posisi sintetis.
+  void interruptDwell() {
+    for (final poi in _pois) {
+      poi.clearCandidate();
     }
   }
 

@@ -1,6 +1,23 @@
 # Session Handoff — AGAM
 
-## Current — Setup Firebase dan sumber Firestore PB03, 15 November 2026
+## Current — Sinkronisasi `dev` dan pemulihan WIP, 16 November 2026
+
+**Git:** `git fetch origin` menemukan `origin/dev` maju dari `d602fed` ke `8950a27`; checkout lokal `dev` berada di `089883c` dan tertinggal 11 commit. Seluruh perubahan tracked/untracked disimpan sementara dengan `git stash push --include-untracked`, lalu branch di-fast-forward ke `8950a27`. WIP diterapkan kembali tanpa reset atau force; stash pengaman masih dipertahankan.
+
+**Isi remote yang kini ada di `dev`:** integrasi PB03 Firestore dan seed workflow, konten POI/media, serta perbaikan notifikasi PB06 (PR #4/#5). Konflik pemulihan pada `implementationPhases.md`, `sessionHandoff.md`, `main.dart`, `pubspec.yaml`, dan `pubspec.lock` sudah diselesaikan dengan mempertahankan perubahan remote dan demo lokal.
+
+**WIP lokal:** pipeline dan aset peta PMTiles, renderer offline, alur Explore, perbaikan lokasi/geofence, test dan dokumentasi demo tetap dipertahankan. `main.dart` menggabungkan Firebase dengan gerbang demo eksplisit: Firebase diinisialisasi pada build `AGAM_INTERNAL_DEMO=true`, sementara build biasa tetap menampilkan gerbang login yang belum tersedia.
+
+**Verifikasi:** evidence sebelumnya di `.agent/implementationPhases.md` (246 test Flutter, 21 test pipeline, format/analyze, build dan audit APK, serta pemeriksaan pada OPPO CPH2739) berasal dari source `089883c` + WIP sebelum sinkronisasi. Build dan test belum dijalankan pada tree gabungan ini; jangan menganggap APK/evidence lama sebagai verifikasi commit gabungan.
+
+**Dependency:** setelah menggabungkan dependency Firebase dan peta pada `pubspec.yaml`, `flutter pub get` (Flutter 3.47.9) berhasil dan menyusun ulang lockfile tanpa mengubah versi package yang sudah terkunci; dependency peta yang dibutuhkan ditambahkan.
+
+**Pemeriksaan pada tree gabungan:** `flutter pub get` berhasil; `dart format --output=none --set-exit-if-changed lib test` melaporkan 78 file, 0 perubahan; `flutter analyze --no-pub` tanpa issue; `git diff --cached --check` lulus. Automated test dan build APK tidak dijalankan setelah sinkronisasi, jadi evidence lama tetap terbatas pada source sebelumnya.
+
+**Berikutnya:** jalankan CI pada `dev`, build dan audit APK dari tree gabungan, lalu lanjutkan simulasi emulator serta pengujian fisik/field P01 dan audit jaringan sesuai checklist di rencana demo. Pertahankan status PBI `in_progress` sampai evidence acceptance tersedia.
+
+---
+## Sebelumnya — Setup Firebase dan sumber Firestore PB03, 15 November 2026
 
 **Konteks:** PR #3 (integrasi) sudah di-merge ke `dev`; branch `chore/integration-fe-la-lb` dihapus (lokal dan remote) atas instruksi PM. Pekerjaan ini di branch `feat/pb03-firestore-setup` dari `dev` `d602fed`, tanpa upstream ke `dev`. Empat commit PB06/PB09 di `LA` (`c8c06a6`…`605c8a9`) belum di `dev` dan dibiarkan untuk PR developer LA; simulasi menunjukkan tumpang tindih hanya mungkin di `pubspec.yaml` (bagian berbeda). PM perlu memberi tahu developer LA bahwa setup Firebase dikerjakan di branch ini.
 
@@ -15,6 +32,188 @@
 **Berikutnya:** simpan key sebagai secret `FIREBASE_SERVICE_ACCOUNT`; bereskan billing GitHub; review dan commit branch ini lalu PR ke `dev`; usulkan pembanding versi dataset ke LA.
 
 ---
+## Target sementara demo APK
+
+Rencana satu-satunya untuk vertical slice demo peta offline → lokasi nyata → trigger POI → kartu placeholder ada di [demo-apk-temporary-plan.md](demo-apk-temporary-plan.md). Rencana ini bukan pengganti PRD/PBI. Baca dan perbarui checklist di dokumen itu selama pengerjaan; jangan membuat dokumen sementara lain. Setelah kriteria demo tercapai atau target dibatalkan, hapus dokumen rencana dan pointer ini pada sesi yang sama, lalu verifikasi file sudah tidak ada.
+
+## Sebelumnya — Pengujian Android Tahap 2/3, 15 November 2026
+
+**Mandat:** lanjutkan implementasi/perbaikan, build/audit, emulator dan
+pendampingan GPS fisik sampai kriteria demo terbukti. WIP existing tetap utuh;
+tanpa reset, clean, commit, push, merge, rilis, perubahan kontrak atau threshold.
+
+**Baseline ulang:** `dev`, HEAD dasar `089883c8d7d589eeb3fbabdc51b79808d86deccd`
++ WIP. APK existing versi `1.0.0+1`, 171.972.503 byte, SHA-256
+`e54997a3bd133d933fbbfb968e2a8e7e4696e1107f1563552391099bc305ffce` cocok;
+137 file snapshot source sebelum build identik. Audit `--apk`, metadata/izin
+dan signature v2 diulang lulus. Belum build baru atau perubahan source.
+
+**Runtime disiapkan:** emulator 37.2.13, Google APIs Android 16/API 36 x86_64
+revision 7 dipasang di SDK existing. WHPX usable. AVD baru `agam_demo_api36`
+di `D:\CodexRuntime\agam-android\avd\agam_demo_api36.avd`, headless software
+renderer, RAM 2 GB, 2 core; tidak mengubah BIOS/Gradle atau menghapus data.
+Serial yang dialokasikan `emulator-5554`; gunakan sebagai **simulasi** saja.
+Log emulator dan helper ADB khusus emulator berada di direktori toolchain luar
+repo. Jangan screenshot atau merekam koordinat/lintasan HP fisik.
+
+**Pendampingan:** ADB awal kosong. Pengguna sudah menerima langkah USB debugging
+dan menjawab HP akan dihubungkan serta izin diberikan. Koneksi/model/Android
+dan akses area uji Labtek V belum terbukti. Tindak lanjut: selesaikan boot dan
+skenario APK emulator, periksa daftar ADB lagi, install tanpa uninstall/hapus
+data, lalu dampingi skenario fisik bertahap dan evaluasi evidence. Hasil runtime
+harus ditambahkan ke evidence terbaru rencana demo dan status PBI; belum boleh
+menandai Tahap 2/3 atau §5 selesai. Rencana/pointer tetap dipertahankan.
+
+## Sebelumnya — APK demo berhasil dibangun dan diaudit, 15 November 2026
+
+**Hasil permintaan lanjutan:** pengguna meminta APK dan audit APK diselesaikan
+dalam progres ini. Android SDK dipasang di luar repo, build demo **berhasil**,
+dan `python -X utf8 tools/tiles/audit_assets.py --apk build/app/outputs/flutter-apk/app-debug.apk`
+**exit 0**. PMTiles/style/manifest di ZIP identik dengan source.
+
+**APK:** `build/app/outputs/flutter-apk/app-debug.apk` (root repo),
+**171.972.503 byte / 164,01 MiB**, SHA-256
+`e54997a3bd133d933fbbfb968e2a8e7e4696e1107f1563552391099bc305ffce`.
+`site.agam` versi `1.0.0+1`, minSdk 24, compile/targetSdk 36, ABI arm64-v8a /
+armeabi-v7a / x86_64. Debug signature v2 valid (`apksigner verify` exit 0).
+Manifest APK tidak memuat `ACCESS_BACKGROUND_LOCATION`; `INTERNET` debug dan
+`ACCESS_NETWORK_STATE` ada. Belum merupakan audit lalu lintas/penyimpanan runtime.
+
+**Source:** tetap `dev`, HEAD dasar
+`089883c8d7d589eeb3fbabdc51b79808d86deccd` **+ perubahan lokal tracked/untracked**.
+Jangan menyebut HEAD sebagai commit APK. Snapshot sebelum/sesudah build memastikan
+137 file source di luar `.agent/` identik byte per byte. Tidak mengubah source,
+aset, dependency, flag login, threshold, atau konfigurasi tracked Android; tidak
+melakukan reset, clean, commit, push, merge atau rilis.
+
+**Toolchain/reproduksi:** Flutter 3.47.9 / Dart 3.13.7 pada path absolut existing
+(FVM tidak di PATH), JDK existing `C:\Program Files\Java\jdk-21.0.12`, Android SDK
+`D:\CodexRuntime\agam-android\sdk`, Gradle 9.3.1. SDK Manager memasang Platform
+36, build-tools 36.0.0, platform-tools, NDK 28.2.13676358, CMake 3.22.1; Gradle
+otomatis memasang Platform 35 revision 2 untuk dependency. Android toolchain
+`flutter doctor -v` kini lulus dan lisensi diterima. Command-line tools resmi
+22.0 dan unduhan Gradle diverifikasi checksum; provenance/detail di progress
+log rencana. Wrapper diabaikan Git yang belum ada disalin dari cache Flutter;
+`android/local.properties` kini memiliki `sdk.dir`. Konfigurasi global/PATH tetap.
+
+**Workaround lokal:** build pertama setelah SDK tersedia gagal pada cache
+incremental Kotlin (`audio_session`/`flutter_tts`) karena root pub cache C:
+berbeda dengan proyek D:. `D:\CodexRuntime\agam-android\gradle\gradle.properties`
+berisi `kotlin.incremental=false`; build ulang sukses (`assembleDebug` 284,4 detik).
+Untuk mengulang, set `ANDROID_HOME`/`ANDROID_SDK_ROOT` ke SDK di atas,
+`JAVA_HOME` ke JDK di atas dan **`GRADLE_USER_HOME=D:\CodexRuntime\agam-android\gradle`**,
+lalu jalankan Flutter SDK absolut dengan
+`build apk --debug --dart-define=AGAM_INTERNAL_DEMO=true`. Recipe PowerShell
+lengkap ada pada rencana demo. Log di direktori toolchain luar repo:
+`demo-build.log` (gagal), `demo-build-retry.log` (berhasil).
+Peringatan kompatibilitas KGP `flutter_tts` untuk Flutter masa depan masih ada.
+
+**Verifikasi/status:** build, audit tiga aset APK, metadata/izin/tanda tangan dan
+snapshot source lulus. Source sama dengan evidence 233 test Flutter, 21 test
+pipeline, format/analyze lulus sebelumnya; tidak diulang tanpa perubahan source.
+Diff/check tautan dokumentasi diperiksa akhir sesi. Rencana/checklist,
+implementation phases, header status PRD dan handoff diperbarui; penggunaan AI
+untuk setup/build/audit dicakup PB20.
+
+**Emulator/perangkat/berikutnya:** `flutter emulators` tetap tidak menemukan
+sumber emulator, `adb devices -l` sekarang dapat dijalankan dan daftar kosong.
+Belum install/launch APK atau uji GPS fisik. Install APK ini pada perangkat
+Android, uji offline/pan/zoom/P01, izin/GPS/lifecycle, Explore→dwell→trigger→kartu,
+akhir service, notifikasi/layar mati dan privasi runtime di Labtek V.
+Tahap 2/3 dan PB02/PB04/PB05/PB06/PB07 tetap `in_progress`; PB21/PB22 `planned`.
+Target build/audit permintaan lanjutan selesai; target demo keseluruhan belum,
+sehingga rencana/pointer tetap dipertahankan.
+
+## Sebelumnya — Verifikasi ulang demo APK Labtek V, 15 November 2026
+
+**Scope:** melanjutkan Tahap 2/3 memakai APK internal jika mesin mendukung.
+Seluruh perubahan lokal dipertahankan; tidak ada reset, clean, commit, push,
+merge, rilis atau perubahan source/kontrak/threshold. Sesi ini memperbarui
+`demo-apk-temporary-plan.md`, `implementationPhases.md`, dan handoff ini saja.
+Rencana demo dan pointer tetap ada karena target belum tercapai.
+
+**Checkout/source:** `dev`, HEAD dasar
+`089883c8d7d589eeb3fbabdc51b79808d86deccd`, pubspec `1.0.0+1`, dengan WIP
+tracked/untracked. Ini bukan commit APK. FVM tidak tersedia di PATH;
+`C:\Users\ASUS\.cache\tooling\flutter-3.47.9\bin\flutter.bat --version`
+membuktikan Flutter 3.47.9 / Dart 3.13.7 (framework `c197ca5199`). Perintah
+Flutter sesi ini memakai path absolut tersebut, tanpa mengubah PATH global.
+
+**Build:** pemeriksaan baru `doctor -v` tetap memberi `Unable to locate Android
+SDK`. Environment Android tidak disetel, tidak ada `sdk.dir` lokal atau
+konfigurasi SDK Flutter; lokasi standar dan beberapa lokasi tooling tambahan
+tidak menemukan SDK/adb/emulator. Build ulang
+`flutter build apk --debug --dart-define=AGAM_INTERNAL_DEMO=true` exit 1 sebelum
+Gradle: `No Android SDK found`. Target
+`build/app/outputs/flutter-apk/app-debug.apk` tidak ada; ukuran/hash APK tidak
+tersedia dan audit ZIP `--apk` tidak dijalankan. SDK tidak dipasang sesi ini.
+
+**Emulator/perangkat:** `flutter devices` hanya Windows/Chrome/Edge;
+`flutter emulators` tidak menemukan sumber emulator. Tidak ditemukan proses
+adb/emulator atau entri PnP Android/ADB/MTP/USB Android yang cocok; nama ponsel
+Bluetooth bukan koneksi debugging. `adb devices -l` tidak dijalankan karena adb
+belum tersedia. Belum ada perangkat Android yang terdeteksi siap diuji; tidak
+mengklaim tidak ada ponsel milik pengguna. Install/start, pan/zoom, marker P01,
+izin/GPS Android, Explore, trigger→kartu, notifikasi/layar mati dan field test
+Labtek V **belum dijalankan**. Tahap 2/3 belum selesai.
+
+**Pemeriksaan aktual:** test terarah awal gagal kompilasi karena cache package
+peta hilang. `flutter pub get --enforce-lockfile` memulihkan dependency tanpa
+mengubah versi/lockfile. Setelah itu format 74 file tanpa perubahan, analyze
+tanpa issue, **233 test Flutter lulus** (log cache lokal
+`tools/tiles/.cache/demo-flutter-tests-2026-11-15.log`), **21 test pipeline lulus**,
+dan audit aset sumber lulus (`apkChecked: null`). PMTiles tetap 1.022.885 byte,
+SHA-256 `6af43dfb1be0f854480ab45caa5dadc672e865134d50cddf43a316fc97934792`;
+ini bukan hash APK. Simulasi widget tidak membuktikan GPS fisik.
+Diff akhir ditinjau dan `git diff --check` lulus; tautan lokal rencana/status
+tetap valid. Penggunaan AI untuk pemeriksaan dan dokumentasi ini dicakup PB20.
+
+**Privasi/keputusan:** inspeksi source jalur posisi/sesi/peta tidak menemukan
+pengiriman atau riwayat posisi; cache dataset berisi konten POI dan remote
+default belum tersedia. Audit lalu lintas dan penyimpanan Android belum bisa
+dijalankan. Build biasa tetap tertahan gerbang login sebelum layanan
+diinisialisasi; flag demo eksplisit tetap wajib. Radius/akurasi/dwell/cooldown
+dan coverage engineering berlabel tidak berubah. PB02/PB04/PB05/PB06/PB07 tetap
+`in_progress`; PB21/PB22 tetap `planned`.
+
+**Berikutnya:** sediakan lokasi SDK valid atau pasang Android SDK beserta
+toolchain yang dibutuhkan, lalu jalankan build demo dan audit `--apk`, catat
+ukuran/hash/versi/HEAD dasar + WIP. Gunakan emulator untuk simulasi awal, kemudian
+perangkat fisik di Labtek V untuk akurasi/dwell/trigger/kartu, akhir service,
+izin/lifecycle, notifikasi/layar mati, offline dan audit jaringan/penyimpanan.
+Daftar perangkat/lokasi uji perlu tim; jangan menaikkan status sebelum evidence.
+
+## Sebelumnya — Integrasi demo internal Labtek V, 14 November 2026
+
+**Instruksi/keputusan:** pengguna memilih Labtek V (P01), mengizinkan skip login sementara, meminta kebutuhan lain disesuaikan dan memprioritaskan integrasi FE/logic untuk alur demo. Login dilewati hanya dengan `--dart-define=AGAM_INTERNAL_DEMO=true` dan label internal di UI; default false menampilkan gerbang login belum tersedia. Batas demo memakai coverage engineering OSM bersumber PRD §9.3 dalam mandat penyesuaian ini; bukan penetapan batas layanan produk atau geometri survei. Radius/dwell/akurasi/cooldown tidak berubah. PRD §4/§9.3/§14/§22/§23 dan status PBI diperbarui.
+
+**Checkout:** root tetap `dev` `089883c` + working tree, tanpa commit/push, merge Git, PR, rilis, atau perubahan `lib/contracts/`. Instruksi integrasi diterapkan secara lokal lintas folder FE/LA/LB. WIP konfigurasi/style/test/audit dari sibling `../AGAM-LB-PB04` disalin ke root sebagai dasar dan disesuaikan di root; worktree asal `LB` `d602fed` tidak diubah. Integrasi branch formal dan review tim tetap tertunda; tidak menyamakan working tree ini dengan commit yang telah dipublikasikan.
+
+**Ada di source dan teruji lokal:**
+
+- Pipeline `tools/tiles/cluster_pmtiles.py` + hook `tile_pipeline.py` menyusun payload menurut tile ID, memvalidasi input/output, dan mencatat postprocess. Aset/manifest baru 1.022.885 byte, SHA-256 `6af43dfb1be0f854480ab45caa5dadc672e865134d50cddf43a316fc97934792`. Seluruh 13 payload terdekompresi/metadata identik dengan arsip awal; transformasi ulang byte-identik. Full Planetiler tidak diulang.
+- `lib/logic/map/agam_map_config.dart` (area pending produk + area internal engineering, pusat P01), `offline_map_tiles.dart`, `assets/map/agam-style.json`, dan `lib/ui/widgets/offline_campus_map.dart`: PMTiles aset → rasterisasi vektor seluruh 13 tile → PNG memori, marker repository, posisi perangkat, pan/zoom/overzoom, Pusatkan, atribusi dua sumber. Tidak memakai provider jaringan atau cache filesystem. Kombinasi probe `vector_map_tiles` ditinggalkan karena source layer bawaan tetap menulis cache disk saat TTL nol.
+- `lib/main.dart`, `lib/ui/app.dart`, `explore_map_screen.dart`, `poi_detail_screen.dart`: layanan LA asli + repository yang sama untuk peta/trigger/detail, Mulai/Akhiri Explore, penanganan GPS/izin/lifecycle, dan kanal `TriggerResponder.viewRequests` sampai UI04 tanpa perubahan kontrak. Demo hanya menampilkan Explore; navigasi detail dan tab fitur lain yang masih fake tidak dibuka. Layanan LB fake di luar scope masih ada di composition root, tidak diklaim selesai.
+- `pubspec.yaml`/lock: aset peta terdaftar, `flutter_map 7.0.2`, `vector_tile_renderer 5.2.0`, `pmtiles 1.3.0`, `latlong2 0.9.1`, `url_launcher ^6.3.2` (lock 6.3.3, tautan atribusi statis). `tools/tiles/README.md` memuat cara build/audit; `.github/workflows/ci.yml` menambah test pipeline dan artifact demo berflag + audit setelah artifact debug biasa. Workflow belum dijalankan di GitHub.
+- Test baru/diadopsi: `test/logic/map/`, `test/ui/demo_explore_test.dart`, `tools/tiles/test_cluster_pmtiles.py`; audit aset `tools/tiles/audit_assets.py`. Snapshot widget di `tools/tiles/.cache/demo-labtek-v-widget.png` diperiksa visual; ini simulasi, bukan screenshot Android/perangkat.
+
+**Verifikasi akhir (Flutter 3.47.9 / Dart 3.13.7):** format 74 file tanpa perubahan, analyze tanpa issue, **233 test Flutter lulus**, **21 test pipeline lulus**, audit aset sumber dan CLI `pmtiles verify` lulus. Uji widget membuktikan pan, overzoom 19, posisi dari stream, penolakan akurasi 30 m, dwell, trigger P01→UI04 P01, kanal view P02→P02, akhir service sesi, GPS mati, dan nol langganan setelah layar dilepas. Unit render membaca/rasterisasi seluruh tile dengan HTTP ditolak. Catatan awal kegagalan uji dan penjadwalan tester ada di progress rencana; tidak mengurangi threshold atau mengubah engine agar lulus.
+
+**Build dan batas evidence:** `flutter build apk --debug --dart-define=AGAM_INTERNAL_DEMO=true` dicoba, gagal sebelum Gradle: **No Android SDK found**. `flutter doctor -v` tidak menemukan Android toolchain/perangkat Android. Tidak ada APK baru, ukuran/hash APK, audit ZIP APK, emulator, install perangkat, GPS nyata, pengujian jaringan Android atau field test. Inspeksi source jalur peta tidak menemukan pengiriman/penyimpanan koordinat atau cache viewport; itu belum menggantikan audit runtime Android. Notifikasi native, kembali dari background dan cold start tetap perlu perangkat.
+
+**Berikutnya:** pasang/konfigurasikan Android SDK lalu build flag demo dan jalankan audit `--apk`, atau verifikasi CI setelah pengguna mengotorisasi publikasi secara terpisah. Tetapkan perangkat, install APK internal, uji mode pesawat dan berjalan dekat Labtek V sesuai radius/dwell/akurasi/cooldown PRD, notifikasi layar mati dan akhir sesi. PB02/PB04/PB05/PB06/PB07 tetap `in_progress`, PB21/PB22 tetap `planned`. Target demo belum tercapai, rencana dan pointer dipertahankan. Penggunaan AI untuk implementasi/probe/test ini dicakup tim pada PB20.
+
+## Sebelumnya — Awal rencana demo APK, 14 November 2026
+
+**Scope sesi:** memulai rencana sementara secara bertahap. Tahap 0 menunggu keputusan PM (POI pertama, geometri/sumber/persetujuan area layanan, jalur login, perangkat/lokasi uji); permintaan keputusan telah diajukan, belum ada jawaban yang dicatat. Tidak mengaktifkan trigger dengan batas palsu atau melewati login. Checkout root tetap `dev` `089883c`; WIP sibling `../AGAM-LB-PB04` pada `LB` `d602fed` hanya dibaca, tidak ditimpa atau diintegrasikan.
+
+**Hasil bagian Tahap 1:** dipilih kombinasi stabil `flutter_map 7.0.2`, `vector_map_tiles 8.0.0`, `vector_map_tiles_pmtiles` tepat `1.5.0`, `vector_tile_renderer 5.2.0` (`pmtiles 1.3.0` transitif), berdasarkan metadata/source package dan probe dengan Flutter 3.47.9 / Dart 3.13.7 di luar repo. Arsip produksi **unclustered** ditolak provider; uji awal 1 lulus/1 gagal. Salinan arsip dikonversi dengan CLI existing `pmtiles cluster`; dua test probe kemudian lulus (parse style, baca/decode tile lokal pada zoom 12–16 dengan HTTP ditolak). Seluruh 13 payload dan metadata identik sebelum/sesudah konversi. Ini belum menjadi renderer aplikasi dan belum bukti tampilan Android.
+
+**Verifikasi:** 18 test pipeline root lulus; audit aset WIP LB tanpa APK lulus; CLI verify salinan clustered lulus. Patch aset WIP terbukti gagal `git apply --check` terhadap pubspec root. Rincian versi, command, path probe, hash, hasil gagal/lulus, dan keterbatasan hanya di progress log [rencana demo](demo-apk-temporary-plan.md#6-progress-log). Analyze/test aplikasi utama, APK build, emulator, perangkat fisik, dan field test tidak dijalankan. PB04 tetap `in_progress`; tidak ada commit, push, merge, atau rilis.
+
+**File repo yang diperbarui:** checklist/progress rencana demo, catatan PB04 di `implementationPhases.md`, dan handoff ini. Perubahan awal pengguna pada pointer rencana dipertahankan. Tidak mengubah source, aset, dependency, atau WIP track lain. Penggunaan AI untuk pemilihan dependency/probe ini perlu dicakup PB20.
+
+**Berikutnya:** lanjutkan track LB dengan clustering reproducible dalam pipeline (bukan mengedit flag header), perbarui manifest bersama output tervalidasi, verifikasi kesetaraan payload dan rerun deterministik. Setelah itu integrasi renderer/aset bersama FE/LA dan review sesuai ownership. Tunggu keputusan Tahap 0 untuk bagian yang bergantung pada area layanan/login/perangkat. Target demo belum selesai; rencana dan pointer tetap ada.
 
 ## Sebelumnya — Integrasi LA, LB, dan FE, 14 November 2026
 

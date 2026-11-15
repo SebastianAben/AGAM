@@ -25,6 +25,33 @@ Parameter lain: `-OsmSha256`, `-Output`, `-Cache`, `-Java`, `-Python`, `-Boundar
 Path relatif untuk parameter operator dihitung dari working directory. Default
 path dihitung dari lokasi script sehingga tetap benar bila dipanggil dari lokasi lain.
 
+Setelah Planetiler selesai, pipeline memvalidasi arsip, menjalankan clustering
+deterministik lokal (`cluster_pmtiles.py` v1), lalu memvalidasi hasil sebelum
+menerbitkan pasangan arsip/manifest. Metadata dan payload MVT tidak diganti;
+payload disusun menurut tile ID, directory/metadata memakai kompresi `none`.
+Clustering diperlukan karena pembaca Dart `pmtiles 1.3.0` menolak arsip
+unclustered. Implementasi ini dibatasi flat root ≤16 KiB dan menolak arsip
+lebih besar; bukan pengganti CLI clustering untuk peta wilayah besar.
+Manifest mencatat postprocess dan checksum output akhirnya.
+
+Demo internal memakai `flutter_map 7.0.2` + `vector_tile_renderer 5.2.0` dan
+`pmtiles 1.3.0`. `OfflineMapTiles` membaca arsip APK, merender seluruh tile kecil
+AGAM ke PNG di memori, lalu `TileProvider` lokal memasoknya ke peta. Tidak ada
+cache tile ke filesystem atau fallback jaringan; max native zoom 16 dioverzoom
+hingga 20. Layer `VectorTileLayer` bawaan `vector_map_tiles` tidak dipakai
+karena tetap menulis cache ke disk meskipun TTL nol.
+
+```powershell
+# Build demo dengan pengecualian login yang diizinkan PM, bukan build produk.
+fvm flutter build apk --debug --dart-define=AGAM_INTERNAL_DEMO=true
+python -X utf8 tools/tiles/audit_assets.py --apk build/app/outputs/flutter-apk/app-debug.apk
+```
+
+Flag default `false`: aplikasi menampilkan gerbang login belum tersedia (PB21).
+Demo menampilkan label internal, fokus Explore/Labtek V, dan tidak membuka
+fitur routing/trail/fasilitas fake. Area demo memakai bounds engineering
+coverage OSM PRD §9.3; batas layanan produk dan acceptance lapangan masih TBD.
+
 Unduhan pertama mencakup PBF Jawa (~899 MB saat inspeksi 4 November 2026),
 JAR (~93 MB), serta sumber ocean/Natural Earth/lake centerline (~1,45 GB pada sesi ini) untuk profil OpenMapTiles.
 Sediakan ruang disk untuk cache, input, dan scratch; jangan menyamakan ukuran

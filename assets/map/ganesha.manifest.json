@@ -65,8 +65,8 @@
   "profileLicenseUrl": "https://github.com/openmaptiles/openmaptiles/blob/master/LICENSE.md",
   "output": {
     "filename": "ganesha.pmtiles",
-    "sizeBytes": 1035927,
-    "sha256": "8501f70bcc5d8b2624a4eaa12074006b99a4631d9deba21a5b91496087e844f3",
+    "sizeBytes": 1022885,
+    "sha256": "6af43dfb1be0f854480ab45caa5dadc672e865134d50cddf43a316fc97934792",
     "bounds": [
       107.6063593,
       -6.8954553,
@@ -99,8 +99,12 @@
     }
   },
   "limitations": [
-    "Build-time artifact; belum terintegrasi renderer/APK.",
-    "Batas OSM bukan hasil survei lapangan.",
-    "Ukuran APK belum diukur."
-  ]
+    "Batas layanan produk dan pengujian perangkat/field test belum selesai.",
+    "Batas engineering OSM bukan survei resmi."
+  ],
+  "postprocess": {
+    "name": "AGAM deterministic clustering",
+    "version": 1,
+    "inputSha256": "8501f70bcc5d8b2624a4eaa12074006b99a4631d9deba21a5b91496087e844f3"
+  }
 }

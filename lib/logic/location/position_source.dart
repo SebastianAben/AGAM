@@ -67,7 +67,11 @@ abstract interface class PositionSource {
 /// langganan ikut menghentikan foreground service. Karena itu pergantian
 /// parameter selalu berupa batal-lalu-langganan-baru.
 class GeolocatorPositionSource implements PositionSource {
-  const GeolocatorPositionSource();
+  GeolocatorPositionSource({this._positionStream, this._serviceEnabled});
+
+  final Stream<Position> Function(AndroidSettings settings)? _positionStream;
+  final Future<bool> Function()? _serviceEnabled;
+  bool _useLocationManager = false;
 
   /// Teks notifikasi tetap selama sesi (PRD §6).
   static const sessionNotificationTitle = 'Sesi AGAM aktif';
@@ -77,8 +81,71 @@ class GeolocatorPositionSource implements PositionSource {
 
   @override
   Stream<LocationFix> watch(LocationRequest request) {
+    late final StreamController<LocationFix> controller;
+    StreamIterator<Position>? iterator;
+    var cancelled = false;
+
+    Future<void> read(bool localGps) async {
+      if (cancelled) return;
+      final current = StreamIterator(_positions(request, localGps));
+      iterator = current;
+      try {
+        while (await current.moveNext()) {
+          if (cancelled) return;
+          controller.add(positionToFix(current.current));
+        }
+      } finally {
+        await current.cancel();
+        if (identical(iterator, current)) iterator = null;
+      }
+    }
+
+    Future<void> run() async {
+      try {
+        if (!_useLocationManager) {
+          try {
+            await read(false);
+            return;
+          } on LocationServiceDisabledException {
+            // FLP juga memberi error ini ketika pengguna menolak layanan
+            // opsional Google Location Accuracy meskipun GPS Android aktif.
+            // Jangan memaksa opt-in: gunakan fallback GPS lokal geolocator.
+            if (cancelled) return;
+            final enabled =
+                await (_serviceEnabled ??
+                    Geolocator.isLocationServiceEnabled)();
+            if (!enabled) rethrow;
+            if (cancelled) return;
+            _useLocationManager = true;
+          }
+        }
+        await read(true);
+      } catch (error, stackTrace) {
+        if (!cancelled) {
+          controller.addError(mapGeolocatorError(error), stackTrace);
+        }
+      } finally {
+        if (!cancelled) unawaited(controller.close());
+      }
+    }
+
+    controller = StreamController<LocationFix>(
+      onListen: () => unawaited(run()),
+      onCancel: () async {
+        cancelled = true;
+        // Pembatalan tidak boleh menunggu fix berikutnya ketika GPS diam.
+        await iterator?.cancel();
+      },
+    );
+    return controller.stream;
+  }
+
+  Stream<Position> _positions(LocationRequest request, bool localGps) {
     final settings = AndroidSettings(
+      forceLocationManager: localGps,
       accuracy: LocationAccuracy.high,
+      // Jangan memakai fix historis bawaan FLP sebagai posisi saat ini.
+      maxUpdateAge: Duration.zero,
       // Tanpa filter jarak: saat pengguna diam di dalam radius, dwell tetap
       // membutuhkan sampel berkala (PRD §9.2 butir 4).
       distanceFilter: 0,
@@ -97,14 +164,8 @@ class GeolocatorPositionSource implements PositionSource {
             )
           : null,
     );
-    return Geolocator.getPositionStream(locationSettings: settings)
-        .map(positionToFix)
-        .transform(
-          StreamTransformer<LocationFix, LocationFix>.fromHandlers(
-            handleError: (error, stackTrace, sink) =>
-                sink.addError(mapGeolocatorError(error), stackTrace),
-          ),
-        );
+    return _positionStream?.call(settings) ??
+        Geolocator.getPositionStream(locationSettings: settings);
   }
 
   /// Mengubah [Position] plugin menjadi model kontrak. Hanya posisi,
