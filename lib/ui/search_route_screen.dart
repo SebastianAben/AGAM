@@ -7,19 +7,21 @@ import '../contracts/models/content.dart';
 import '../contracts/models/discovery.dart';
 import '../contracts/models/navigation.dart';
 import '../contracts/models/session.dart';
+import 'poi_detail_screen.dart';
 
 /// UI05 Search & Destination plus the active UI06 navigation summary.
-/// Search/routing implementations are injected from AppServices; placeholders
-/// are identified where the current fake services supply preview data.
+/// Search/routing implementations are injected from AppServices.
 class SearchRouteScreen extends StatefulWidget {
   const SearchRouteScreen({
     super.key,
     required this.services,
     this.onTabSelected,
+    this.internalDemo = false,
   });
 
   final AppServices services;
   final ValueChanged<int>? onTabSelected;
+  final bool internalDemo;
 
   @override
   State<SearchRouteScreen> createState() => _SearchRouteScreenState();
@@ -87,7 +89,23 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
         includePois: _facilityFilter == null,
         facilityCategories: _facilityFilter == null ? null : {_facilityFilter!},
       );
-      if (mounted) setState(() => _results = result);
+      final currentPois = widget.internalDemo && _poiFilter != 0
+          ? await widget.services.pois.watchPois().first
+          : null;
+      if (mounted) {
+        setState(() {
+          if (currentPois != null) _pois = currentPois;
+          _results = widget.internalDemo && _poiFilter != 0
+              ? result.where((entry) {
+                  final poi = _poiFor(entry);
+                  return poi != null &&
+                      (_poiFilter == 1
+                          ? poi.category == PoiCategory.lecture
+                          : poi.category == PoiCategory.laboratoryAndLecture);
+                }).toList()
+              : result;
+        });
+      }
     } catch (_) {
       if (mounted) setState(() => _error = 'Pencarian belum dapat dimuat.');
     } finally {
@@ -126,13 +144,50 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
   }
 
   void _selectDestination(SearchResult result) {
+    if (widget.internalDemo) {
+      if (result.kind != SearchResultKind.poi) {
+        _showMessage('Pencarian fasilitas belum tersedia pada demo ini.');
+        return;
+      }
+      unawaited(_openDemoPoi(result.id));
+      return;
+    }
     setState(() {
       _destination = result;
       _error = null;
     });
   }
 
+  Future<void> _openPoiDetail(Poi poi) async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => PoiDetailScreen(
+          poi: poi,
+          audio: widget.services.audio,
+          checkedIn: false,
+          navigationAvailable: false,
+          onNavigate: () async =>
+              _showMessage('Navigasi belum tersedia pada demo ini.'),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openDemoPoi(String id) async {
+    final poi = await widget.services.pois.poiById(id);
+    if (!mounted) return;
+    if (poi == null) {
+      _showMessage('POI tidak tersedia di dataset demo.');
+      return;
+    }
+    await _openPoiDetail(poi);
+  }
+
   Future<void> _startRoute(SearchResult result) async {
+    if (widget.internalDemo) {
+      _showMessage('Graf rute kampus belum tersedia pada demo ini.');
+      return;
+    }
     if (_routing) return;
     final poi = _poiFor(result);
     final facility = _facilityFor(result);
@@ -208,18 +263,19 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
         _navigation.status != NavigationStatus.idle &&
         _navigation.status != NavigationStatus.error;
     final currentTarget = _navigation.target;
-    final selected =
-        _destination ??
-        (currentTarget == null
-            ? null
-            : SearchResult(
-                kind: currentTarget.kind == NavigationTargetKind.poi
-                    ? SearchResultKind.poi
-                    : SearchResultKind.facility,
-                id: currentTarget.id,
-                name: currentTarget.name,
-                score: 1,
-              ));
+    final selected = widget.internalDemo
+        ? null
+        : _destination ??
+              (currentTarget == null
+                  ? null
+                  : SearchResult(
+                      kind: currentTarget.kind == NavigationTargetKind.poi
+                          ? SearchResultKind.poi
+                          : SearchResultKind.facility,
+                      id: currentTarget.id,
+                      name: currentTarget.name,
+                      score: 1,
+                    ));
     final pois = _pois.where((poi) {
       if (_poiFilter == 1) return poi.category == PoiCategory.lecture;
       if (_poiFilter == 2) {
@@ -243,6 +299,10 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
                   const SizedBox(height: 18),
                   _filters(),
                   const SizedBox(height: 18),
+                  if (widget.internalDemo) ...[
+                    _demoSourceNotice(),
+                    const SizedBox(height: 18),
+                  ],
                   if (selected != null) ...[
                     _routeCard(selected, activeRoute: activeRoute),
                     const SizedBox(height: 18),
@@ -264,19 +324,29 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
                       ..._results.map(_resultCard),
                     const SizedBox(height: 20),
                   ] else ...[
-                    _sectionTitle('Tujuan Kampus'),
+                    _sectionTitle(
+                      widget.internalDemo ? 'POI Kampus' : 'Tujuan Kampus',
+                    ),
                     const SizedBox(height: 4),
-                    const Text(
-                      'Pilih gedung untuk melihat rute. Titik pintu masuk yang belum disurvei ditandai sebagai pratinjau.',
-                      style: TextStyle(fontSize: 12, color: Color(0xFF62697A)),
+                    Text(
+                      widget.internalDemo
+                          ? 'Pilih gedung untuk membuka kartu dari dataset POI yang tersedia.'
+                          : 'Pilih gedung untuk melihat rute. Titik pintu masuk yang belum disurvei ditandai sebagai pratinjau.',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF62697A),
+                      ),
                     ),
                     const SizedBox(height: 10),
                     ...pois.map(_poiCard),
-                    const SizedBox(height: 18),
-                    _sectionTitle('Fasilitas'),
-                    const SizedBox(height: 8),
-                    ..._facilityChips(),
-                    if (_facilityFilter != null &&
+                    if (!widget.internalDemo) ...[
+                      const SizedBox(height: 18),
+                      _sectionTitle('Fasilitas'),
+                      const SizedBox(height: 8),
+                      ..._facilityChips(),
+                    ],
+                    if (!widget.internalDemo &&
+                        _facilityFilter != null &&
                         _facilities.any(
                           (f) =>
                               f.category == _facilityFilter &&
@@ -305,7 +375,8 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
                               subtitle: facility.description,
                             ),
                           ),
-                    if (_facilities.every((f) => f.metadata.isPlaceholder))
+                    if (!widget.internalDemo &&
+                        _facilities.every((f) => f.metadata.isPlaceholder))
                       _emptyCard(
                         'PLACEHOLDER — data fasilitas menunggu tim konten.',
                       ),
@@ -340,8 +411,10 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
         Expanded(
           child: TextField(
             controller: _query,
-            decoration: const InputDecoration(
-              hintText: 'Cari gedung, ruang, atau fasilitas...',
+            decoration: InputDecoration(
+              hintText: widget.internalDemo
+                  ? 'Cari gedung atau alias, mis. labtek 5...'
+                  : 'Cari gedung, ruang, atau fasilitas...',
               hintStyle: TextStyle(color: Color(0xFF747B8C), fontSize: 13),
               border: InputBorder.none,
               isDense: true,
@@ -374,12 +447,14 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
         _filterChip('Ruang Kuliah', _poiFilter == 1, () => _setPoiFilter(1)),
         const SizedBox(width: 7),
         _filterChip('Laboratorium', _poiFilter == 2, () => _setPoiFilter(2)),
-        const SizedBox(width: 7),
-        _filterChip(
-          'Fasilitas',
-          _facilityFilter != null,
-          () => _setFacilityFilter(FacilityCategory.toilet),
-        ),
+        if (!widget.internalDemo) ...[
+          const SizedBox(width: 7),
+          _filterChip(
+            'Fasilitas',
+            _facilityFilter != null,
+            () => _setFacilityFilter(FacilityCategory.toilet),
+          ),
+        ],
       ],
     ),
   );
@@ -601,9 +676,23 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
           score: 1,
         ),
       ),
-      subtitle: poi.hasSurveyedEntrance
+      subtitle: widget.internalDemo
+          ? 'Buka kartu POI'
+          : poi.hasSurveyedEntrance
           ? 'Pintu masuk tersedia'
           : 'PLACEHOLDER — titik masuk menunggu survei',
+    ),
+  );
+
+  Widget _demoSourceNotice() => Container(
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(
+      color: const Color(0xFFE9EDFF),
+      borderRadius: BorderRadius.circular(14),
+    ),
+    child: const Text(
+      'Pencarian memakai data POI yang dibundel. Data fasilitas dan graf rute belum tersedia; tombol fungsinya tidak ditampilkan.',
+      style: TextStyle(fontSize: 11, height: 1.4, color: Color(0xFF35415E)),
     ),
   );
 

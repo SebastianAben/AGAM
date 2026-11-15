@@ -58,21 +58,14 @@ class LaServices {
 /// navigasi membaca posisi dari `LocationService` asli yang dibuat di sini.
 ///
 /// Wajib dipanggil sekali setelah `WidgetsFlutterBinding.ensureInitialized()`
-/// dan `Firebase.initializeApp()`.
+/// dan `Firebase.initializeApp()` untuk sumber Firestore. Demo [bundledOnly]
+/// tidak memerlukan Firebase dan tidak membaca cache konten produksi.
 Future<LaServices> createLaServices({
+  bool bundledOnly = false,
   required MapConfig map,
   required NavigationController Function(LocationService location) navigation,
 }) async {
-  final cacheDir = await getApplicationSupportDirectory();
-  final pois = PoiRepositoryImpl(
-    bundled: const BundledDataset(),
-    cache: FileDatasetCache(cacheDir),
-    remote: FirestoreDatasetSource(),
-  );
-  await pois.ensureLoaded();
-  // Pembaruan dari Firestore berjalan di latar; aplikasi tidak menunggu
-  // jaringan dan tetap memakai cache/dataset bawaan bila gagal (PRD §15.2).
-  unawaited(pois.refresh());
+  final pois = await createLaPoiRepository(bundledOnly: bundledOnly);
 
   final settings = DeviceSettingsStore();
   await settings.load();
@@ -127,4 +120,26 @@ Future<LaServices> createLaServices({
     navigation: navigationController,
     navigationAnnouncer: announcer,
   );
+}
+
+/// Memisahkan bootstrap dataset agar jalur demo dapat diverifikasi tanpa
+/// inisialisasi Firebase maupun akses direktori/cache konten produksi.
+Future<PoiRepositoryImpl> createLaPoiRepository({
+  bool bundledOnly = false,
+}) async {
+  final pois = PoiRepositoryImpl(
+    bundled: const BundledDataset(),
+    cache: bundledOnly
+        ? InMemoryDatasetCache()
+        : FileDatasetCache(await getApplicationSupportDirectory()),
+    remote: bundledOnly
+        ? const UnavailableRemoteSource()
+        : FirestoreDatasetSource(),
+  );
+  await pois.ensureLoaded();
+  // Pembaruan dari Firestore berjalan di latar; aplikasi tidak menunggu
+  // jaringan dan tetap memakai cache/dataset bawaan bila gagal (PRD §15.2).
+  if (!bundledOnly) unawaited(pois.refresh());
+
+  return pois;
 }

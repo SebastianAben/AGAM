@@ -5,20 +5,27 @@ class AgamBottomNavigation extends StatelessWidget {
   const AgamBottomNavigation({
     required this.selectedIndex,
     required this.onSelect,
+    this.internalDemo = false,
     super.key,
   });
 
   final int selectedIndex;
   final ValueChanged<int> onSelect;
+  final bool internalDemo;
 
   @override
   Widget build(BuildContext context) {
-    const items = [
-      (Icons.explore_outlined, 'Jelajah'),
-      (Icons.emoji_events_outlined, 'Trail'),
-      (Icons.directions_walk_rounded, 'Cari & Rute'),
-      (Icons.settings_outlined, 'Pengaturan'),
-    ];
+    final List<(int, IconData, String)> items = internalDemo
+        ? [
+            (0, Icons.explore_outlined, 'Jelajah'),
+            (2, Icons.search_rounded, 'Cari POI'),
+          ]
+        : [
+            (0, Icons.explore_outlined, 'Jelajah'),
+            (1, Icons.emoji_events_outlined, 'Trail'),
+            (2, Icons.directions_walk_rounded, 'Cari & Rute'),
+            (3, Icons.settings_outlined, 'Pengaturan'),
+          ];
 
     return Container(
       height: 57,
@@ -28,29 +35,29 @@ class AgamBottomNavigation extends StatelessWidget {
       ),
       child: Row(
         children: [
-          for (var index = 0; index < items.length; index++)
+          for (final item in items)
             Expanded(
               child: InkWell(
-                onTap: () => onSelect(index),
+                onTap: () => onSelect(item.$1),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(
-                      items[index].$1,
+                      item.$2,
                       size: 18,
-                      color: index == selectedIndex
+                      color: item.$1 == selectedIndex
                           ? const Color(0xFF073B82)
                           : const Color(0xFF454A57),
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      items[index].$2,
+                      item.$3,
                       style: TextStyle(
                         fontSize: 9,
-                        color: index == selectedIndex
+                        color: item.$1 == selectedIndex
                             ? const Color(0xFF073B82)
                             : const Color(0xFF454A57),
-                        fontWeight: index == selectedIndex
+                        fontWeight: item.$1 == selectedIndex
                             ? FontWeight.w700
                             : FontWeight.w500,
                       ),

@@ -116,6 +116,12 @@ class _AgamMainShellState extends State<AgamMainShell> {
   }
 
   void _selectTab(int index) {
+    if (widget.internalDemo) {
+      if (index == 0 || index == 2) {
+        setState(() => _selectedIndex = index);
+      }
+      return;
+    }
     if (index >= 0 && index <= 3) {
       setState(() => _selectedIndex = index);
       return;
@@ -140,11 +146,23 @@ class _AgamMainShellState extends State<AgamMainShell> {
           ),
         Expanded(
           child: widget.internalDemo
-              ? ExploreMapScreen(
-                  services: widget.services,
-                  embedded: true,
-                  poiViewRequests: widget.poiViewRequests,
-                  internalDemo: true,
+              ? IndexedStack(
+                  index: _selectedIndex == 2 ? 1 : 0,
+                  children: [
+                    ExploreMapScreen(
+                      services: widget.services,
+                      embedded: true,
+                      isActive: _selectedIndex == 0,
+                      onTabSelected: _selectTab,
+                      poiViewRequests: widget.poiViewRequests,
+                      internalDemo: true,
+                    ),
+                    SearchRouteScreen(
+                      services: widget.services,
+                      internalDemo: true,
+                      onTabSelected: _selectTab,
+                    ),
+                  ],
                 )
               : IndexedStack(
                   index: _selectedIndex,
@@ -170,14 +188,14 @@ class _AgamMainShellState extends State<AgamMainShell> {
                   ],
                 ),
         ),
-        if (!widget.internalDemo)
-          SafeArea(
-            top: false,
-            child: AgamBottomNavigation(
-              selectedIndex: _selectedIndex,
-              onSelect: _selectTab,
-            ),
+        SafeArea(
+          top: false,
+          child: AgamBottomNavigation(
+            selectedIndex: _selectedIndex,
+            onSelect: _selectTab,
+            internalDemo: widget.internalDemo,
           ),
+        ),
       ],
     ),
   );

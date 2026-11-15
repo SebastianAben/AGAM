@@ -1,11 +1,10 @@
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
 import 'contracts/contracts.dart';
 import 'contracts/fakes/fake_lb_services.dart';
-import 'firebase_options.dart';
 import 'logic/la_bootstrap.dart';
 import 'logic/map/agam_map_config.dart';
+import 'logic/search/poi_search_service.dart';
 import 'ui/app.dart';
 
 Future<void> main() async {
@@ -26,18 +25,20 @@ Future<void> main() async {
     );
     return;
   }
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   final (services, views) = await _createAppServices();
   runApp(
     AgamApp(services: services, poiViewRequests: views, internalDemo: true),
   );
 }
 
-/// LA dan peta asli; layanan LB di luar alur demo masih fake dan UI-nya disembunyikan.
+/// Demo menampilkan hanya alur dengan sumber data/layanan nyata. Navigation,
+/// trail, rekomendasi, dan fasilitas belum tersedia, sehingga layarnya tidak
+/// dimasukkan ke shell demo.
 Future<(AppServices, Stream<String>)> _createAppServices() async {
   final map = AgamMapConfig.internalDemo();
   final routing = FakeRoutingService();
   final la = await createLaServices(
+    bundledOnly: true,
     map: map,
     navigation: (location) =>
         FakeNavigationController(location: location, routing: routing),
@@ -57,7 +58,7 @@ Future<(AppServices, Stream<String>)> _createAppServices() async {
       map: map,
       routing: routing,
       navigation: la.navigation,
-      search: FakeSearchService(),
+      search: PoiSearchService(pois: la.pois),
       recommendations: FakeRecommendationService(
         trail: trail,
         facilities: facilities,

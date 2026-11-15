@@ -9,7 +9,7 @@
 | Pembagian kerja | Tiga track paralel: 1 developer frontend, 2 developer logic aplikasi (lihat §2) |
 | Desain layar | UI01–UI09 sudah selesai; frontend tinggal mengimplementasikan. UI10 Daftar & Login (ditambahkan 14 November 2026) belum didesain |
 | Backlog | PB01–PB20 dari PRD resmi, ditambah PB21–PB22 (akun, keputusan PM 6 dan 14 November 2026); ID tidak boleh diubah atau dinomori ulang |
-| Current focus | 16 November 2026: lokal `dev` diselaraskan fast-forward ke `origin/dev` `8950a27` (11 commit); WIP peta offline/Explore/demo dipulihkan dan digabung dengan Firestore PB03, konten POI/media, serta perbaikan trigger PB06. APK dan 246 test Flutter/21 pipeline yang tercatat sebelumnya berasal dari source sebelum sinkronisasi; tree gabungan belum dibuild atau dites ulang. Status PBI tetap `in_progress`; PB21/PB22 `planned`. |
+| Current focus | 16 November 2026: branch lokal `LB` di `046b646`, sama dengan `dev`. Shell demo sementara memakai UI FE Jelajah/Cari POI dan data POI repository-backed; UI05 membuka UI04/audio. Format/analyze, APK build, dan audit aset lulus; test/runtime setelah update belum dijalankan. Trail, fasilitas, rute dan profil tetap tersembunyi karena service/data belum nyata. Status PBI tidak berubah; PB21/PB22 `planned`. |
 
 Dokumen ini menetapkan cara tim bekerja paralel, urutan pekerjaan per track, dependency, dan definition of done. Rencana bukan bukti implementasi.
 
@@ -325,7 +325,8 @@ Progres trail, POI dikunjungi, dan pengaturan disimpan per akun (PRD §15.1). Im
 - **UI02 FE (14 November 2026):** kerangka Explore Map dengan penanda POI dan posisi; peta masih ilustrasi skematis berlabel, belum merender PMTiles.
 - **Done:** peta tampil offline setelah login pertama; 10 POI dan posisi pengguna yang bergerak terlihat; script tile dapat dijalankan ulang; ukuran tile tercatat.
 - **Integrasi demo lokal (14 November 2026):** WIP `AgamMapConfig`, style, test, dan audit LB disalin ke checkout integrasi tanpa mengubah worktree LB. Pipeline kini melakukan clustering deterministik; PMTiles 1.022.885 byte, SHA-256 `6af43dfb1be0f854480ab45caa5dadc672e865134d50cddf43a316fc97934792`, seluruh 13 payload/metadata tetap sama dengan arsip awal. `OfflineMapTiles` + `OfflineCampusMap` merender vektor ke memori dengan `flutter_map 7.0.2`, `vector_tile_renderer 5.2.0`, `pmtiles 1.3.0`; tidak memakai layer/cache disk `vector_map_tiles`. Aset terdaftar, atribusi bertautan, marker repository, pan dan overzoom 19 lulus widget. 233 test Flutter, 21 test pipeline, analyze, audit aset tanpa APK, dan CLI verify lulus. Batas layanan produk tetap TBD; demo eksplisit memakai coverage engineering bersumber sesuai PRD §9.3.
-- **Status:** `in_progress` — build/install/peta offline Android diuji; pergerakan GPS di atas tile lokal, batas layanan produk dan field test belum terbukti
+- **Verifikasi ulang setelah sinkronisasi (16 November 2026, branch `LB` HEAD `046b646`):** 78 file format tanpa perubahan, analyzer lulus, pipeline 21 test lulus, build APK demo dan audit tiga aset APK lulus. AVD API 36 dalam kondisi Wi-Fi/data mati menampilkan peta/atribusi/marker; mock P01 berhasil memicu UI03 dan membuka UI04. Suite Flutter **251 lulus, 1 gagal** pada assertion PLACEHOLDER P01; `assets/data/pois.json` menandai P01 approved, sedangkan PRD §22 masih menyatakan konten P01–P10 belum tersedia. Rincian serta hash APK ada di [rencana demo sementara](demo-apk-temporary-plan.md).
+- **Status:** `in_progress` — simulasi offline dan trigger pada AVD lulus; APK terbaru belum diuji pada HP, gerak/trigger GPS fisik dan audit privasi runtime belum terbukti; status konten P01 perlu diselaraskan dengan PRD sebelum menerima klaim konten.
 
 
 ## 6. Sprint 2 — Geofence, Sesi, Trigger, Kartu POI, dan Audio
@@ -375,7 +376,7 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
 - **Verifikasi demo (15 November 2026):** kartu P01/P02 lulus ulang dalam simulasi widget; APK build terhalang SDK, sehingga kartu dari trigger GPS fisik belum terbukti. Placeholder dan status `in_progress` dipertahankan.
 - **Track:** FE (UI04); data dari `PoiRepository` (LA) · **Requirement:** F03
 - **Done:** kartu terbuka dari trigger dan dari peta dengan konten sesuai; video GKUB/GKUT dapat diputar.
-- **Status:** `in_progress` — UI04/ID repository sama diuji di emulator, serta kartu manual P01 di HP. Konten tetap placeholder/navigasi demo nonaktif; media final dan kartu dari trigger GPS fisik belum.
+- **Status:** `in_progress` — UI04 memakai repository yang sama; detail P01 terkini pada AVD menampilkan data/media karena metadata dataset menandainya approved. PRD §22 masih menyatakan konten P01–P10 belum tersedia, sehingga status konten dan assertion placeholder belum dapat diterima sampai diselaraskan PM/tim konten. Kartu dari trigger GPS fisik belum diuji pada build terbaru.
 
 ### PB08 — Pemutar narasi audio
 
@@ -411,7 +412,8 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
 
 - **Track:** LB (`SearchService`), FE (UI05) · **Requirement:** F05
 - **Done:** "labtek 5", "Labtek V", "lab 5" → Labtek V teratas; respons ≤1 detik.
-- **Status:** `in_progress` — UI05 FE tersedia dengan pencarian/filter lewat kontrak SearchService dan tujuan dari repository. Device shell masih memakai SearchService fake; integrasi LB dan verifikasi alias ≤1 detik belum dilakukan.
+- **Demo internal (16 November 2026):** UI05 sementara memakai `PoiSearchService` repository-backed di shell `AGAM_INTERNAL_DEMO=true`; hasil alias POI membuka UI04/audio. Fasilitas/rute tidak ditawarkan. Format/analyze dan build APK lulus; test/runtime UI05 belum dijalankan.
+- **Status:** `in_progress` — pencarian demo POI memakai source nyata; PB10 penuh masih memerlukan filter fasilitas, integrasi LB produk, dan verifikasi alias ≤1 detik.
 
 ### PB11 — Navigasi jalan kaki di perangkat
 
