@@ -15,6 +15,9 @@ import 'trigger_notifier.dart';
 /// Tombol notifikasi: Dengarkan → narasi; Lihat → [viewRequests] untuk
 /// membuka kartu POI (disambungkan FE); Lewati → menutup notifikasi dan
 /// menghentikan prompt POI tersebut.
+///
+/// Saat sesi berakhir (Akhiri, auto-end, atau izin dicabut), seluruh
+/// notifikasi trigger dihapus agar tidak tertinggal setelah sesi selesai.
 class TriggerResponder {
   TriggerResponder({
     required this._session,
@@ -33,6 +36,7 @@ class TriggerResponder {
   final _viewRequests = StreamController<String>.broadcast();
   StreamSubscription<PoiTriggerEvent>? _triggerSubscription;
   StreamSubscription<TriggerActionEvent>? _actionSubscription;
+  StreamSubscription<SessionState>? _stateSubscription;
 
   /// ID POI yang kartunya diminta dibuka pengguna lewat tombol "Lihat".
   Stream<String> get viewRequests => _viewRequests.stream;
@@ -40,11 +44,13 @@ class TriggerResponder {
   void start() {
     _triggerSubscription ??= _session.triggers.listen(_onTrigger);
     _actionSubscription ??= _notifier.actions.listen(_onAction);
+    _stateSubscription ??= _session.state.listen(_onSessionState);
   }
 
   Future<void> dispose() async {
     await _triggerSubscription?.cancel();
     await _actionSubscription?.cancel();
+    await _stateSubscription?.cancel();
     await _viewRequests.close();
   }
 
@@ -61,6 +67,10 @@ class TriggerResponder {
             : AudioClipKind.prompt;
         await _audio.play(AudioClip(poiId: poi.id, kind: kind));
     }
+  }
+
+  Future<void> _onSessionState(SessionState state) async {
+    if (!state.isActive) await _notifier.dismissAll();
   }
 
   Future<void> _onAction(TriggerActionEvent event) async {
