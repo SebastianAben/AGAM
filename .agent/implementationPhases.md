@@ -9,7 +9,7 @@
 | Pembagian kerja | Tiga track paralel: 1 developer frontend, 2 developer logic aplikasi (lihat §2) |
 | Desain layar | UI01–UI09 sudah selesai; frontend tinggal mengimplementasikan. UI10 Daftar & Login (ditambahkan 14 November 2026) belum didesain |
 | Backlog | PB01–PB20 dari PRD resmi, ditambah PB21–PB22 (akun, keputusan PM 6 dan 14 November 2026); ID tidak boleh diubah atau dinomori ulang |
-| Current focus | 16 November 2026: branch lokal `LB` di `046b646`, sama dengan `dev`. Shell demo sementara memakai UI FE Jelajah/Cari POI dan data POI repository-backed; UI05 membuka UI04/audio. Format/analyze, APK build, dan audit aset lulus; test/runtime setelah update belum dijalankan. Trail, fasilitas, rute dan profil tetap tersembunyi karena service/data belum nyata. Status PBI tidak berubah; PB21/PB22 `planned`. |
+| Current focus | 16 November 2026: branch lokal `LB` sudah dipush ke `origin/LB`. Shell demo memakai UI FE Jelajah/Cari POI dan data POI repository-backed; format/analyze/build/audit lulus. APK terbaru dipasang ke OPPO CPH2739 dengan hash cocok; launch/UI Cari POI dan uji GPS fisik belum. Trail, fasilitas, rute dan profil tetap tersembunyi karena service/data belum nyata. Status PBI tidak berubah; PB21/PB22 `planned`. |
 
 Dokumen ini menetapkan cara tim bekerja paralel, urutan pekerjaan per track, dependency, dan definition of done. Rencana bukan bukti implementasi.
 
@@ -261,6 +261,7 @@ Progres trail, POI dikunjungi, dan pengaturan disimpan per akun (PRD §15.1). Im
 
 ### PB01 — Project Flutter, repository, pipeline build APK
 
+- **Pemasangan APK shell FE (16 November 2026):** APK `LB` terbaru `185.500.958` byte, SHA-256 `9bf687a32fa492c4cae0e638eadd26e5211087fcdd39baf3903a97d0c37014d6`, dipasang ke OPPO CPH2739 / Android 16 menggunakan `adb install -r`. Hash APK terpasang cocok; data aplikasi tidak dihapus. Launch dan pengujian UI setelah pemasangan belum dilakukan.
 - **APK dan perangkat aktual (15 November 2026):** APK terbaru berflag demo dibangun ulang setelah perbaikan lokasi, 199.109.003 byte / SHA-256 `9373c5906d0f779bfa324c2048969e95f8deac0f7aa6f1437a690a5503f92873`. Build 18,4 detik, audit aset/signature/manifest lulus. Install tanpa hapus data dan launch OPPO CPH2739 Android 16 lulus; hash `base.apk` HP/emulator cocok dengan host. Tidak ada publikasi/CI/rilis baru; status keseluruhan tidak dinaikkan hanya karena demo lokal.
 - **Build demo lokal (15 November 2026):** Android SDK disiapkan di `D:\CodexRuntime\agam-android\sdk`; Flutter 3.47.9 berhasil menghasilkan `build/app/outputs/flutter-apk/app-debug.apk` berflag internal, 171.972.503 byte, SHA-256 `e54997a3bd133d933fbbfb968e2a8e7e4696e1107f1563552391099bc305ffce`. Source `dev` HEAD dasar `089883c` + WIP, bukan commit APK bersih. Audit aset APK/signature lulus; install/perangkat fisik dan CI baru belum, status tetap `in_progress`. Recipe toolchain/workaround Kotlin lokal ada di rencana demo/handoff.
 - **Track:** LA · **Requirement:** —

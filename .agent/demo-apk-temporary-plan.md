@@ -94,7 +94,7 @@ Perubahan shell hanya aktif saat `AGAM_INTERNAL_DEMO=true`; mode lain mempertaha
 - [ ] Pemeriksaan terbaru 16 November: format 78 file dan `flutter analyze --no-pub` lulus; suite Flutter **251 lulus, 1 gagal** pada assertion placeholder P01 di `test/ui/demo_explore_test.dart:187`. Hasil 233/246 lulus 15 November adalah evidence source sebelumnya.
 - [x] Build demo terbaru dari `LB` HEAD `046b646` dengan `flutter build apk --debug --dart-define=AGAM_INTERNAL_DEMO=true` berhasil 16 November 2026; audit `--apk` lulus. APK: 185.500.958 byte, SHA-256 `162edfa6c98d805e30ae0d356846c68829c4f8b800ef75a174817441026c1329`.
 - [x] Lokasi APK, ukuran/hash, versi, HEAD, hasil command dan konfigurasi lokal dicatat. Build ini berasal dari HEAD `046b646`; perubahan dokumentasi lokal tidak mengubah source APK.
-- [ ] APK terbaru 16 November belum dipasang pada OPPO CPH2739. APK dari source sebelum sinkronisasi pernah dipasang/dikonfirmasi 15 November; bukti lama tidak mencakup hash build terbaru.
+- [x] APK terbaru 16 November dipasang ke OPPO CPH2739 dengan `adb install -r` tanpa uninstall/hapus data. SHA-256 `base.apk` terpasang cocok dengan APK host: `9bf687a32fa492c4cae0e638eadd26e5211087fcdd39baf3903a97d0c37014d6`.
 - [ ] Cold start offline pada HP belum diulang untuk APK terbaru. Build terbaru diuji di AVD API 36 dengan Wi-Fi/data mati: basemap, atribusi, POI, posisi simulasi, Explore, dan trigger→UI03/UI04 tampil. Ini bukti emulator, bukan HP.
 - [ ] Lakukan uji berjalan di lokasi POI fisik: akurasi, dwell, trigger, POI yang tampil, akhir sesi, dan tidak ada pengiriman/penyimpanan koordinat.
 - [x] Evidence versi/hash APK, perangkat, command/skenario/hasil dan keterbatasan disimpan di §6; simulasi emulator, hasil HP di luar kampus dan field acceptance dipisahkan.
@@ -106,8 +106,9 @@ Perubahan shell hanya aktif saat `AGAM_INTERNAL_DEMO=true`; mode lain mempertaha
 
 Target sementara ini dianggap tercapai hanya bila semua butir berikut terbukti:
 
-- [x] APK debug dari `LB` HEAD `046b646` + perubahan shell FE berhasil dibangun 16 November 2026 dengan flag demo internal: 185.500.958 byte, SHA-256 `9bf687a32fa492c4cae0e638eadd26e5211087fcdd39baf3903a97d0c37014d6`.
-- [ ] APK terbaru berhasil dipasang dan dibuka pada OPPO CPH2739 / Android 16; APK build 16 November belum dipasang di perangkat fisik.
+- [x] APK debug dari `LB` HEAD `046b646` + perubahan shell FE berhasil dibangun dan di-audit 16 November 2026: 185.500.958 byte, SHA-256 `9bf687a32fa492c4cae0e638eadd26e5211087fcdd39baf3903a97d0c37014d6`.
+- [x] APK dipasang ke OPPO CPH2739 / Android 16 dengan `adb install -r`; hash APK terpasang cocok dengan host. Data aplikasi dipertahankan.
+- [ ] Launch, UI Cari POI, dan smoke test pada APK baru belum dijalankan di HP.
 - [ ] Basemap PMTiles, atribusi, penanda POI, dan posisi perangkat tampil; peta tidak bergantung pada server tile.
 - [ ] Sesi Explore dapat dimulai; posisi valid di radius POI selama dwell yang ditetapkan memicu UI03/UI04 untuk POI yang benar.
 - [ ] Status konten P01 belum dapat diterima: `pois.json` menandai P01 approved/non-placeholder, tetapi PRD §22 menyatakan konten P01–P10 belum tersedia. Jangan mengklaim placeholder atau konten final sebelum PM/tim konten menyelaraskan sumber kebenaran.
@@ -127,7 +128,7 @@ Perbarui tabel ini setiap tahap selesai. Catat tanggal, commit, file penting, co
 | Tahap 1 — peta offline | PASS pada APK terbaru di emulator; perangkat fisik terbaru belum diuji | HEAD `046b646`: PMTiles, atribusi, POI, dan posisi simulasi tampil di AVD dengan Wi-Fi/data mati. Bukti HP 15 November berasal dari APK/source sebelumnya. Batas layanan produk tetap TBD. |
 | Tahap 2 — posisi | Simulasi terbaru lulus; gerak GPS fisik di atas tile belum | Mock location emulator ke P01 menggerakkan posisi dan menghasilkan trigger. GPS HP ±4–14 m serta lifecycle adalah evidence 15 November; bukan uji build terbaru. |
 | Tahap 3 — trigger→POI | SIMULASI build terbaru lulus; trigger lapangan belum | AVD offline: Explore → mock P01 → UI03 → Lihat → UI04. Tidak ada GPS fisik atau acceptance lapangan pada sesi ini. |
-| Tahap 4 — APK/uji | APK shell FE baru dibangun dan diaudit; runtime Cari POI, install HP dan field test belum | 185.500.958 byte, SHA-256 `9bf687a3…014d6`; analyze/build/audit lulus. Test Flutter tidak dijalankan setelah update; hasil lama 251/1 gagal mengacu source sebelum shell FE baru. APK belum diuji runtime setelah perubahan ini. |
+| Tahap 4 — APK/uji | APK shell FE baru dibangun/audit/dipasang; runtime dan field test belum | 185.500.958 byte, SHA-256 `9bf687a3…014d6`; analyzer/build/audit lulus; `install -r` pada OPPO cocok hash. Launch/UI Cari POI belum diuji. Test Flutter tidak dijalankan setelah update; hasil lama 251/1 gagal mengacu source sebelum shell FE baru. |
 
 ### Verifikasi ulang branch `LB` setelah sinkronisasi — 16 November 2026
 

@@ -1,5 +1,28 @@
 # Session Handoff — AGAM
 
+## Current — APK internal terbaru dipasang ke OPPO, 16 November 2026
+
+**Instruksi:** pengguna meminta instalasi APK terbaru pada HP. Branch `LB`
+sebelumnya sudah dipush; APK sumbernya dari `LB` HEAD `d15c57c` (source FE demo
+repository-backed) dan telah dibangun lokal.
+
+**Perangkat/aksi:** ADB mendeteksi OPPO CPH2739 / Android 16. APK
+`build/app/outputs/flutter-apk/app-debug.apk` (`site.agam` 1.0.0+1, minSdk 24,
+targetSdk 36) dipasang dengan `adb install -r`, tanpa uninstall dan tanpa
+menghapus data. ADB melaporkan `Success`.
+
+**Verifikasi:** SHA-256 APK host dan `/data/app/.../base.apk` terpasang sama:
+`9bf687a32fa492c4cae0e638eadd26e5211087fcdd39baf3903a97d0c37014d6`.
+Pemasangan saja yang diminta; aplikasi belum diluncurkan dan UI Cari POI,
+Explore, izin, GPS, atau session baru belum diuji pada build ini. Tidak
+mengambil/mencatat posisi perangkat.
+
+**Berikutnya:** bila diperlukan, lakukan launch/smoke test UI baru pada perangkat;
+uji fisik Labtek V tetap butuh pengguna berada di lokasi. APK dibangun dengan
+shell demo dua tab, tetapi pemasangan ini belum menjadi bukti acceptance.
+
+---
+
 ## Current — FE demo sementara repository-backed, 16 November 2026
 
 **Permintaan:** sambungkan tampilan FE yang telah di-merge ke fungsi nyata di
