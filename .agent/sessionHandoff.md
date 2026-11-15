@@ -1,6 +1,68 @@
 # Session Handoff — AGAM
 
-## Current — Sinkronisasi `dev` dan pemulihan WIP, 16 November 2026
+## Current — FE demo sementara repository-backed, 16 November 2026
+
+**Permintaan:** sambungkan tampilan FE yang telah di-merge ke fungsi nyata di
+source, khusus sementara untuk demo, dan dorong pembaruan pada branch `LB`.
+
+**Implementasi pada branch `LB` (basis `046b646`):** `lib/ui/app.dart` menampilkan
+shell demo dua tab Jelajah/Cari POI, dengan tab FE Cari POI yang memakai layout
+UI05 yang sudah ada. `PoiSearchService` baru membaca dari `PoiRepository`,
+menormalkan alias Arab/Romawi, mengurutkan kecocokan, lalu hasil membuka UI04 dan
+`AudioService` LA. Jalur Explore/UI02/UI03/UI04 tetap memakai peta, posisi, sesi,
+geofence, notifikasi dan repository yang ada. Demo memakai `bundledOnly` agar
+dataset berasal dari JSON APK tanpa cache konten lama atau refresh Firestore.
+Commit source/dokumen rencana dan status PBI: `d15c57c` (`feat: wire real POI
+search into demo shell`). Push fast-forward ke `origin/LB` berhasil; remote
+diverifikasi pada SHA `d15c57ced8f5bf0651ac88ad0f4ba28d4b88960d`.
+
+**Batas:** perubahan hanya pada flag `AGAM_INTERNAL_DEMO=true`; shell default
+tidak diubah. Trail, fasilitas, navigasi dan profil/akun tidak diekspos karena
+service/graf/data yang diperlukan belum tersedia atau masih TBD. Navigation
+fake masih menjadi dependency `AppServices` tetapi tidak dipanggil/ditampilkan
+di shell demo. Pencarian ini tidak menutup PB10. Konflik konten P01 approved vs
+PRD §22 tetap mengikuti catatan sebelumnya; tidak mengubah data/approval.
+
+**Verifikasi/perilaku delivery:** formatter 6 file source (0 perubahan),
+`flutter analyze --no-pub` tanpa issue, build APK internal berhasil (16,4 detik)
+dan audit aset APK lulus. APK: 185.500.958 byte, SHA-256
+`9bf687a32fa492c4cae0e638eadd26e5211087fcdd39baf3903a97d0c37014d6`.
+Test Flutter tidak dijalankan setelah update; hasil sebelumnya 251 lulus/1 gagal
+karena assertion PLACEHOLDER P01 tetap belum diselaraskan dengan PRD §22.
+UI Cari POI belum diuji runtime. Tidak mengubah kontrak atau PRD produk.
+
+**Langkah berikutnya:** setelah review, jalankan test/UI Cari POI pada emulator.
+Uji fisik Labtek V tetap terpisah dan diperlukan untuk menutup temporary demo.
+
+---
+
+## Sebelumnya — Pemeriksaan temporary demo pada branch LB, 16 November 2026
+
+**Branch/source:** pekerjaan berada di worktree `AGAM-LB-PB04`, branch lokal `LB`, HEAD `046b646` (sama dengan `dev`). Tidak melakukan commit atau push. WIP dokumentasi yang sudah ada di worktree dipertahankan; dependency dipulihkan dengan `flutter pub get --enforce-lockfile`, tanpa perubahan `pubspec.lock`.
+
+**Verifikasi source:** Flutter 3.47.9 / Dart 3.13.7; format 78 file tanpa perubahan; analyzer lulus; suite Flutter **251 lulus, 1 gagal** pada `test/ui/demo_explore_test.dart:187` karena assertion mencari `PLACEHOLDER`, sementara data P01 menandai `isPlaceholder: false` dan `approved: true`. PRD §22 masih menyatakan konten P01–P10 belum tersedia. Tidak mengubah test/UI milik FE atau data milik LA; minta PM/tim konten menyelaraskan status sumber sebelum menganggap P01 konten final.
+
+**Build/peta:** 21 test pipeline lulus; audit source lulus. Build APK internal dari `LB` HEAD `046b646` lulus; `build/app/outputs/flutter-apk/app-debug.apk`, 185.500.958 byte, SHA-256 `162edfa6c98d805e30ae0d356846c68829c4f8b800ef75a174817441026c1329`. Audit APK memastikan PMTiles, style, dan manifest identik dengan source.
+
+**Runtime simulasi:** AVD `agam_demo_api36` (API 36) dipakai dengan Wi-Fi/data mati. APK terbaru menampilkan basemap, atribusi, POI dan posisi simulasi; Explore dimulai; mock location dari koordinat P01 di dataset menghasilkan trigger UI03 dan tombol Lihat membuka detail Labtek V. Log Android tidak menunjukkan crash selama smoke test. Ini bukan bukti GPS/trigger fisik, field acceptance, atau audit privasi runtime lengkap. AVD dihentikan setelah test; `adb devices -l` tidak menemukan perangkat fisik ketika diperiksa.
+
+**Temporary demo belum selesai:** perangkat fisik di Labtek V belum tersedia, build terbaru belum dipasang di OPPO, field trigger dan audit storage/network belum dilakukan, dan suite Flutter belum seluruhnya hijau. Checklist serta bukti terbaru dicatat di [rencana demo sementara](demo-apk-temporary-plan.md); pertahankan file dan pointer sampai semua kriteria §5 tercapai. PB04 tetap `in_progress`.
+
+**Berikutnya:** selaraskan status konten P01 antara PRD §22 dan dataset dengan PM/tim konten; minta FE menyesuaikan assertion setelah sumber kebenaran dipastikan, lalu ulangi suite. Saat HP dan lokasi tersedia, install APK hash di atas, jalankan uji fisik P01 serta audit privasi; hanya setelah itu tinjau kriteria penghapusan rencana.
+
+---
+## Sebelumnya — Sinkronisasi branch LB dengan dev, 16 November 2026
+
+**Branch/worktree:** `LB` sudah aktif di worktree `AGAM-LB-PB04`, pada `d602fed`; `dev` dan `origin/dev` berada di `046b646` dan 11 commit lebih maju. WIP tracked/untracked LB disimpan dengan stash `Preserve LB work before syncing dev`, lalu `LB` di-fast-forward ke `046b646`, sehingga HEAD branch sama dengan `dev`.
+
+**Pemulihan WIP:** konflik dokumentasi diselesaikan dengan mempertahankan status terbaru dari `dev` dan menggabungkan keterangan batas area pada PRD. File lokal yang beradu dengan file baru di `dev` tidak menimpa versi `dev`; salinan pra-sinkronisasi tetap berada di stash. `tools/tiles/PB04-integration.md` dan `tools/tiles/pubspec-map-assets.patch` yang tidak bertabrakan dipulihkan ke worktree. Tidak ada commit atau push.
+
+**Verifikasi:** fast-forward berhasil; automated test, analyzer, dan build tidak dijalankan karena sesi ini hanya menyelaraskan branch dan merapikan konflik dokumentasi. Status PBI tidak berubah.
+
+**Berikutnya:** lanjutkan pekerjaan LB dari basis `046b646`; sebelum memakai kembali salinan lama dari stash, bandingkan dengan implementasi terbaru yang kini ada di `dev`. Jalankan pemeriksaan PB04 yang relevan sebelum mengajukan PR.
+
+---
+## Sebelumnya — Sinkronisasi `dev` dan pemulihan WIP, 16 November 2026
 
 **Git:** `git fetch origin` menemukan `origin/dev` maju dari `d602fed` ke `8950a27`; checkout lokal `dev` berada di `089883c` dan tertinggal 11 commit. Seluruh perubahan tracked/untracked disimpan sementara dengan `git stash push --include-untracked`, lalu branch di-fast-forward ke `8950a27`. WIP diterapkan kembali tanpa reset atau force; stash pengaman masih dipertahankan.
 
