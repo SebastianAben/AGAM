@@ -262,6 +262,10 @@ Aturan konten:
 3. Dokumen Firestore **divalidasi** di aplikasi (tipe, rentang koordinat, radius positif, field wajib). Dokumen tidak valid diabaikan dan nilai dari salinan lokal dipakai.
 4. Jika gagal (offline/error), aplikasi tetap memakai salinan terakhir.
 
+**[CL] Sumber konten (keputusan PM, 15 November 2026).** `assets/data/pois.json` di repository adalah satu-satunya sumber konten POI dan fasilitas; Firestore hanya salinannya. Perubahan konten dilakukan lewat PR ke `dev`. Setiap push ke `dev` yang mengubah file itu menjalankan workflow `seed-firestore.yml`: test dataset lebih dulu, lalu script `tools/firestore/` menulis satu dokumen per item dan menghapus dokumen yang tidak ada di JSON. Konten tidak diedit di Firebase Console. Firestore mengikuti `dev` sampai rilis v1.0, lalu mengikuti `main` mulai PB19. Media tetap memerlukan APK baru karena dibundel.
+
+Risiko yang diketahui: aplikasi memakai cache lebih dulu daripada JSON bawaan dan belum membandingkan versi. Jika `pois.json` diperbarui di APK tetapi Firestore tidak di-seed ulang, cache dari Firestore yang lebih lama menutupi konten baru. Karena itu seed setelah setiap perubahan bersifat wajib; pembanding versi dataset diusulkan untuk PB03.
+
 ### 15.3 Skema konseptual
 
 Nama field final ditetapkan pada PB03 (2 November 2026). Bentuk ini dipakai sama untuk dokumen Firestore dan JSON bawaan `assets/data/pois.json`; parser dan validatornya di `lib/logic/data/poi_codec.dart`.
@@ -293,12 +297,12 @@ Dokumen yang diabaikan tidak menggagalkan dataset lain. Dataset yang tidak menyi
 
 Security rules:
 
-- `pois/` dan `facilities/`: baca publik dan tidak dapat ditulis dari aplikasi. Tim mengedit konten lewat Firebase Console (edit dari Console tidak melewati security rules).
+- `pois/` dan `facilities/`: baca publik dan tidak dapat ditulis dari aplikasi. Isinya ditulis script seed dengan Admin SDK (tidak melewati security rules) sesuai [§15.2](#152-alur-sinkronisasi), bukan diedit di Console.
 - `users/{uid}`: hanya pengguna dengan `uid` yang sama yang dapat membaca, membuat, mengubah `role`, dan menghapus dokumennya.
 - `activity_logs/`: pengguna yang login hanya dapat **membuat** log dengan `uid` miliknya; rules menolak field di luar daftar §15.5 (`hasOnly`). Pengguna dapat membaca dan menghapus log miliknya untuk keperluan hapus akun; konsekuensinya, pengguna juga dapat menghapus log tanpa menghapus akun karena rules tidak dapat membedakan keduanya (diterima PM, 14 November 2026). Tim membaca log lewat Firebase Console.
 - Aplikasi tidak menulis ke koleksi lain.
 
-Project Firebase **belum dibuat**. Saat dibuat, aktifkan Firestore dan Authentication metode Email/Password; Analytics, Crashlytics, dan Storage tidak diaktifkan.
+Project Firebase `agam-9e704` dibuat PM pada 15 November 2026: Firestore (Standard, `asia-southeast2`, production mode) dan Authentication metode Email/Password; Analytics, Crashlytics, dan Storage tidak diaktifkan. Aplikasi Android `site.agam` terdaftar lewat FlutterFire CLI. Rules ada di `firestore.rules`, diuji di emulator (`tools/firestore/rules.test.mjs`), dan di-deploy lewat Firebase CLI.
 
 ### 15.5 Log aktivitas
 
@@ -350,9 +354,9 @@ Log yang dibuat saat offline disimpan dalam antrean Firestore di perangkat dan t
 
 Versi Flutter/Dart, application ID, dan SDK Android sudah ditetapkan saat PB01 (2 November 2026).
 
-Package LA yang ditambahkan 10 November 2026 (versi diperiksa di pub.dev dan dikunci `pubspec.lock`): `geolocator` ^14.1.2, `flutter_local_notifications` ^22.3.3 (bukan 23.0.0 yang baru dirilis 6 November 2026), `just_audio` ^0.10.6, `audio_service` ^0.18.19, `shared_preferences` ^2.5.6, `path_provider` ^2.1.6; dev: `fake_async` ^1.3.3. Untuk PB12 ditambahkan `flutter_tts` ^4.2.5 (sudah tercantum di stack). `audio_service` membawa `flutter_cache_manager` (http, sqflite) secara transitif untuk gambar sampul; AGAM tidak memberi URL gambar sehingga tidak ada request jaringan dari jalur ini. Manifest utama aplikasi tidak mendeklarasikan `INTERNET` dan secara eksplisit menghapus `ACCESS_BACKGROUND_LOCATION`. Manifest hasil merge build debug (10 November 2026) tidak memuat `ACCESS_BACKGROUND_LOCATION`; `INTERNET` di sana berasal dari manifest debug bawaan Flutter (alat pengembangan) dan `ACCESS_NETWORK_STATE` dari `androidx.media3` (backend `just_audio`). Manifest build rilis belum diperiksa. Saat Firestore ditambahkan, `INTERNET` diperlukan di build rilis. Hal yang masih **wajib diverifikasi**, bukan diasumsikan: versi package yang ditambahkan, kompatibilitas renderer tile vektor, serta ukuran akhir APK.
+Package LA yang ditambahkan 10 November 2026 (versi diperiksa di pub.dev dan dikunci `pubspec.lock`): `geolocator` ^14.1.2, `flutter_local_notifications` ^22.3.3 (bukan 23.0.0 yang baru dirilis 6 November 2026), `just_audio` ^0.10.6, `audio_service` ^0.18.19, `shared_preferences` ^2.5.6, `path_provider` ^2.1.6; dev: `fake_async` ^1.3.3. Untuk PB12 ditambahkan `flutter_tts` ^4.2.5 (sudah tercantum di stack). `audio_service` membawa `flutter_cache_manager` (http, sqflite) secara transitif untuk gambar sampul; AGAM tidak memberi URL gambar sehingga tidak ada request jaringan dari jalur ini. Sampai 14 November 2026 manifest utama aplikasi tidak mendeklarasikan `INTERNET`; manifest juga secara eksplisit menghapus `ACCESS_BACKGROUND_LOCATION`. Manifest hasil merge build debug (10 November 2026) tidak memuat `ACCESS_BACKGROUND_LOCATION`; `INTERNET` di sana berasal dari manifest debug bawaan Flutter (alat pengembangan) dan `ACCESS_NETWORK_STATE` dari `androidx.media3` (backend `just_audio`). Manifest build rilis belum diperiksa. Sejak 15 November 2026 manifest utama mendeklarasikan `INTERNET` untuk Firebase (PB03). Hal yang masih **wajib diverifikasi**, bukan diasumsikan: versi package yang ditambahkan, kompatibilitas renderer tile vektor, serta ukuran akhir APK.
 
-Untuk akun dan log aktivitas (PB21–PB22) diperlukan package baru `firebase_core`, `cloud_firestore`, `firebase_auth`, dan `device_info_plus` (untuk `deviceModel` dan `androidVersion`). Versinya wajib diverifikasi sebelum ditambahkan (`rules.md` §4.2).
+Untuk Firestore (PB03, 15 November 2026) ditambahkan `firebase_core` ^5.1.0 dan `cloud_firestore` ^7.1.0 (diselesaikan `pub add`), dev: `fake_cloud_firestore` ^4.5.0; Gradle plugin `com.google.gms.google-services` 4.4.4 dipasang FlutterFire CLI dan kompatibilitasnya dengan AGP 9.1.0 belum diverifikasi lewat build APK. Untuk akun dan log aktivitas (PB21–PB22) masih diperlukan `firebase_auth` dan `device_info_plus` (untuk `deviceModel` dan `androidVersion`). Versinya wajib diverifikasi sebelum ditambahkan (`rules.md` §4.2).
 
 ## 18. Layar (Screen/State)
 
@@ -403,7 +407,7 @@ Item berikut **belum diputuskan atau belum tersedia**. Agent dilarang mengisinya
 | Koordinat pintu masuk tiap gedung | Menunggu survei lapangan | Tim |
 | Dataset fasilitas (toilet, musala, kantin, ATM, perpustakaan, layanan akademik) | Akan dikumpulkan | Tim konten |
 | Urutan Orientation Trail | Belum ditetapkan | Tim |
-| Project Firebase (Firestore + Authentication Email/Password) | Belum dibuat | PM / Backend |
+| Project Firebase (Firestore + Authentication Email/Password) | Dibuat 15 November 2026 (`agam-9e704`); seed pertama 15 November 2026; secret `FIREBASE_SERVICE_ACCOUNT` untuk seed otomatis belum dibuat | PM / Backend |
 | Konten teks, foto, audio, video P01–P10 | Belum tersedia di repository | Tim konten |
 | Daftar perangkat uji | Belum ditetapkan | QA |
 | Margin histeresis, kalibrasi radius per POI, dan parameter interval adaptif | Default engineering margin 5 m dan jeda sampel maksimum 10 detik (PB05-LA-01) serta parameter interval adaptif [§9.2](#92-logika-trigger) diterapkan; kalibrasi lapangan tetap tertunda | Developer / QA |

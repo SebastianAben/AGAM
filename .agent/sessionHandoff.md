@@ -1,6 +1,22 @@
 # Session Handoff — AGAM
 
-## Current — Integrasi LA, LB, dan FE, 14 November 2026
+## Current — Setup Firebase dan sumber Firestore PB03, 15 November 2026
+
+**Konteks:** PR #3 (integrasi) sudah di-merge ke `dev`; branch `chore/integration-fe-la-lb` dihapus (lokal dan remote) atas instruksi PM. Pekerjaan ini di branch `feat/pb03-firestore-setup` dari `dev` `d602fed`, tanpa upstream ke `dev`. Empat commit PB06/PB09 di `LA` (`c8c06a6`…`605c8a9`) belum di `dev` dan dibiarkan untuk PR developer LA; simulasi menunjukkan tumpang tindih hanya mungkin di `pubspec.yaml` (bagian berbeda). PM perlu memberi tahu developer LA bahwa setup Firebase dikerjakan di branch ini.
+
+**Firebase:** PM membuat project `agam-9e704` (Spark; Firestore Standard `asia-southeast2` production mode; Authentication Email/Password; Analytics tidak aktif). Firebase CLI 15.36.0 (Homebrew) dan FlutterFire CLI 1.5.0 dipasang di Mac PM; FlutterFire dijalankan lewat `fvm dart pub global run flutterfire_cli:flutterfire` karena wrapper global memakai Dart 3.8.1. Login CLI: akun PM. App Android `site.agam` terdaftar (`1:748977574626:android:1cd75697e6d1923b9104bb`).
+
+**Keputusan PM (15 November 2026):** `assets/data/pois.json` satu-satunya sumber konten; Firestore disinkronkan otomatis oleh workflow saat `pois.json` berubah di `dev`, dan pindah ke `main` pada PB19; konten tidak diedit di Console; seed memakai Node; login Google/Apple tidak ditambahkan. Dicatat di PRD §15.2 dan §15.4.
+
+**Perubahan:** lihat PB03 di `implementationPhases.md`. Ringkas: `firebase_core` ^5.1.0, `cloud_firestore` ^7.1.0, dev `fake_cloud_firestore` ^4.5.0; `FirestoreDatasetSource`; `refresh()` dipanggil di bootstrap; `INTERNET` di manifest (test manifest diubah dari melarang menjadi mewajibkan); `firestore.rules`, `firebase.json`, `.firebaserc`; `tools/firestore/` (seed, test rules, README, `package-lock.json`: `firebase-admin` 14.5.1, dev `@firebase/rules-unit-testing` 5.0.2 dan `firebase` 12.19.0); `.github/workflows/seed-firestore.yml` (`actions/setup-node@v7`).
+
+**Pemeriksaan:** `dart format` 0 perubahan; `flutter analyze` tanpa issue; `flutter test` lulus (termasuk 3 test baru `firestore_dataset_source_test.dart`); test rules 21 lulus di emulator (Java 27 Homebrew), dan satu mutasi sengaja (melonggarkan `featureUsed`) tertangkap lalu dipulihkan; seed diuji di emulator (tulis 10, hapus dokumen asing, `--dry-run` tidak menulis). Rules di-deploy ke `agam-9e704` dan dikompilasi tanpa error. Seed pertama ke `agam-9e704` dari `pois.json` `dev` `d602fed`: 10 `pois`, 0 `facilities`; REST tanpa login dapat membaca `pois` dan ditolak (403) untuk `users`. Service account `agam-seed` (Cloud Datastore User) dibuat PM; key disimpan di luar repo (folder `Tubes`, bukan repo git, izin 600) dan isinya tidak dibaca agent. **Belum:** build APK (Android SDK tidak ada; CI terkunci billing), sehingga plugin Google Services 4.4.4 dengan AGP 9.1.0 belum terverifikasi; uji perangkat.
+
+**Berikutnya:** simpan key sebagai secret `FIREBASE_SERVICE_ACCOUNT`; bereskan billing GitHub; review dan commit branch ini lalu PR ke `dev`; usulkan pembanding versi dataset ke LA.
+
+---
+
+## Sebelumnya — Integrasi LA, LB, dan FE, 14 November 2026
 
 **Tujuan:** menyatukan ketiga track pada branch `chore/integration-fe-la-lb` (dibuat dari `dev` `a1775f7`) atas instruksi PM, lalu menyambungkan layanan asli LA ke UI FE (Fase 4). Branch track `LA`, `LB`, dan `FE` tidak diubah. Belum ada PR ke `dev`; tidak ada merge ke `main`.
 

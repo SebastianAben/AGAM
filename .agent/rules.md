@@ -60,7 +60,7 @@ Ini adalah aturan terpenting di proyek ini.
 
 - **Dilarang mengarang** teks POI, trivia, sejarah, fungsi gedung, daftar fasilitas, foto, audio, video, alias resmi, atau atribusi sumber.
 - **Dilarang mengarang** koordinat, termasuk koordinat pintu masuk, fasilitas, atau batas area kampus.
-- Item di [PRD §22](PRD.md#22-hal-tertunda-tbd) (pintu masuk, dataset fasilitas, urutan trail, project Firebase, konten, perangkat uji) **belum tersedia**. Jangan mengisinya dengan nilai karangan.
+- Item di [PRD §22](PRD.md#22-hal-tertunda-tbd) (pintu masuk, dataset fasilitas, urutan trail, konten, perangkat uji) **belum tersedia**. Jangan mengisinya dengan nilai karangan.
 - Jika kode membutuhkan data yang belum ada, gunakan placeholder yang jelas, misalnya teks `PLACEHOLDER — menunggu tim konten` atau field `"status": "placeholder"`, dan laporkan sebagai blocker. Placeholder dilarang terlihat seperti konten final.
 - Data uji (fixture) untuk test boleh sintetis, tetapi wajib diberi label sintetis dan tidak boleh masuk ke dataset produksi.
 
@@ -114,7 +114,7 @@ Pilihan engineering di dalam stack (state management, struktur folder, package p
 ### 5.4 Secrets
 
 - Dilarang meng-commit credential, service account, keystore, atau password.
-- File konfigurasi Firebase klien (`google-services.json`) bukan secret, tetapi keamanannya bergantung pada Firestore security rules ([PRD §15.4](PRD.md#154-firestore): konten baca publik dan hanya diedit tim lewat Console; profil dan log hanya milik pengguna sendiri).
+- File konfigurasi Firebase klien (`google-services.json`) bukan secret, tetapi keamanannya bergantung pada Firestore security rules ([PRD §15.4](PRD.md#154-firestore): konten baca publik dan hanya ditulis script seed dari `assets/data/pois.json`; profil dan log hanya milik pengguna sendiri).
 - Keystore rilis dan password-nya disimpan di GitHub Secrets.
 
 ## 6. Verifikasi
