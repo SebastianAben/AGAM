@@ -1,0 +1,53 @@
+name: Seed Firestore
+
+# Firestore mengikuti assets/data/pois.json di dev sampai rilis v1.0; pada
+# PB19 ganti ke main (.agent/PRD.md §15.2). Hanya satu branch yang boleh
+# memicu seed agar isi Firestore tidak bolak-balik.
+on:
+  push:
+    branches: [dev]
+    paths:
+      - assets/data/pois.json
+  workflow_dispatch:
+
+concurrency:
+  group: seed-firestore
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/dev'
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version-file: .fvmrc
+          cache: true
+
+      # Dataset yang ditolak validasi tidak boleh sampai ke Firestore.
+      - run: flutter pub get
+      - run: flutter test test/logic/data
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: tools/firestore/package-lock.json
+
+      - run: npm ci
+        working-directory: tools/firestore
+
+      - name: Seed pois dan facilities
+        working-directory: tools/firestore
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          credentials="$RUNNER_TEMP/firebase-service-account.json"
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$credentials"
+          GOOGLE_APPLICATION_CREDENTIALS="$credentials" npm run seed
+          rm -f "$credentials"

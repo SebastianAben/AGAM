@@ -1,0 +1,101 @@
+rules_version = '2';
+
+// Security rules AGAM — .agent/PRD.md §15.4 dan §15.5.
+// Isi log dibatasi daftar event tertutup §15.5; posisi pengguna, ID/nama POI,
+// tujuan, dan kata kunci tidak boleh tersimpan dalam bentuk apa pun (A01).
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Konten: baca publik. Ditulis hanya oleh tools/firestore (Admin SDK,
+    // tidak melewati rules) dari assets/data/pois.json di branch dev.
+    match /pois/{poiId} {
+      allow read: if true;
+      allow write: if false;
+    }
+    match /facilities/{facilityId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Profil: hanya pemilik. Email tidak diduplikasi di sini (§15.3).
+    match /users/{uid} {
+      allow read, delete: if isOwner(uid);
+      allow create: if isOwner(uid)
+        && request.resource.data.keys().hasOnly(['role', 'createdAt'])
+        && request.resource.data.keys().hasAll(['role', 'createdAt'])
+        && isRole(request.resource.data.role)
+        && request.resource.data.createdAt is timestamp;
+      allow update: if isOwner(uid)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role'])
+        && isRole(request.resource.data.role);
+    }
+
+    // Log aktivitas: pengguna hanya membuat log miliknya, tidak dapat
+    // mengubahnya. Baca dan hapus untuk keperluan hapus akun (§15.4).
+    match /activity_logs/{logId} {
+      allow read, delete: if signedIn() && resource.data.uid == request.auth.uid;
+      allow create: if signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && isValidEvent(request.resource.data);
+      allow update: if false;
+    }
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function isRole(value) {
+      return value in ['mahasiswaItb', 'pengunjung'];
+    }
+
+    function hasExactly(data, fields) {
+      return data.keys().hasOnly(fields) && data.keys().hasAll(fields);
+    }
+
+    function isShortString(value) {
+      return value is string && value.size() > 0 && value.size() <= 64;
+    }
+
+    // Tanggal saja (YYYY-MM-DD), tanpa jam.
+    function isDate(value) {
+      return value is string && value.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+    }
+
+    function isMode(value) {
+      return value in ['explore', 'navigation', 'trail'];
+    }
+
+    function isValidEvent(d) {
+      return (d.type == 'signUp'
+          && hasExactly(d, ['uid', 'type', 'at', 'role'])
+          && d.at is timestamp && isRole(d.role))
+        || (d.type in ['login', 'logout']
+          && hasExactly(d, ['uid', 'type', 'at'])
+          && d.at is timestamp)
+        || (d.type == 'appOpen'
+          && hasExactly(d, ['uid', 'type', 'at', 'appVersion', 'androidVersion', 'deviceModel'])
+          && d.at is timestamp
+          && isShortString(d.appVersion)
+          && isShortString(d.androidVersion)
+          && isShortString(d.deviceModel))
+        || (d.type == 'modeStart'
+          && hasExactly(d, ['uid', 'type', 'date', 'mode'])
+          && isDate(d.date) && isMode(d.mode))
+        || (d.type == 'modeEnd'
+          && hasExactly(d, ['uid', 'type', 'date', 'mode', 'durationMin'])
+          && isDate(d.date) && isMode(d.mode)
+          && d.durationMin is int && d.durationMin >= 0 && d.durationMin % 5 == 0)
+        || (d.type == 'featureUsed'
+          && hasExactly(d, ['uid', 'type', 'at', 'feature'])
+          && d.at is timestamp
+          && d.feature in ['search', 'poiCard', 'narration', 'facilities'])
+        || (d.type == 'trailCompleted'
+          && hasExactly(d, ['uid', 'type', 'date'])
+          && isDate(d.date));
+    }
+  }
+}

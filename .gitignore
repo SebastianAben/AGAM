@@ -44,3 +44,6 @@ app.*.map.json
 # Cache pipeline tile (unduhan, JAR, scratch, log)
 /tools/tiles/.cache/
 /assets/map/.ganesha-build-*/
+
+# Dependency Node tools/firestore
+/tools/firestore/node_modules/
