@@ -221,6 +221,8 @@ Titik sambung antar-logic: `TrailService` (LB) mendengarkan `PoiTriggerEvent` da
 
 **Status: usulan, belum disepakati.** Wajib disetujui ketiga track sesuai §2.4 sebelum di-merge.
 
+**Ditulis di kode (branch `LA`, dipulihkan di atas `dev` `dded02b` pada 17 November 2026, belum di-PR):** `lib/contracts/models/account.dart` (`UserRole`, `UserAccount`, `AuthState`, serta `AuthErrorCode`/`AuthException` agar FE dapat memetakan pesan kesalahan), `lib/contracts/models/activity.dart` (`ActivityEvent` sebagai `sealed class` dengan delapan subclass `final`; `ActivityTimePrecision` menentukan `at` atau `date`; `ActivityMode`, `ActivityFeature`; `durationMin` dibulatkan ke 5 menit terdekat), `AuthService` dan `ActivityLogger` di `lib/contracts/services/la_services.dart`, `FakeAuthService` dan `FakeActivityLogger` di `lib/contracts/fakes/fake_la_services.dart`, serta `AppServices.auth`/`activity`. Keputusan rancangan yang perlu direview: event `signUp`/`login`/`logout` dicatat oleh implementasi `AuthService`, bukan UI; `ActivityLogger.log` bersifat `void` (tidak ditunggu, tidak melempar); `deleteAccount` meminta password untuk autentikasi ulang Firebase; mengakhiri sesi saat logout dilakukan perangkaian LA, bukan UI. Pemakai yang ikut diperbarui: `lib/main.dart`, dua baris di `lib/ui/device_app_services.dart` (FE), dan konstruksi `AppServices` di empat test UI (`auth`/`activity` dari `AppServices.fake()`). Tombol "Lihat" tidak masuk kontrak karena `dev` sudah mengopernya lewat parameter `AgamApp.poiViewRequests`. Test: `test/contracts/account_test.dart`.
+
 | Tambahan | Isi | Pemilik |
 | --- | --- | --- |
 | `UserRole` | `mahasiswaItb`, `pengunjung` | LA |
