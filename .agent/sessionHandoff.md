@@ -8,9 +8,17 @@ kontak/kartu foreground dari tiga sesi terakhir; 290 test lulus, analyze bersih,
 APK build dan audit tiga aset peta sudah lulus sebagaimana catatan berikut.
 APK SHA-256 `a1a07f41bede049b636b7a7ffce31744182f1130f351acbb6c9ad7e6e7fc1e80`
 berhasil dipasang pada OPPO CPH2739 melalui `adb install --no-streaming -r`
-(`Success`), data aplikasi dipertahankan. USB terputus sebelum launch/hash
-base.apk perangkat dapat diverifikasi; bukan bukti smoke visual/playback/GPS.
-Log instalasi di `D:\CodexRuntime\agam-android\contact-install-20261116.log`.
+(`Success`), data aplikasi dipertahankan. USB sempat terputus/offline; setelah
+restart/reconnect ADB dan pengguna mengizinkan debugging kembali, perangkat
+berstatus device. Cold start `am force-stop` lalu `am start -W` sukses:
+Status ok, LaunchState COLD, TotalTime 2405 ms; PID 31867 masih aktif setelah
+pemeriksaan. Hash base.apk yang ditarik dari HP identik dengan host (222.219.488
+byte). Crash buffer proses AGAM kosong dan penanda unhandled Flutter/Android
+error 0. Tidak mengambil screenshot posisi, dump lokasi, atau logcat umum.
+Ini bukan bukti smoke visual/playback/GPS atau acceptance lapangan.
+Log instalasi di `D:\CodexRuntime\agam-android\contact-install-20261116.log`,
+launch di `contact-launch-final-20261116.log`, salinan APK perangkat di
+`contact-device-base-20261116.apk` pada direktori yang sama.
 
 Publikasi menggunakan worktree detached dari `origin/LB`, karena checkout `LB`
 lokal di `AGAM-LB-PB04` tertinggal satu commit dan memiliki WIP PRD/tools yang
@@ -18,6 +26,14 @@ harus dipertahankan. Tree `dev` dan `origin/LB` identik sebelum delivery.
 Integrasi langsung sesuai instruksi pengguna, tanpa PR/review manusia baru;
 tidak membuat rilis atau menyentuh main. Status PBI tetap 15 in_progress,
 7 planned, 0 done; instalasi tidak memenuhi acceptance field test.
+
+Source dipush ke `origin/LB` pada `b5c6938`, lalu di-merge dan dipush ke
+`origin/dev` pada `096b940`; kedua remote diverifikasi lewat ls-remote. Tree
+hasil merge identik dengan snapshot WIP teruji termasuk empat file baru.
+Seluruh **290 test** lulus ulang pada hasil merge (log
+`contact-merged-tests-20261116.log`). Bukti debugging ditambahkan dalam commit
+dokumentasi lanjutan via LB → dev. Checkout LB lama/WIP PRD dan tools tetap
+utuh; sinkronisasi checkout itu menunggu pemiliknya menangani WIP.
 
 ---
 
