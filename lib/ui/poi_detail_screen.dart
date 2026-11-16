@@ -5,6 +5,9 @@ import 'package:flutter/material.dart';
 import '../contracts/models/audio.dart';
 import '../contracts/models/content.dart';
 import '../contracts/services/la_services.dart';
+import '../contracts/models/settings.dart';
+import '../logic/audio/audio_seek_control.dart';
+import 'widgets/agam_motion.dart';
 
 /// UI04 — Detail Lokasi. Only approved POI content is presented as factual.
 class PoiDetailScreen extends StatefulWidget {
@@ -15,8 +18,10 @@ class PoiDetailScreen extends StatefulWidget {
     required this.onNavigate,
     required this.checkedIn,
     this.navigationAvailable = true,
+    this.settings,
   });
 
+  final SettingsStore? settings;
   final Poi poi;
   final AudioService audio;
   final Future<void> Function() onNavigate;
@@ -64,8 +69,7 @@ class _PoiDetailScreenState extends State<PoiDetailScreen> {
       ? 'Alias belum tersedia'
       : 'Alias: ${widget.poi.aliases.join(', ')}';
 
-  String get _pendingContent =>
-      'PLACEHOLDER — menunggu tim konten dan verifikasi sumber.';
+  String get _pendingContent => 'Informasi belum tersedia.';
 
   @override
   Widget build(BuildContext context) {
@@ -149,29 +153,6 @@ class _PoiDetailScreenState extends State<PoiDetailScreen> {
               ),
             ),
           ),
-          if (photos.isEmpty)
-            Positioned(
-              top: 12,
-              left: 14,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.92),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-                  child: Text(
-                    'FOTO PLACEHOLDER',
-                    style: TextStyle(
-                      color: _navy,
-                      fontSize: 9,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
-              ),
-            ),
           Positioned(
             left: 16,
             right: 16,
@@ -253,37 +234,31 @@ class _PoiDetailScreenState extends State<PoiDetailScreen> {
             ],
           ),
           const SizedBox(height: 16),
-          Container(
-            height: 46,
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF0F2FF),
-              borderRadius: BorderRadius.circular(9),
-            ),
-            child: Row(
-              children: [
-                for (var i = 0; i < 29; i++)
-                  Expanded(
-                    child: Center(
-                      child: Container(
-                        width: 3,
-                        height: 10.0 + ((i * 17) % 28),
-                        decoration: BoxDecoration(
-                          color:
-                              _currentNarration &&
-                                  _playback.duration != null &&
-                                  i / 29 <=
-                                      (_playback.position.inMilliseconds /
-                                          _playback.duration!.inMilliseconds)
-                              ? _navy
-                              : const Color(0xFFD7DDFC),
-                          borderRadius: BorderRadius.circular(3),
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
+          Slider(
+            semanticFormatterCallback: (value) =>
+                '${(value / 1000).round()} detik',
+            min: 0,
+            max:
+                (_currentNarration
+                    ? _playback.duration?.inMilliseconds.toDouble()
+                    : null) ??
+                1,
+            value: _currentNarration && _playback.duration != null
+                ? _playback.position.inMilliseconds.toDouble().clamp(
+                    0,
+                    _playback.duration!.inMilliseconds.toDouble(),
+                  )
+                : 0,
+            onChanged:
+                audioAvailable &&
+                    _currentNarration &&
+                    _playback.duration != null &&
+                    _playback.duration! > Duration.zero &&
+                    widget.audio is AudioSeekControl
+                ? (value) => (widget.audio as AudioSeekControl).seekTo(
+                    Duration(milliseconds: value.round()),
+                  )
+                : null,
           ),
           const SizedBox(height: 5),
           Row(
@@ -319,20 +294,40 @@ class _PoiDetailScreenState extends State<PoiDetailScreen> {
           const SizedBox(height: 12),
           Row(
             children: [
-              _smallControl(Icons.speed_rounded, '1.0×', enabled: false),
+              _roundControl(
+                Icons.replay_rounded,
+                enabled: audioAvailable,
+                onPressed: () => _currentNarration
+                    ? widget.audio.replay()
+                    : _toggleNarration(),
+              ),
               const Spacer(),
-              _roundControl(Icons.replay_10_rounded, enabled: false),
+              _roundControl(
+                Icons.replay_10_rounded,
+                enabled: _canSeek,
+                onPressed: () => _seekBy(-10),
+              ),
               const SizedBox(width: 9),
               _roundControl(
-                Icons.play_arrow_rounded,
+                _currentNarration && _playback.status == PlaybackStatus.playing
+                    ? Icons.pause_rounded
+                    : Icons.play_arrow_rounded,
                 enabled: audioAvailable,
                 primary: audioAvailable,
                 onPressed: _toggleNarration,
               ),
               const SizedBox(width: 9),
-              _roundControl(Icons.forward_10_rounded, enabled: false),
+              _roundControl(
+                Icons.forward_10_rounded,
+                enabled: _canSeek,
+                onPressed: () => _seekBy(10),
+              ),
               const Spacer(),
-              _smallControl(Icons.volume_up_rounded, '', enabled: false),
+              _roundControl(
+                Icons.stop_rounded,
+                enabled: _currentNarration,
+                onPressed: widget.audio.stop,
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -357,11 +352,32 @@ class _PoiDetailScreenState extends State<PoiDetailScreen> {
                     style: TextStyle(fontSize: 10, color: Color(0xFF596273)),
                   ),
                 ),
-                Switch.adaptive(
-                  value: false,
-                  onChanged: null,
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
+                if (widget.settings case final settings?)
+                  StreamBuilder<AppSettings>(
+                    stream: settings.settings,
+                    initialData: settings.current,
+                    builder: (context, snapshot) => Switch.adaptive(
+                      value: snapshot.data!.autoPlayNarration,
+                      onChanged: (value) async {
+                        try {
+                          await settings.update(
+                            settings.current.copyWith(autoPlayNarration: value),
+                          );
+                        } catch (_) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Pengaturan belum dapat disimpan.',
+                                ),
+                              ),
+                            );
+                          }
+                        }
+                      },
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                  ),
               ],
             ),
           ),
@@ -391,7 +407,7 @@ class _PoiDetailScreenState extends State<PoiDetailScreen> {
                         const SizedBox(width: 5),
                         const Expanded(
                           child: Text(
-                            'Transkrip Teks Narasi',
+                            'Informasi Gedung',
                             style: TextStyle(
                               color: _navy,
                               fontSize: 10,
@@ -408,17 +424,26 @@ class _PoiDetailScreenState extends State<PoiDetailScreen> {
                         ),
                       ],
                     ),
-                    if (_transcriptExpanded) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        _pendingContent,
-                        style: const TextStyle(
-                          color: Color(0xFF626B7A),
-                          fontSize: 11,
-                          height: 1.45,
-                        ),
-                      ),
-                    ],
+                    AnimatedSize(
+                      duration: AgamMotion.duration(context, 180),
+                      curve: AgamMotion.easeOut,
+                      alignment: Alignment.topCenter,
+                      child: _transcriptExpanded
+                          ? Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: Text(
+                                _contentReady
+                                    ? poi.description
+                                    : _pendingContent,
+                                style: const TextStyle(
+                                  color: Color(0xFF626B7A),
+                                  fontSize: 11,
+                                  height: 1.45,
+                                ),
+                              ),
+                            )
+                          : const SizedBox.shrink(),
+                    ),
                   ],
                 ),
               ),
@@ -427,13 +452,27 @@ class _PoiDetailScreenState extends State<PoiDetailScreen> {
           if (!audioAvailable) ...[
             const SizedBox(height: 8),
             const Text(
-              'Audio placeholder · belum dapat diputar',
+              'Audio belum tersedia',
               textAlign: TextAlign.center,
               style: TextStyle(color: Color(0xFF737D90), fontSize: 9),
             ),
           ],
         ],
       ),
+    );
+  }
+
+  bool get _canSeek =>
+      _audioAvailable &&
+      _currentNarration &&
+      _playback.duration != null &&
+      _playback.duration! > Duration.zero &&
+      widget.audio is AudioSeekControl;
+
+  Future<void> _seekBy(int seconds) async {
+    if (!_canSeek) return;
+    await (widget.audio as AudioSeekControl).seekTo(
+      _playback.position + Duration(seconds: seconds),
     );
   }
 
@@ -593,56 +632,38 @@ class _PoiDetailScreenState extends State<PoiDetailScreen> {
     child: child,
   );
 
-  Widget _smallControl(IconData icon, String label, {required bool enabled}) =>
-      Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-        decoration: BoxDecoration(
-          color: const Color(0xFFE9ECFF),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 14, color: const Color(0xFF637086)),
-            if (label.isNotEmpty) ...[
-              const SizedBox(width: 3),
-              Text(
-                label,
-                style: TextStyle(
-                  color: enabled ? _navy : const Color(0xFF596273),
-                  fontSize: 9,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ],
-        ),
-      );
-
   Widget _roundControl(
     IconData icon, {
     required bool enabled,
     bool primary = false,
     VoidCallback? onPressed,
-  }) => Material(
-    color: primary ? _navy : const Color(0xFFF0F2FF),
-    shape: const CircleBorder(),
-    child: InkWell(
-      onTap: enabled ? onPressed : null,
-      customBorder: const CircleBorder(),
-      child: SizedBox(
-        width: primary ? 42 : 36,
-        height: primary ? 42 : 36,
-        child: Icon(
-          _currentNarration && _playback.status == PlaybackStatus.playing
-              ? Icons.pause_rounded
-              : icon,
-          color: primary
-              ? Colors.white
-              : enabled
-              ? _navy
-              : const Color(0xFF596273),
-          size: primary ? 23 : 18,
+  }) => Tooltip(
+    message: switch (icon) {
+      Icons.play_arrow_rounded => 'Putar narasi',
+      Icons.pause_rounded => 'Jeda narasi',
+      Icons.replay_rounded => 'Ulangi narasi',
+      Icons.replay_10_rounded => 'Mundur 10 detik',
+      Icons.forward_10_rounded => 'Maju 10 detik',
+      _ => 'Hentikan narasi',
+    },
+    child: Material(
+      color: primary ? _navy : const Color(0xFFF0F2FF),
+      shape: const CircleBorder(),
+      child: InkWell(
+        onTap: enabled ? onPressed : null,
+        customBorder: const CircleBorder(),
+        child: SizedBox(
+          width: primary ? 42 : 36,
+          height: primary ? 42 : 36,
+          child: Icon(
+            icon,
+            color: primary
+                ? Colors.white
+                : enabled
+                ? _navy
+                : const Color(0xFF596273),
+            size: primary ? 23 : 18,
+          ),
         ),
       ),
     ),
@@ -702,17 +723,8 @@ class _PoiDetailScreenState extends State<PoiDetailScreen> {
           ),
           const SizedBox(width: 8),
           IconButton.filledTonal(
-            onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  widget.checkedIn
-                      ? 'Check-in ${widget.poi.name} sudah tercatat otomatis.'
-                      : 'Check-in akan tercatat otomatis saat lokasi terdeteksi.',
-                ),
-                behavior: SnackBarBehavior.floating,
-              ),
-            ),
-            tooltip: widget.checkedIn ? 'Sudah check-in' : 'Check-in otomatis',
+            onPressed: null,
+            tooltip: widget.checkedIn ? 'Sudah check-in' : 'Belum dikunjungi',
             icon: Icon(
               widget.checkedIn
                   ? Icons.check_circle_rounded

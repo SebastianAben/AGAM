@@ -9,6 +9,9 @@ import 'package:agam/logic/location/position_source.dart';
 import 'package:agam/logic/map/agam_map_config.dart';
 import 'package:agam/logic/session/device_session_controller.dart';
 import 'package:agam/ui/app.dart';
+import 'package:agam/ui/widgets/agam_bottom_navigation.dart';
+import 'package:agam/logic/search/poi_search_service.dart';
+import 'package:agam/logic/session/trigger_notifier.dart';
 import 'package:agam/ui/poi_detail_screen.dart';
 import 'package:agam/ui/widgets/offline_campus_map.dart';
 import 'package:flutter/material.dart';
@@ -21,6 +24,30 @@ import 'package:latlong2/latlong.dart';
 import '../logic/support/synthetic.dart';
 
 void main() {
+  testWidgets('unapproved synthetic POI keeps content and media unavailable', (
+    tester,
+  ) async {
+    final services = AppServices.fake(tick: Duration.zero);
+    final poi = (await services.pois.poiById('P01'))!;
+    expect(poi.metadata.isPlaceholder, isTrue);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PoiDetailScreen(
+          poi: poi,
+          audio: services.audio,
+          onNavigate: () async {},
+          checkedIn: false,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Fungsi & Gambaran Gedung'), 250);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Informasi belum tersedia'), findsWidgets);
+    expect(find.byType(Image), findsNothing);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets(
     'Labtek V: real session dwell -> trigger -> same POI detail; view notification; stop',
     (tester) async {
@@ -87,12 +114,13 @@ void main() {
         map: map,
         routing: fake.routing,
         navigation: fake.navigation,
-        search: fake.search,
+        search: PoiSearchService(pois: repository),
         recommendations: fake.recommendations,
         trail: fake.trail,
         facilities: fake.facilities,
       );
       final views = StreamController<String>.broadcast();
+      final actions = <TriggerActionEvent>[];
       final repaint = GlobalKey();
       await tester.pumpWidget(
         MaterialApp(
@@ -103,6 +131,10 @@ void main() {
               services: services,
               internalDemo: true,
               poiViewRequests: views.stream,
+              onPoiAction: (id, action) async {
+                actions.add(TriggerActionEvent(poiId: id, action: action));
+                if (action == TriggerAction.view) views.add(id);
+              },
             ),
           ),
         ),
@@ -126,6 +158,120 @@ void main() {
       expect(find.textContaining('OpenStreetMap'), findsOneWidget);
       expect(find.text('© OpenMapTiles'), findsOneWidget);
       expect(find.text('Lihat'), findsNothing);
+      expect(find.byType(MaterialBanner), findsNothing);
+      expect(find.text('Mode uji'), findsOneWidget);
+      // FE 5db4dd4: top/right 12, 39 px controls, 7 px gaps,
+      // centered above the 42 px session button. Demo label lives below the map.
+      final mapRect = tester.getRect(find.byType(OfflineCampusMap));
+      final controlIcons = [
+        Icons.explore_outlined,
+        Icons.my_location_rounded,
+        Icons.layers_outlined,
+      ];
+      for (var index = 0; index < controlIcons.length; index++) {
+        final button = find.byWidgetPredicate(
+          (widget) =>
+              widget is SizedBox &&
+              widget.width == 39 &&
+              widget.height == 39 &&
+              widget.child is Icon &&
+              (widget.child! as Icon).icon == controlIcons[index],
+        );
+        final rect = tester.getRect(button);
+        expect(rect.size, const Size(39, 39));
+        expect(rect.center.dx, mapRect.right - 33);
+        expect(rect.top, mapRect.top + 32 + index * 46);
+        final icon = tester.widget<Icon>(
+          find.byIcon(controlIcons[index]).first,
+        );
+        expect(icon.color, const Color(0xFF174F9E));
+        expect(icon.size, 20);
+      }
+      expect(
+        tester.getSize(find.byTooltip('Mulai Explore')),
+        const Size(42, 42),
+      );
+      expect(
+        tester.getRect(find.byTooltip('Mulai Explore')).top,
+        mapRect.top + 170,
+      );
+      expect(mapRect.top, 94); // 54 px FE header + 40 px location status.
+      final osmRect = tester.getRect(find.textContaining('OpenStreetMap'));
+      final omtRect = tester.getRect(find.text('© OpenMapTiles'));
+      expect(osmRect.top, omtRect.top); // Compact attribution stays one line.
+      expect(osmRect.overlaps(omtRect), isFalse);
+      final canvasRect = tester.getRect(find.byType(FlutterMap));
+      expect(osmRect.bottom, lessThanOrEqualTo(canvasRect.top));
+      expect(
+        tester.getRect(find.text('Mode uji')).bottom,
+        lessThanOrEqualTo(mapRect.top),
+      );
+      expect(find.text('Pusatkan'), findsNothing);
+      expect(find.textContaining('engineering'), findsNothing);
+      // Small phone: credits stay readable and controls keep the FE right inset.
+      tester.view.physicalSize = const Size(320, 740);
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(
+        tester.getRect(find.textContaining('OpenStreetMap')).top,
+        tester.getRect(find.text('© OpenMapTiles')).top,
+      );
+      expect(tester.getRect(find.byTooltip('Mulai Explore')).right, 308);
+      expect(
+        tester.getSize(find.byType(CircleAvatar).first),
+        const Size(32, 32),
+      );
+      tester.view.physicalSize = const Size(430, 900);
+      await tester.pumpAndSettle();
+      // Seluruh tab FE tetap tersedia; perpindahan tab tidak memulai sesi dummy.
+      await tester.tap(find.text('Trail'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('PRATINJAU'), findsNothing);
+      expect(find.widgetWithText(FilledButton, 'Mulai Trail'), findsOneWidget);
+      expect(session.current.isActive, isFalse);
+      await tester.tap(find.byType(CircleAvatar).first);
+      await tester.pumpAndSettle();
+      expect(find.text('Profil Pengguna'), findsOneWidget);
+      await tester.tap(find.text('Cari & Rute'));
+      await tester.pumpAndSettle();
+      expect(find.byType(TextField), findsOneWidget);
+      await tester.enterText(find.byType(TextField), 'labtek 6');
+      await tester.runAsync(() => pumpEventQueue(times: 5));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Labtek VI'));
+      // Real offline map loads in the search card too.
+      for (var i = 0; i < 100; i++) {
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 10)),
+        );
+        await tester.pump();
+        if (find.byType(CircularProgressIndicator).evaluate().isEmpty) break;
+      }
+      await tester.ensureVisible(find.text('Tampilkan di peta'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Tampilkan di peta'));
+      await tester.runAsync(() => pumpEventQueue(times: 5));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Lihat'),
+        findsNothing,
+      ); // Target stays visible on the map.
+      final selectedMap = tester.widget<OfflineCampusMap>(
+        find.byType(OfflineCampusMap),
+      );
+      expect(selectedMap.selectedPoiId, 'P02');
+      final p02 = (await tester.runAsync(() => repository.poiById('P02')))!;
+      expect(
+        tester
+            .widget<FlutterMap>(find.byType(FlutterMap))
+            .mapController!
+            .camera
+            .center,
+        LatLng(p02.position.lat, p02.position.lng),
+      );
+      expect(session.current.isActive, isFalse);
+      await tester.tap(find.text('Jelajah'));
+      await tester.pumpAndSettle();
       await tester.drag(find.byType(FlutterMap), const Offset(40, 0));
       await tester.pumpAndSettle();
       final controller = tester
@@ -136,8 +282,32 @@ void main() {
       await tester.pumpAndSettle();
       expect(controller.camera.zoom, 19);
       controller.move(center, 17);
+      controller.rotate(45);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Mulai Explore'));
+      await tester.tap(find.byTooltip('Arahkan peta ke utara'));
+      await tester.pumpAndSettle();
+      expect(controller.camera.rotation, 0);
+      await tester.tap(find.byTooltip('Sembunyikan penanda POI'));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<MarkerLayer>(find.byType(MarkerLayer)).markers,
+        isEmpty,
+      );
+      await tester.tap(find.byTooltip('Tampilkan penanda POI'));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<MarkerLayer>(find.byType(MarkerLayer)).markers.length,
+        10,
+      );
+      await tester.tap(find.byTooltip('Pusatkan lokasi saya'));
+      await tester.pumpAndSettle();
+      expect(
+        find.textContaining('Lokasi belum tersedia. Periksa izin'),
+        findsOneWidget,
+      );
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Mulai Explore'));
       await tester.pumpAndSettle();
       await tester.runAsync(() => pumpEventQueue(times: 5));
       await tester.pump();
@@ -165,7 +335,32 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Lihat'), findsOneWidget);
       expect(find.bySemanticsLabel('Posisi perangkat'), findsOneWidget);
-      expect(find.text('Akhiri sesi'), findsOneWidget);
+      expect(find.byTooltip('Akhiri sesi'), findsOneWidget);
+      final sheet = find.byWidgetPredicate(
+        (widget) => widget.runtimeType.toString() == '_PoiSheet',
+      );
+      final nav = find.byType(AgamBottomNavigation);
+      expect(tester.getRect(sheet).bottom, tester.getRect(nav).top);
+      expect(tester.getRect(sheet).left, 0);
+      expect(tester.getRect(sheet).right, 430);
+      expect(
+        find.textContaining('Konten yang belum diverifikasi'),
+        findsNothing,
+      );
+      tester.view.physicalSize = const Size(320, 740);
+      await tester.pumpAndSettle();
+      expect(tester.getRect(sheet).bottom, tester.getRect(nav).top);
+      expect(tester.takeException(), isNull);
+      tester.view.physicalSize = const Size(430, 900);
+      await tester.pumpAndSettle();
+      controller.move(const LatLng(-6.889, 107.611), 18);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Pusatkan lokasi saya'));
+      await tester.pumpAndSettle();
+      expect(
+        controller.camera.center,
+        LatLng(poi.position.lat, poi.position.lng),
+      );
       await tester.runAsync(() async {
         final boundary =
             repaint.currentContext!.findRenderObject()!
@@ -177,6 +372,30 @@ void main() {
         await preview.writeAsBytes(png!.buffer.asUint8List());
         image.dispose();
       });
+      await tester.tap(find.text('Lewati'));
+      await tester.pumpAndSettle();
+      expect(actions.last.action, TriggerAction.skip);
+      expect(actions.last.poiId, 'P01');
+      expect(find.text('Lihat'), findsNothing);
+      expect(session.current.mode, SessionMode.explore);
+      await tester.tap(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is Semantics && widget.properties.label == 'Buka Labtek V',
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.text('Lihat'), findsNothing);
+      expect(session.current.mode, SessionMode.explore);
+      await tester.tap(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is Semantics && widget.properties.label == 'Buka Labtek V',
+        ),
+      );
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Lihat'));
       await tester.runAsync(() => pumpEventQueue(times: 5));
       await tester.pumpAndSettle();
@@ -184,7 +403,24 @@ void main() {
         tester.widget<PoiDetailScreen>(find.byType(PoiDetailScreen)).poi.id,
         'P01',
       );
-      expect(find.textContaining('PLACEHOLDER'), findsWidgets);
+      expect(actions.last.action, TriggerAction.view);
+      expect(actions.last.poiId, 'P01');
+      if (poi.metadata.approved && !poi.metadata.isPlaceholder) {
+        // Dataset tim kini berisi media yang disetujui; tampilkan aset
+        // repository yang sama, bukan memaksa konten final menjadi placeholder.
+        expect(
+          find.byWidgetPredicate(
+            (widget) =>
+                widget is Image &&
+                widget.image is AssetImage &&
+                (widget.image as AssetImage).assetName ==
+                    poi.media.photos.first,
+          ),
+          findsOneWidget,
+        );
+      } else {
+        expect(find.textContaining('Informasi belum tersedia'), findsWidgets);
+      }
       await tester.pageBack();
       await tester.pumpAndSettle();
       views.add(
@@ -198,7 +434,7 @@ void main() {
       );
       await tester.pageBack();
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Akhiri sesi'));
+      await tester.tap(find.byTooltip('Akhiri sesi'));
       await tester.runAsync(() => pumpEventQueue(times: 5));
       await tester.pumpAndSettle();
       for (var i = 0; i < 10 && source.lastRequest!.sessionService; i++) {

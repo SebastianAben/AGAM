@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
@@ -8,8 +7,12 @@ import '../contracts/models/content.dart';
 import '../contracts/models/audio.dart';
 import '../contracts/models/location.dart';
 import '../contracts/models/session.dart';
+import '../contracts/services/la_services.dart';
 import '../logic/location/device_location_service.dart';
 import '../logic/location/position_source.dart';
+import '../logic/session/trigger_notifier.dart';
+import 'widgets/agam_motion.dart';
+import 'widgets/agam_poi_panel.dart';
 import 'orientation_trail_screen.dart';
 import 'poi_detail_screen.dart';
 import 'widgets/offline_campus_map.dart';
@@ -24,7 +27,9 @@ class ExploreMapScreen extends StatefulWidget {
     this.isActive = true,
     this.onTabSelected,
     this.poiViewRequests = const Stream.empty(),
+    this.poiMapRequests = const Stream.empty(),
     this.internalDemo = false,
+    this.onPoiAction,
   });
 
   final AppServices services;
@@ -32,7 +37,9 @@ class ExploreMapScreen extends StatefulWidget {
   final bool isActive;
   final ValueChanged<int>? onTabSelected;
   final Stream<String> poiViewRequests;
+  final Stream<String> poiMapRequests;
   final bool internalDemo;
+  final Future<void> Function(String, TriggerAction)? onPoiAction;
 
   @override
   State<ExploreMapScreen> createState() => _ExploreMapScreenState();
@@ -43,6 +50,8 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
   static const _navy = Color(0xFF073B82);
   static const _blue = Color(0xFF1553A6);
 
+  final _mapKey = GlobalKey<OfflineCampusMapState>();
+  bool _showPois = true;
   final _subscriptions = <StreamSubscription<dynamic>>[];
   StreamSubscription<LocationFix>? _locationSubscription;
   List<Poi> _pois = const [];
@@ -51,9 +60,8 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
   Poi? _selectedPoi;
   bool _sessionActive = false;
   bool _showDetail = false;
-  bool _expandedDetail = false;
-  bool _isUiPreview = false;
   bool _changingSession = false;
+  bool _openingDetail = false;
   bool _appVisible = true;
   String? _locationMessage;
 
@@ -81,6 +89,18 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
     _sessionActive = widget.services.session.current.isActive;
     _subscriptions.add(widget.poiViewRequests.listen(_openPoiById));
     _subscriptions.add(
+      widget.poiMapRequests.listen((id) async {
+        final poi = await widget.services.pois.poiById(id);
+        if (!mounted || poi == null) return;
+        setState(() {
+          _selectedPoi = poi;
+          _showPois = true;
+          _showDetail = false;
+        });
+        _mapKey.currentState?.focusOn(poi.position);
+      }),
+    );
+    _subscriptions.add(
       widget.services.pois.watchPois().listen((pois) {
         if (!mounted) return;
         setState(() {
@@ -105,8 +125,6 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
         setState(() {
           _selectedPoi = poi;
           _showDetail = true;
-          _expandedDetail = false;
-          _isUiPreview = false;
         });
         _loadFacilities();
       }),
@@ -173,7 +191,7 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
 
   Future<void> _toggleSession() async {
     if (_changingSession) return;
-    _changingSession = true;
+    setState(() => _changingSession = true);
     try {
       if (_sessionActive) {
         await widget.services.session.end();
@@ -195,7 +213,7 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
         _showNotice('Sesi belum dapat diubah. Periksa izin lokasi dan GPS.');
       }
     } finally {
-      _changingSession = false;
+      if (mounted) setState(() => _changingSession = false);
     }
   }
 
@@ -204,29 +222,83 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
     if (mounted && poi != null) _openDetail(poi);
   }
 
-  void _openDetail(Poi poi) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => PoiDetailScreen(
-          poi: poi,
-          audio: widget.services.audio,
-          checkedIn: false,
-          navigationAvailable: !widget.internalDemo,
-          onNavigate: () async =>
-              _showNotice('Navigasi belum tersedia pada demo ini.'),
+  Future<void> _openDetail(Poi poi) async {
+    if (_openingDetail) return;
+    _openingDetail = true;
+    try {
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => PoiDetailScreen(
+            poi: poi,
+            audio: widget.services.audio,
+            settings: widget.services.settings,
+            checkedIn: false,
+            navigationAvailable: !widget.internalDemo,
+            onNavigate: () async => _showNotice('Navigasi belum tersedia.'),
+          ),
         ),
-      ),
-    );
+      );
+    } finally {
+      _openingDetail = false;
+    }
   }
 
   void _selectPoi(Poi poi) {
     setState(() {
       _selectedPoi = poi;
+      _showPois = true;
       _showDetail = true;
-      _expandedDetail = false;
-      _isUiPreview = true;
     });
+    _mapKey.currentState?.focusOn(poi.position);
     _loadFacilities();
+  }
+
+  Future<void> _poiAction(Poi poi, TriggerAction action) async {
+    if (action == TriggerAction.skip) setState(() => _showDetail = false);
+    try {
+      final audio = widget.services.audio;
+      if (action == TriggerAction.listen &&
+          audio.current.clip?.poiId == poi.id &&
+          audio.current.clip?.kind == AudioClipKind.narration) {
+        if (audio.current.status == PlaybackStatus.playing) {
+          await audio.pause();
+          return;
+        }
+        if (audio.current.status == PlaybackStatus.paused) {
+          await audio.resume();
+          return;
+        }
+      }
+      final onAction = widget.onPoiAction;
+      if (onAction != null) {
+        await onAction(poi.id, action);
+      } else {
+        switch (action) {
+          case TriggerAction.listen:
+            await audio.play(
+              AudioClip(poiId: poi.id, kind: AudioClipKind.narration),
+            );
+          case TriggerAction.view:
+            if (mounted) _openDetail(poi);
+          case TriggerAction.skip:
+            if (audio.current.clip?.poiId == poi.id &&
+                audio.current.clip?.kind == AudioClipKind.prompt) {
+              await audio.stop();
+            }
+        }
+      }
+    } catch (_) {
+      if (mounted) _showNotice('Aksi belum dapat dijalankan. Coba lagi.');
+    }
+  }
+
+  void _centerLocation() {
+    final fix = _fix;
+    if (fix == null) {
+      _showNotice('Lokasi belum tersedia. Periksa izin dan GPS perangkat.');
+      return;
+    }
+    _mapKey.currentState?.focusOn(fix.position);
   }
 
   @override
@@ -242,85 +314,136 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
   @override
   Widget build(BuildContext context) {
     final poi = _selectedPoi;
-    return Scaffold(
-      backgroundColor: const Color(0xFFFBFAFF),
-      body: SafeArea(
-        bottom: false,
-        child: Column(
-          children: [
-            if (!widget.embedded)
-              _TopBar(onProfile: () => _showNotice('Profil belum tersedia')),
-            _LocationStatus(
-              fix: _fix,
-              pois: _pois,
-              message:
-                  _locationMessage ??
-                  (_fix != null &&
-                          !widget.services.map.isInsideCampus(_fix!.position)
-                      ? 'Anda berada di luar area Kampus Ganesha'
-                      : null),
-            ),
-            Expanded(
-              child: LayoutBuilder(
-                builder: (context, constraints) => Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    OfflineCampusMap(
-                      config: widget.services.map,
-                      pois: _pois,
-                      selectedPoiId: poi?.id,
-                      userPosition: _fix?.position,
-                      onSelectPoi: _selectPoi,
-                    ),
-                    Positioned(
-                      top: 12,
-                      right: 12,
-                      child: _MapControls(
-                        sessionActive: _sessionActive,
-                        onSession: _toggleSession,
+    return PopScope(
+      canPop: !widget.isActive || !_showDetail,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop && widget.isActive && _showDetail) {
+          setState(() => _showDetail = false);
+        }
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFFFBFAFF),
+        body: SafeArea(
+          bottom: false,
+          child: Column(
+            children: [
+              if (!widget.embedded)
+                _TopBar(onProfile: () => _showNotice('Profil belum tersedia')),
+              _LocationStatus(
+                fix: _fix,
+                pois: _pois,
+                message:
+                    _locationMessage ??
+                    (_fix != null &&
+                            !widget.services.map.isInsideCampus(_fix!.position)
+                        ? 'Anda berada di luar area Kampus Ganesha'
+                        : null),
+              ),
+              Expanded(
+                child: LayoutBuilder(
+                  builder: (context, constraints) => Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      OfflineCampusMap(
+                        key: _mapKey,
+                        showPois: _showPois,
+                        config: widget.services.map,
+                        pois: _pois,
+                        selectedPoiId: poi?.id,
+                        userPosition: _fix?.position,
+                        onSelectPoi: _selectPoi,
                       ),
-                    ),
-                    if (poi != null && _showDetail)
                       Positioned(
-                        left: 8,
-                        right: 8,
-                        bottom: 72,
-                        height: math.min(452, constraints.maxHeight * 0.65),
-                        child: _PoiSheet(
-                          poi: poi,
-                          facilities: _nearbyFacilities,
-                          preview: _isUiPreview,
-                          expanded: _expandedDetail,
-                          onToggleExpanded: () => setState(
-                            () => _expandedDetail = !_expandedDetail,
-                          ),
-                          onClose: () => setState(() => _showDetail = false),
-                          onSkip: () => setState(() {
-                            _showDetail = false;
-                            _isUiPreview = false;
-                          }),
-                          onView: () => _openDetail(poi),
-                          onListen: () => widget.services.audio.play(
-                            AudioClip(
-                              poiId: poi.id,
-                              kind: AudioClipKind.narration,
+                        top: 32,
+                        right: 12,
+                        child: _MapControls(
+                          sessionActive: _sessionActive,
+                          onSession: _changingSession ? null : _toggleSession,
+                          showPois: _showPois,
+                          onNorth: () => _mapKey.currentState?.resetNorth(),
+                          onCenter: _centerLocation,
+                          onLayers: () =>
+                              setState(() => _showPois = !_showPois),
+                        ),
+                      ),
+                      Positioned.fill(
+                        child: IgnorePointer(
+                          ignoring: !_showDetail,
+                          child: AnimatedSwitcher(
+                            duration: AgamMotion.duration(context),
+                            reverseDuration: AgamMotion.duration(context, 160),
+                            switchInCurve: AgamMotion.easeOut,
+                            switchOutCurve: AgamMotion.easeOut,
+                            layoutBuilder: (current, previous) => Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                for (final outgoing in previous)
+                                  ExcludeSemantics(
+                                    child: IgnorePointer(child: outgoing),
+                                  ),
+                                ?current,
+                              ],
                             ),
+                            transitionBuilder:
+                                MediaQuery.disableAnimationsOf(context)
+                                ? (child, animation) => FadeTransition(
+                                    opacity: animation,
+                                    child: child,
+                                  )
+                                : AgamMotion.panel,
+                            child: poi != null && _showDetail
+                                ? AgamPoiPanel(
+                                    key: const ValueKey('poi-panel'),
+                                    builder:
+                                        (
+                                          context,
+                                          scroll,
+                                          expanded,
+                                          toggle,
+                                          handle,
+                                        ) => _PoiSheet(
+                                          poi: poi,
+                                          facilities: _nearbyFacilities,
+                                          scrollController: scroll,
+                                          handle: handle,
+                                          expanded: expanded,
+                                          onToggleExpanded: toggle,
+                                          onClose: () => setState(
+                                            () => _showDetail = false,
+                                          ),
+                                          onSkip: () => _poiAction(
+                                            poi,
+                                            TriggerAction.skip,
+                                          ),
+                                          onView: () => _poiAction(
+                                            poi,
+                                            TriggerAction.view,
+                                          ),
+                                          onListen: () => _poiAction(
+                                            poi,
+                                            TriggerAction.listen,
+                                          ),
+                                          audio: widget.services.audio,
+                                        ),
+                                  )
+                                : const SizedBox.shrink(),
                           ),
                         ),
                       ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
-            if (!widget.embedded)
-              SafeArea(
-                top: false,
-                child: AgamBottomNavigation(
-                  selectedIndex: 0,
-                  onSelect: _openTab,
+              if (!widget.embedded)
+                SafeArea(
+                  top: false,
+                  child: AgamBottomNavigation(
+                    selectedIndex: 0,
+                    onSelect: _openTab,
+                  ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -344,9 +467,9 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
         ),
       );
     } else if (index == 2) {
-      _showNotice('Pencarian dan rute akan tersedia pada UI05–UI06');
+      _showNotice('Pencarian dan rute belum tersedia');
     } else if (index == 3) {
-      _showNotice('Pengaturan akan tersedia pada UI09');
+      _showNotice('Pengaturan belum tersedia');
     }
   }
 }
@@ -473,20 +596,106 @@ class _LocationStatus extends StatelessWidget {
 }
 
 class _MapControls extends StatelessWidget {
-  const _MapControls({required this.sessionActive, required this.onSession});
+  const _MapControls({
+    required this.sessionActive,
+    required this.onSession,
+    required this.showPois,
+    required this.onNorth,
+    required this.onCenter,
+    required this.onLayers,
+  });
+
+  final bool showPois;
+  final VoidCallback onNorth;
+  final VoidCallback onCenter;
+  final VoidCallback onLayers;
   final bool sessionActive;
-  final VoidCallback onSession;
+  final VoidCallback? onSession;
 
   @override
-  Widget build(BuildContext context) => FilledButton.icon(
-    style: FilledButton.styleFrom(
-      backgroundColor: sessionActive
-          ? const Color(0xFFB33D55)
-          : const Color(0xFF007C83),
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        _ControlButton(
+          icon: Icons.explore_outlined,
+          tooltip: 'Arahkan peta ke utara',
+          onTap: onNorth,
+        ),
+        const SizedBox(height: 7),
+        _ControlButton(
+          icon: Icons.my_location_rounded,
+          tooltip: 'Pusatkan lokasi saya',
+          onTap: onCenter,
+        ),
+        const SizedBox(height: 7),
+        _ControlButton(
+          icon: Icons.layers_outlined,
+          tooltip: showPois
+              ? 'Sembunyikan penanda POI'
+              : 'Tampilkan penanda POI',
+          onTap: onLayers,
+        ),
+        const SizedBox(height: 7),
+        Material(
+          color: sessionActive
+              ? const Color(0xFFB33D55)
+              : const Color(0xFF007C83),
+          shape: const CircleBorder(),
+          elevation: 3,
+          child: Tooltip(
+            message: sessionActive ? 'Akhiri sesi' : 'Mulai Explore',
+            child: InkWell(
+              onTap: onSession,
+              customBorder: const CircleBorder(),
+              child: SizedBox(
+                width: 42,
+                height: 42,
+                child: Icon(
+                  sessionActive
+                      ? Icons.stop_rounded
+                      : Icons.people_outline_rounded,
+                  color: Colors.white,
+                  size: 21,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ControlButton extends StatelessWidget {
+  const _ControlButton({
+    required this.icon,
+    required this.onTap,
+    required this.tooltip,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Tooltip(
+    message: tooltip,
+    child: AgamPressFeedback(
+      child: Material(
+        color: Colors.white,
+        shape: const CircleBorder(),
+        elevation: 2,
+        child: InkWell(
+          onTap: onTap,
+          customBorder: const CircleBorder(),
+          child: SizedBox(
+            width: 39,
+            height: 39,
+            child: Icon(icon, color: const Color(0xFF174F9E), size: 20),
+          ),
+        ),
+      ),
     ),
-    onPressed: onSession,
-    icon: Icon(sessionActive ? Icons.stop : Icons.explore_outlined),
-    label: Text(sessionActive ? 'Akhiri sesi' : 'Mulai Explore'),
   );
 }
 
@@ -494,7 +703,9 @@ class _PoiSheet extends StatelessWidget {
   const _PoiSheet({
     required this.poi,
     required this.facilities,
-    required this.preview,
+    required this.scrollController,
+    required this.handle,
+    required this.audio,
     required this.expanded,
     required this.onToggleExpanded,
     required this.onClose,
@@ -505,7 +716,9 @@ class _PoiSheet extends StatelessWidget {
 
   final Poi poi;
   final List<Facility> facilities;
-  final bool preview;
+  final ScrollController scrollController;
+  final Widget handle;
+  final AudioService audio;
   final bool expanded;
   final VoidCallback onToggleExpanded;
   final VoidCallback onClose;
@@ -515,6 +728,9 @@ class _PoiSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final contentReady = poi.metadata.approved && !poi.metadata.isPlaceholder;
+    final narrationAvailable =
+        contentReady && poi.media.narrationAudio?.isNotEmpty == true;
     final prompt =
         '“Anda mendekati ${poi.name}. Apakah Anda ingin mendengarkan ceritanya?”';
     return Material(
@@ -523,15 +739,7 @@ class _PoiSheet extends StatelessWidget {
       borderRadius: const BorderRadius.vertical(top: Radius.circular(23)),
       child: Column(
         children: [
-          const SizedBox(height: 9),
-          Container(
-            width: 34,
-            height: 4,
-            decoration: BoxDecoration(
-              color: const Color(0xFFC4C9D9),
-              borderRadius: BorderRadius.circular(4),
-            ),
-          ),
+          handle,
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 9, 12, 7),
             child: Row(
@@ -562,233 +770,253 @@ class _PoiSheet extends StatelessWidget {
                     ),
                   ),
                 ),
+                IconButton(
+                  onPressed: onToggleExpanded,
+                  tooltip: expanded ? 'Ciutkan informasi' : 'Perluas informasi',
+                  icon: Icon(expanded ? Icons.expand_more : Icons.expand_less),
+                ),
                 IconButton.filledTonal(
-                  onPressed: expanded ? onToggleExpanded : onClose,
-                  tooltip: expanded ? 'Ciutkan informasi' : 'Tutup informasi',
+                  onPressed: onClose,
+                  tooltip: 'Tutup informasi',
                   style: IconButton.styleFrom(
                     backgroundColor: const Color(0xFFE9ECFF),
                     foregroundColor: const Color(0xFF35415E),
                     fixedSize: const Size(34, 34),
                   ),
-                  icon: Icon(
-                    expanded ? Icons.expand_more : Icons.close_rounded,
-                    size: 18,
-                  ),
+                  icon: const Icon(Icons.close_rounded, size: 18),
                 ),
               ],
             ),
           ),
           Expanded(
-            child: SingleChildScrollView(
-              physics: const ClampingScrollPhysics(),
-              clipBehavior: Clip.hardEdge,
-              padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(9),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF0F2FF),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          width: 25,
-                          height: 25,
-                          decoration: const BoxDecoration(
-                            color: _ExploreMapScreenState._blue,
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.campaign_outlined,
-                            size: 15,
-                            color: Colors.white,
-                          ),
-                        ),
-                        const SizedBox(width: 7),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                preview
-                                    ? 'Pratinjau prompt suara'
-                                    : 'Pemandu AGAM Suara',
-                                style: const TextStyle(
-                                  color: _ExploreMapScreenState._navy,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              const SizedBox(height: 3),
-                              Text(
-                                prompt,
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  height: 1.25,
-                                  fontStyle: FontStyle.italic,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: facilities.isEmpty
-                        ? [
-                            const _FacilityChip(
-                              label: 'Fasilitas belum tersedia',
-                            ),
-                          ]
-                        : facilities
-                              .map(
-                                (facility) => _FacilityChip(
-                                  label: facility.name.contains('(contoh)')
-                                      ? facility.name
-                                      : '${facility.name} · contoh',
-                                ),
-                              )
-                              .toList(),
-                  ),
-                  const SizedBox(height: 8),
-                  Container(
-                    height: 94,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE8EDF4),
-                      borderRadius: BorderRadius.circular(11),
-                    ),
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
+            child: Scrollbar(
+              controller: scrollController,
+              thumbVisibility: true,
+              interactive: true,
+              child: SingleChildScrollView(
+                key: ValueKey(poi.id),
+                controller: scrollController,
+                physics: const ClampingScrollPhysics(),
+                clipBehavior: Clip.hardEdge,
+                padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(9),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF0F2FF),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(
-                            Icons.image_outlined,
-                            size: 26,
-                            color: Color(0xFF8792A4),
+                          Container(
+                            width: 25,
+                            height: 25,
+                            decoration: const BoxDecoration(
+                              color: _ExploreMapScreenState._blue,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.campaign_outlined,
+                              size: 15,
+                              color: Colors.white,
+                            ),
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            poi.media.photos.isEmpty
-                                ? 'Foto belum tersedia · placeholder'
-                                : 'Foto POI',
-                            style: const TextStyle(
-                              color: Color(0xFF596477),
-                              fontSize: 10,
+                          const SizedBox(width: 7),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Pemandu AGAM Suara',
+                                  style: const TextStyle(
+                                    color: _ExploreMapScreenState._navy,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                const SizedBox(height: 3),
+                                Text(
+                                  prompt,
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    height: 1.25,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ),
-                  if (expanded) ...[
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: facilities.isEmpty
+                          ? [
+                              const _FacilityChip(
+                                label: 'Fasilitas belum tersedia',
+                              ),
+                            ]
+                          : facilities
+                                .map(
+                                  (facility) => _FacilityChip(
+                                    label: facility.name.contains('(contoh)')
+                                        ? facility.name
+                                        : '${facility.name} · contoh',
+                                  ),
+                                )
+                                .toList(),
+                    ),
                     const SizedBox(height: 8),
                     Container(
-                      padding: const EdgeInsets.all(10),
+                      height: 94,
+                      clipBehavior: Clip.antiAlias,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF8F8FC),
-                        borderRadius: BorderRadius.circular(10),
+                        color: const Color(0xFFE8EDF4),
+                        borderRadius: BorderRadius.circular(11),
                       ),
-                      child: Text(
-                        poi.metadata.isPlaceholder
-                            ? 'PLACEHOLDER — menunggu tim konten'
-                            : poi.description,
-                        style: const TextStyle(fontSize: 11, height: 1.35),
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    height: 48,
-                    child: FilledButton.icon(
-                      onPressed: poi.media.narrationAudio == null
-                          ? null
-                          : onListen,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFF063B82),
-                        foregroundColor: Colors.white,
-                        disabledBackgroundColor: const Color(0xFF063B82),
-                        disabledForegroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(11),
-                        ),
-                      ),
-                      icon: const Icon(Icons.headphones_rounded, size: 22),
-                      label: Text(
-                        poi.media.narrationAudio == null
-                            ? 'Narasi belum tersedia'
-                            : 'Dengarkan Cerita',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: onView,
-                          style: OutlinedButton.styleFrom(
-                            backgroundColor: const Color(0xFFE7EAFF),
-                            foregroundColor: _ExploreMapScreenState._navy,
-                            side: BorderSide.none,
-                            minimumSize: const Size.fromHeight(40),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
+                      child: contentReady && poi.media.photos.isNotEmpty
+                          ? Image.asset(
+                              poi.media.photos.first,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                              semanticLabel: 'Foto ${poi.name}',
+                              errorBuilder: (_, _, _) => const Center(
+                                child: Text('Foto belum dapat dimuat'),
+                              ),
+                            )
+                          : Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.image_outlined,
+                                    size: 26,
+                                    color: Color(0xFF8792A4),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    poi.media.photos.isEmpty
+                                        ? 'Foto belum tersedia'
+                                        : 'Foto POI',
+                                    style: const TextStyle(
+                                      color: Color(0xFF596477),
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                          icon: const Icon(Icons.info_outline, size: 17),
-                          label: const Text(
-                            'Lihat',
-                            style: TextStyle(fontSize: 12),
-                          ),
+                    ),
+                    if (expanded) ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8F8FC),
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                      ),
-                      const SizedBox(width: 5),
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: onSkip,
-                          style: OutlinedButton.styleFrom(
-                            backgroundColor: const Color(0xFFE7EAFF),
-                            foregroundColor: const Color(0xFF454B5B),
-                            side: BorderSide.none,
-                            minimumSize: const Size.fromHeight(40),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                          icon: const Icon(Icons.timer_outlined, size: 17),
-                          label: const Text(
-                            'Lewati',
-                            style: TextStyle(fontSize: 12),
-                          ),
+                        child: Text(
+                          !contentReady
+                              ? 'Informasi belum tersedia'
+                              : poi.description,
+                          style: const TextStyle(fontSize: 11, height: 1.35),
                         ),
                       ),
                     ],
-                  ),
-                  const SizedBox(height: 7),
-                  const Center(
-                    child: Text(
-                      'Konten yang belum diverifikasi ditandai PLACEHOLDER',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Color(0xFF747B8B),
-                        fontSize: 9,
-                        fontWeight: FontWeight.w500,
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 48,
+                      child: StreamBuilder<PlaybackState>(
+                        stream: audio.state,
+                        initialData: audio.current,
+                        builder: (context, snapshot) {
+                          final playing =
+                              snapshot.data?.clip?.poiId == poi.id &&
+                              snapshot.data?.clip?.kind ==
+                                  AudioClipKind.narration &&
+                              snapshot.data?.status == PlaybackStatus.playing;
+                          return FilledButton.icon(
+                            onPressed: narrationAvailable ? onListen : null,
+                            style: FilledButton.styleFrom(
+                              backgroundColor: const Color(0xFF063B82),
+                              foregroundColor: Colors.white,
+                              disabledBackgroundColor: const Color(0xFF063B82),
+                              disabledForegroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(11),
+                              ),
+                            ),
+                            icon: const Icon(
+                              Icons.headphones_rounded,
+                              size: 22,
+                            ),
+                            label: Text(
+                              narrationAvailable
+                                  ? (playing
+                                        ? 'Jeda cerita'
+                                        : 'Dengarkan Cerita')
+                                  : 'Narasi belum tersedia',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          );
+                        },
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: onView,
+                            style: OutlinedButton.styleFrom(
+                              backgroundColor: const Color(0xFFE7EAFF),
+                              foregroundColor: _ExploreMapScreenState._navy,
+                              side: BorderSide.none,
+                              minimumSize: const Size.fromHeight(40),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            icon: const Icon(Icons.info_outline, size: 17),
+                            label: const Text(
+                              'Lihat',
+                              style: TextStyle(fontSize: 12),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: onSkip,
+                            style: OutlinedButton.styleFrom(
+                              backgroundColor: const Color(0xFFE7EAFF),
+                              foregroundColor: const Color(0xFF454B5B),
+                              side: BorderSide.none,
+                              minimumSize: const Size.fromHeight(40),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            icon: const Icon(Icons.timer_outlined, size: 17),
+                            label: const Text(
+                              'Lewati',
+                              style: TextStyle(fontSize: 12),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

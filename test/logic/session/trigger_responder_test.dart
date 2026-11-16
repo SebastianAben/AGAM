@@ -47,6 +47,7 @@ class _ManualSession implements SessionController {
 
 class _RecordingNotifier implements TriggerNotifier {
   final calls = <String>[];
+  Completer<void>? fullGate;
   final _actions = StreamController<TriggerActionEvent>.broadcast();
 
   void press(String poiId, TriggerAction action) =>
@@ -56,7 +57,10 @@ class _RecordingNotifier implements TriggerNotifier {
   Stream<TriggerActionEvent> get actions => _actions.stream;
 
   @override
-  Future<void> showFull(Poi poi) async => calls.add('full:${poi.id}');
+  Future<void> showFull(Poi poi) async {
+    calls.add('full:${poi.id}');
+    await fullGate?.future;
+  }
 
   @override
   Future<void> showBrief(Poi poi) async => calls.add('brief:${poi.id}');
@@ -134,6 +138,7 @@ void main() {
     notifier.press('synthetic-a', TriggerAction.view);
     await pumpEventQueue();
     expect(requests, ['synthetic-a']);
+    expect(notifier.calls, ['dismiss:synthetic-a']);
     await sub.cancel();
   });
 
@@ -181,6 +186,46 @@ void main() {
     session.emitState(SessionState(mode: SessionMode.navigation));
     await pumpEventQueue();
     expect(notifier.calls, ['full:synthetic-a']);
+  });
+
+  test(
+    'ending a session while native show is pending cannot start prompt later',
+    () async {
+      notifier.fullGate = Completer<void>();
+      session.fire('synthetic-a', TriggerResponse.full);
+      await pumpEventQueue();
+      expect(notifier.calls, ['full:synthetic-a']);
+      session.emitState(const SessionState.idle());
+      await pumpEventQueue();
+      notifier.fullGate!.complete();
+      await pumpEventQueue();
+      expect(audio.current.status, PlaybackStatus.idle);
+      expect(notifier.calls, [
+        'full:synthetic-a',
+        'dismissAll',
+        'dismiss:synthetic-a',
+      ]);
+    },
+  );
+
+  test('foreground buttons use the same notifier and audio actions', () async {
+    session.fire('synthetic-a', TriggerResponse.full);
+    await pumpEventQueue();
+    await responder.handleAction(
+      const TriggerActionEvent(
+        poiId: 'synthetic-a',
+        action: TriggerAction.skip,
+      ),
+    );
+    expect(notifier.calls.last, 'dismiss:synthetic-a');
+    expect(audio.current.status, PlaybackStatus.idle);
+    await responder.handleAction(
+      const TriggerActionEvent(
+        poiId: 'synthetic-a',
+        action: TriggerAction.listen,
+      ),
+    );
+    expect(audio.current.clip?.kind, AudioClipKind.narration);
   });
 
   group('LocalTriggerNotifier', () {

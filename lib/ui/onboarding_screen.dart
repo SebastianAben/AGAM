@@ -39,24 +39,26 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
       // Notification permission is optional for entering the app. The UI
       // informs the user that trigger notifications may be unavailable.
-      await showDialog<void>(
-        context: context,
-        builder: (context) => AlertDialog(
-          icon: const Icon(Icons.check_circle_outline, color: _blue),
-          title: const Text('Akses lokasi diizinkan'),
-          content: Text(
-            notification == NotificationPermissionStatus.granted
-                ? 'AGAM siap membantu Anda menjelajahi Kampus ITB Ganesha.'
-                : 'Lokasi diizinkan. Notifikasi belum diaktifkan, jadi pemberitahuan POI mungkin tidak muncul.',
-          ),
-          actions: [
-            FilledButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Mengerti'),
+      if (notification != NotificationPermissionStatus.granted) {
+        await showDialog<void>(
+          context: context,
+          builder: (context) => AlertDialog(
+            icon: const Icon(Icons.check_circle_outline, color: _blue),
+            title: const Text('Akses lokasi diizinkan'),
+            content: Text(
+              notification == NotificationPermissionStatus.granted
+                  ? 'AGAM siap membantu Anda menjelajahi Kampus ITB Ganesha.'
+                  : 'Lokasi diizinkan. Notifikasi belum diaktifkan, jadi pemberitahuan POI mungkin tidak muncul.',
             ),
-          ],
-        ),
-      );
+            actions: [
+              FilledButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Mengerti'),
+              ),
+            ],
+          ),
+        );
+      }
       if (mounted) widget.onAccessGranted?.call();
     } finally {
       if (mounted) setState(() => _requesting = false);

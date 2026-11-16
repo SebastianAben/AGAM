@@ -33,6 +33,8 @@ class TriggerResponder {
   final AudioService _audio;
   final SettingsStore _settings;
 
+  int _generation = 0;
+  bool _disposed = false;
   final _viewRequests = StreamController<String>.broadcast();
   StreamSubscription<PoiTriggerEvent>? _triggerSubscription;
   StreamSubscription<TriggerActionEvent>? _actionSubscription;
@@ -43,11 +45,13 @@ class TriggerResponder {
 
   void start() {
     _triggerSubscription ??= _session.triggers.listen(_onTrigger);
-    _actionSubscription ??= _notifier.actions.listen(_onAction);
+    _actionSubscription ??= _notifier.actions.listen(handleAction);
     _stateSubscription ??= _session.state.listen(_onSessionState);
   }
 
   Future<void> dispose() async {
+    _disposed = true;
+    _generation++;
     await _triggerSubscription?.cancel();
     await _actionSubscription?.cancel();
     await _stateSubscription?.cancel();
@@ -55,13 +59,26 @@ class TriggerResponder {
   }
 
   Future<void> _onTrigger(PoiTriggerEvent event) async {
+    final generation = _generation;
+    if (_disposed || !_session.current.isActive) return;
     final poi = await _pois.poiById(event.poiId);
-    if (poi == null) return;
+    if (poi == null ||
+        generation != _generation ||
+        !_session.current.isActive) {
+      return;
+    }
     switch (event.response) {
       case TriggerResponse.brief:
         await _notifier.showBrief(poi);
+        if (generation != _generation || !_session.current.isActive) {
+          await _notifier.dismiss(poi.id);
+        }
       case TriggerResponse.full:
         await _notifier.showFull(poi);
+        if (generation != _generation || !_session.current.isActive) {
+          await _notifier.dismiss(poi.id);
+          return;
+        }
         final kind = _settings.current.autoPlayNarration
             ? AudioClipKind.narration
             : AudioClipKind.prompt;
@@ -70,10 +87,14 @@ class TriggerResponder {
   }
 
   Future<void> _onSessionState(SessionState state) async {
-    if (!state.isActive) await _notifier.dismissAll();
+    if (!state.isActive) {
+      _generation++;
+      await _notifier.dismissAll();
+    }
   }
 
-  Future<void> _onAction(TriggerActionEvent event) async {
+  Future<void> handleAction(TriggerActionEvent event) async {
+    if (_disposed) return;
     switch (event.action) {
       case TriggerAction.listen:
         await _notifier.dismiss(event.poiId);
@@ -81,7 +102,8 @@ class TriggerResponder {
           AudioClip(poiId: event.poiId, kind: AudioClipKind.narration),
         );
       case TriggerAction.view:
-        _viewRequests.add(event.poiId);
+        await _notifier.dismiss(event.poiId);
+        if (!_disposed) _viewRequests.add(event.poiId);
       case TriggerAction.skip:
         await _notifier.dismiss(event.poiId);
         final clip = _audio.current.clip;

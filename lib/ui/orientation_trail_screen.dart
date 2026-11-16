@@ -17,11 +17,13 @@ class OrientationTrailScreen extends StatefulWidget {
     super.key,
     required this.services,
     this.embedded = false,
+    this.internalDemo = false,
     this.onTabSelected,
   });
 
   final AppServices services;
   final bool embedded;
+  final bool internalDemo;
   final ValueChanged<int>? onTabSelected;
 
   @override
@@ -40,22 +42,37 @@ class _OrientationTrailScreenState extends State<OrientationTrailScreen> {
   @override
   void initState() {
     super.initState();
-    _progress = widget.services.trail.current;
+    _progress = widget.internalDemo
+        ? const TrailProgress(order: [], visited: {}, active: false)
+        : widget.services.trail.current;
     _subscriptions.add(
       widget.services.pois.watchPois().listen((pois) {
-        if (mounted) setState(() => _pois = pois);
+        if (!mounted) return;
+        setState(() {
+          _pois = pois;
+          if (widget.internalDemo) {
+            // Urutan repository hanya untuk tata letak contoh, bukan trail resmi.
+            _progress = TrailProgress(
+              order: pois.map((poi) => poi.id).toList(),
+              visited: const {},
+              active: false,
+            );
+          }
+        });
       }),
     );
-    _subscriptions.add(
-      widget.services.trail.progress.listen((progress) {
-        if (mounted) setState(() => _progress = progress);
-      }),
-    );
-    _subscriptions.add(
-      widget.services.navigation.state.listen((state) {
-        if (mounted) setState(() => _navigation = state);
-      }),
-    );
+    if (!widget.internalDemo) {
+      _subscriptions.add(
+        widget.services.trail.progress.listen((progress) {
+          if (mounted) setState(() => _progress = progress);
+        }),
+      );
+      _subscriptions.add(
+        widget.services.navigation.state.listen((state) {
+          if (mounted) setState(() => _navigation = state);
+        }),
+      );
+    }
   }
 
   @override
@@ -102,6 +119,10 @@ class _OrientationTrailScreenState extends State<OrientationTrailScreen> {
       _navigation.status == NavigationStatus.arrived;
 
   Future<void> _continueTrail([Poi? destination]) async {
+    if (widget.internalDemo) {
+      _message('Trail belum tersedia.');
+      return;
+    }
     if (_busy) return;
     final targetPoi = destination ?? _nextPoi;
     if (targetPoi == null) {
@@ -127,6 +148,7 @@ class _OrientationTrailScreenState extends State<OrientationTrailScreen> {
   }
 
   Future<void> _endTrail() async {
+    if (widget.internalDemo) return;
     await widget.services.navigation.stop();
     await widget.services.session.end();
     await widget.services.trail.stop();
@@ -138,7 +160,9 @@ class _OrientationTrailScreenState extends State<OrientationTrailScreen> {
         builder: (_) => PoiDetailScreen(
           poi: poi,
           audio: widget.services.audio,
+          settings: widget.services.settings,
           checkedIn: _progress.visited.contains(poi.id),
+          navigationAvailable: !widget.internalDemo,
           onNavigate: () => _continueTrail(poi),
         ),
       ),
@@ -147,7 +171,9 @@ class _OrientationTrailScreenState extends State<OrientationTrailScreen> {
 
   void _showCheckInStatus(Poi poi, {required bool checkedIn}) {
     _message(
-      checkedIn
+      widget.internalDemo
+          ? 'Check-in belum tersedia.'
+          : checkedIn
           ? 'Check-in ${poi.name} sudah tercatat otomatis.'
           : 'Check-in akan tercatat otomatis saat lokasi terdeteksi.',
     );
@@ -185,13 +211,11 @@ class _OrientationTrailScreenState extends State<OrientationTrailScreen> {
                         _TrailOverview(
                           progress: _progress,
                           percent: percent,
-                          isExample: true,
+                          isExample: false,
                         ),
                         const SizedBox(height: 12),
                         _AchievementCard(progress: _progress, percent: percent),
                         const SizedBox(height: 12),
-                        const _TrailNotice(),
-                        const SizedBox(height: 14),
                         _TrailFilters(
                           filter: _filter,
                           all: _orderedPois.length,
@@ -207,8 +231,10 @@ class _OrientationTrailScreenState extends State<OrientationTrailScreen> {
                             poi: entry,
                             done: _progress.visited.contains(entry.id),
                             isArrived: _hasArrivedAt(entry),
-                            isNext: entry.id == _progress.nextPoiId,
-                            isActive: widget.services.trail.current.active,
+                            isNext:
+                                !widget.internalDemo &&
+                                entry.id == _progress.nextPoiId,
+                            isActive: _progress.active,
                             expanded: _detailPoiId == entry.id,
                             navigationState: _navigation,
                             onExpand: () => setState(
@@ -216,7 +242,9 @@ class _OrientationTrailScreenState extends State<OrientationTrailScreen> {
                                   ? null
                                   : entry.id,
                             ),
-                            onRoute: () => _continueTrail(entry),
+                            onRoute: widget.internalDemo
+                                ? null
+                                : () => _continueTrail(entry),
                             onCheckIn: () => _showCheckInStatus(
                               entry,
                               checkedIn: _progress.visited.contains(entry.id),
@@ -226,7 +254,7 @@ class _OrientationTrailScreenState extends State<OrientationTrailScreen> {
                           const SizedBox(height: 8),
                         ],
                         const SizedBox(height: 10),
-                        const _TrailMapPreview(),
+                        if (!widget.internalDemo) const _TrailMapPreview(),
                         const SizedBox(height: 10),
                       ],
                     ),
@@ -235,7 +263,7 @@ class _OrientationTrailScreenState extends State<OrientationTrailScreen> {
               ),
             ),
             _TrailBottomArea(
-              nextPoi: nextPoi,
+              nextPoi: widget.internalDemo ? null : nextPoi,
               busy: _busy,
               isActive: _progress.active,
               navigation: _navigation,
@@ -251,10 +279,10 @@ class _OrientationTrailScreenState extends State<OrientationTrailScreen> {
                   Navigator.of(context).pop();
                 }
                 if (index == 2) {
-                  _message('Pencarian dan rute tersedia di UI05–UI06.');
+                  _message('Buka tab Cari & Rute untuk mencari POI.');
                 }
                 if (index == 3) {
-                  _message('Pengaturan tersedia di UI09.');
+                  _message('Buka tab Pengaturan.');
                 }
               },
             ),
@@ -376,17 +404,6 @@ class _TrailOverview extends StatelessWidget {
               height: 1.3,
             ),
           ),
-          if (isExample) ...[
-            const SizedBox(height: 6),
-            const Text(
-              'Urutan pada layar ini masih contoh sintetis; urutan resmi belum ditetapkan.',
-              style: TextStyle(
-                color: Color(0xFF71798A),
-                fontSize: 9.5,
-                height: 1.25,
-              ),
-            ),
-          ],
           const SizedBox(height: 12),
           Row(
             children: [
@@ -611,49 +628,6 @@ class _AchievementCard extends StatelessWidget {
   );
 }
 
-class _TrailNotice extends StatelessWidget {
-  const _TrailNotice();
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
-    decoration: BoxDecoration(
-      color: const Color(0xFFE7EBFF),
-      borderRadius: BorderRadius.circular(10),
-    ),
-    child: const Row(
-      children: [
-        Icon(
-          Icons.lightbulb_outline_rounded,
-          size: 20,
-          color: Color(0xFF00788A),
-        ),
-        SizedBox(width: 8),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Urutan trail resmi belum tersedia',
-                style: TextStyle(
-                  fontSize: 11,
-                  color: _TrailColors.ink,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              Text(
-                'Daftar di bawah memakai urutan contoh sintetis.',
-                style: TextStyle(fontSize: 9.5, color: Color(0xFF636B7A)),
-              ),
-            ],
-          ),
-        ),
-        Icon(Icons.info_outline, size: 17, color: Color(0xFF1553A6)),
-      ],
-    ),
-  );
-}
-
 class _TrailFilters extends StatelessWidget {
   const _TrailFilters({
     required this.filter,
@@ -732,7 +706,7 @@ class _TrailPoiCard extends StatelessWidget {
   final bool expanded;
   final NavigationState navigationState;
   final VoidCallback onExpand;
-  final VoidCallback onRoute;
+  final VoidCallback? onRoute;
   final VoidCallback onCheckIn;
   final VoidCallback onDetails;
 
@@ -813,7 +787,7 @@ class _TrailPoiCard extends StatelessWidget {
                         Expanded(
                           child: Text(
                             poi.metadata.isPlaceholder || !poi.metadata.approved
-                                ? 'Deskripsi menunggu tim konten.'
+                                ? 'Informasi belum tersedia.'
                                 : poi.description,
                             maxLines: expanded ? null : 2,
                             overflow: expanded
@@ -828,27 +802,6 @@ class _TrailPoiCard extends StatelessWidget {
                         ),
                       ],
                     ),
-                    if (expanded) ...[
-                      const SizedBox(height: 7),
-                      Text(
-                        'ID POI: ${poi.id} · Radius trigger: ${poi.radiusM.round()} m',
-                        style: const TextStyle(
-                          color: Color(0xFF767D8C),
-                          fontSize: 9,
-                        ),
-                      ),
-                      if (!poi.hasSurveyedEntrance)
-                        const Padding(
-                          padding: EdgeInsets.only(top: 3),
-                          child: Text(
-                            'Pintu masuk belum disurvei; titik tengah gedung hanya placeholder.',
-                            style: TextStyle(
-                              color: Color(0xFF767D8C),
-                              fontSize: 9,
-                            ),
-                          ),
-                        ),
-                    ],
                     if (done || isArrived) ...[
                       const SizedBox(height: 8),
                       Row(
@@ -879,7 +832,7 @@ class _TrailPoiCard extends StatelessWidget {
                             onPressed: onDetails,
                             icon: const Icon(Icons.info_outline, size: 14),
                             label: const Text(
-                              'Details',
+                              'Detail',
                               style: TextStyle(fontSize: 10),
                             ),
                           ),
@@ -1076,7 +1029,7 @@ class _TrailMapPreview extends StatelessWidget {
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: const Text(
-                    'PETA ILUSTRASI · DATA PETA MENUNGGU LB',
+                    'ILUSTRASI RUTE · BUKAN PANDUAN NAVIGASI',
                     style: TextStyle(
                       color: Color(0xFF56627A),
                       fontSize: 7,
@@ -1087,7 +1040,7 @@ class _TrailMapPreview extends StatelessWidget {
               ),
               const Center(
                 child: Text(
-                  'Peta belum tersedia',
+                  'Graf rute belum tersedia',
                   style: TextStyle(
                     color: Color(0xFF596477),
                     fontSize: 10,
@@ -1179,7 +1132,9 @@ class _TrailBottomArea extends StatelessWidget {
   Widget build(BuildContext context) {
     final buttonText = isActive
         ? 'Lanjutkan Trail: ${nextPoi?.name ?? 'selesai'}'
-        : 'Mulai Trail: ${nextPoi?.name ?? 'semua POI selesai'}';
+        : nextPoi == null
+        ? 'Mulai Trail'
+        : 'Mulai Trail: ${nextPoi!.name}';
     return Material(
       color: const Color(0xFFFBFAFF),
       elevation: 6,

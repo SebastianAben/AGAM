@@ -17,6 +17,7 @@ Poi syntheticPoi({
   GeoPoint position = const GeoPoint(0, 0),
   PoiMedia media = const PoiMedia(),
   String name = 'SINTETIS',
+  ContentMetadata metadata = const ContentMetadata.placeholder(),
 }) => Poi(
   id: id,
   name: name,
@@ -30,7 +31,7 @@ Poi syntheticPoi({
   facilities: const [],
   trivia: 'SINTETIS',
   media: media,
-  metadata: const ContentMetadata.placeholder(),
+  metadata: metadata,
 );
 
 /// Pembacaan pada [metersNorth] di utara (0, 0), [seconds] setelah epoch.
