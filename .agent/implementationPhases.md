@@ -374,7 +374,7 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
 
 ### PB05 — Engine geofence in-app
 
-- **Pembaruan area kontak (16 November 2026):** titik trigger diperluas menjadi lingkaran 5 m, jarak pendekatan per POI tetap 15 m pada dataset; engine masuk efektif ≤20 m dan keluar >25 m dari pusat. Dwell/cooldown/pengunci/akurasi dipertahankan. Status tetap `in_progress`; kalibrasi fisik belum. Verifikasi: 290 test lulus, analyze bersih, APK demo berhasil dibangun dan audit tiga aset peta lulus. Instalasi update OPPO CPH2739 sukses; USB terputus sebelum launch/hash perangkat. Publikasi LB → dev diotorisasi pengguna; bukan evidence lapangan.
+- **Pembaruan area kontak (16 November 2026):** titik trigger diperluas menjadi lingkaran 5 m, jarak pendekatan per POI tetap 15 m pada dataset; engine masuk efektif ≤20 m dan keluar >25 m dari pusat. Dwell/cooldown/pengunci/akurasi dipertahankan. Status tetap `in_progress`; kalibrasi fisik belum. Verifikasi: 290 test lulus, analyze bersih, APK demo berhasil dibangun dan audit tiga aset peta lulus. Instalasi update OPPO CPH2739 sukses; setelah USB/debugging dipulihkan, cold start ok 2405 ms, hash APK perangkat cocok, proses aktif dan tanpa crash/unhandled error pada pemeriksaan terbatas. Publikasi source LB b5c6938 → dev 096b940 berhasil; 290 test lulus ulang hasil merge. Bukan evidence lapangan.
 
 - **Mode demo/trial developer (16 November 2026):** pengunci kunjungan tetap
   mencegah trigger berulang walaupun diam >10 menit. Sakelar Pengaturan pada
