@@ -37,6 +37,7 @@ class AgamAudioHandler extends svc.BaseAudioHandler
   );
 
   final AudioPlayer _player;
+  int _request = 0;
   final _snapshots = StreamController<BackendSnapshot>.broadcast();
 
   @override
@@ -48,8 +49,22 @@ class AgamAudioHandler extends svc.BaseAudioHandler
     required String title,
     required String subtitle,
   }) async {
+    final request = ++_request;
     try {
-      final duration = await _player.setAsset(assetPath);
+      // just_audio retains `playing` after completion and across source changes.
+      // Loading must not inherit that intent before DeviceAudioService decides
+      // whether the newest clip should play or remain paused.
+      await _player.pause();
+      if (request != _request) {
+        throw const AudioBackendException('Pemuatan dibatalkan');
+      }
+      final duration = await _player.setAsset(
+        assetPath,
+        initialPosition: Duration.zero,
+      );
+      if (request != _request) {
+        throw const AudioBackendException('Pemuatan dibatalkan');
+      }
       mediaItem.add(
         svc.MediaItem(
           id: assetPath,
@@ -71,17 +86,29 @@ class AgamAudioHandler extends svc.BaseAudioHandler
   // `_player.play()` baru selesai saat pemutaran berhenti, jadi tidak
   // ditunggu.
   @override
-  Future<void> play() async => unawaited(_player.play());
+  Future<void> play() async {
+    final request = ++_request;
+    if (_player.processingState == ProcessingState.completed) {
+      await _player.seek(Duration.zero);
+      if (request != _request) return;
+    }
+    unawaited(_player.play());
+  }
 
   @override
-  Future<void> pause() => _player.pause();
+  Future<void> pause() {
+    _request++;
+    return _player.pause();
+  }
 
   @override
   Future<void> seek(Duration position) => _player.seek(position);
 
   @override
   Future<void> stop() async {
+    final request = ++_request;
     await _player.stop();
+    if (request != _request) return;
     mediaItem.add(null);
     await super.stop();
   }

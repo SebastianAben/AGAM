@@ -374,6 +374,22 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
 
 ### PB05 — Engine geofence in-app
 
+- **Pembaruan area kontak (16 November 2026):** titik trigger diperluas menjadi lingkaran 5 m, jarak pendekatan per POI tetap 15 m pada dataset; engine masuk efektif ≤20 m dan keluar >25 m dari pusat. Dwell/cooldown/pengunci/akurasi dipertahankan. Status tetap `in_progress`; kalibrasi fisik belum. Verifikasi: 290 test lulus, analyze bersih, APK demo berhasil dibangun dan audit tiga aset peta lulus. Instalasi update OPPO CPH2739 sukses; USB terputus sebelum launch/hash perangkat. Publikasi LB → dev diotorisasi pengguna; bukan evidence lapangan.
+
+- **Mode demo/trial developer (16 November 2026):** pengunci kunjungan tetap
+  mencegah trigger berulang walaupun diam >10 menit. Sakelar Pengaturan pada
+  build internal mereset/melewati cooldown selama aktif; tetap membutuhkan
+  exit histeresis lalu re-entry dan dwell. Default mati, hanya di memori,
+  controller produk tidak dapat mengaktifkannya. PB05/PB06 tetap `in_progress`;
+  acceptance fisik belum berubah. Perilaku uji dicatat di PRD §9.2/§23.
+
+- **Perbaikan trigger (16 November 2026):** snapshot ID aktif engine kini
+  diteruskan oleh sesi melalui kemampuan opsional LA `PoiTriggerLifecycle` untuk
+  menonaktifkan kartu/notifikasi saat keluar histeresis, keluar kampus,
+  perubahan dataset atau akhir sesi. Input buruk tidak melepas pengunci;
+  cooldown 10 menit/dwell 5 detik/radius tetap. Regresi sesi dan widget
+  exit/re-entry lulus; bukan evidence GPS fisik. Status tetap `in_progress`.
+
 - **Verifikasi source gabungan (16 November 2026):** Suite 254 test lulus; APK emulator P01 dwell → UI03/UI04 dan background P02 → notifikasi native → kartu benar, tanpa perubahan threshold. Belum GPS fisik P01; pengguna belum dapat field test.
 
 - **Perbaikan/verifikasi runtime (15 November 2026):** kehilangan GPS kini memutus dwell lewat `interruptDwell()` tanpa menghapus pengunci kunjungan/cooldown atau mengarang fix. Regression mencakup dwell terputus dan tidak terpicu ulang setelah hilang GPS walau cooldown telah lewat. Suite total 246 lulus; APK emulator memicu P01 setelah dwell, tidak pada pemeriksaan 4,05 detik, dan tidak mengulang saat tetap di area/reentry selama cooldown. Semua nilai PRD dipertahankan; ini **simulasi**, belum trigger/kalibrasi GPS fisik Labtek V.
@@ -389,6 +405,15 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
 - **Status:** `in_progress`
 
 ### PB06 — Sesi lokasi, notifikasi, getar, dan prompt saat trigger
+
+- **Pembaruan visibilitas (16 November 2026):** Explore/Trail saat resumed memakai kartu otomatis + audio; notifikasi sistem dipakai di latar belakang/layar mati. Navigasi tetap ringkas tanpa audio/kartu otomatis. Status tetap `in_progress`; uji HP terbaru belum.
+
+- **Perbaikan trigger (16 November 2026):** exit menghapus notifikasi,
+  menghentikan prompt terkait dan menutup panel otomatis. Revisi per POI
+  membatalkan respons terlambat sesudah Dengarkan/Lihat/Lewati/exit; guard
+  membatalkan aksi async setelah akhir sesi. Narasi yang dipilih pengguna
+  tetap berjalan saat keluar; panel manual tetap dapat dipakai. Seluruh
+  282 test proyek lulus termasuk regresi ini; retest HP/field belum dilakukan.
 
 - **Audit interaksi (16 November 2026):** aksi kartu Lihat/Lewati/Dengarkan tersambung ke `TriggerResponder.handleAction` yang sama dengan notifikasi Android, melalui callback UI tanpa perubahan kontrak. Lihat menghapus notifikasi POI sebelum membuka detail; Lewati menutupnya dan menghentikan prompt yang cocok. Respons native yang masih pending setelah Akhiri tidak boleh memulai prompt/notifikasi terlambat (regresi deterministik). Izin notifikasi/pengaturan baterai dapat dibuka dari Pengaturan. Bukan bukti trigger/notifikasi fisik terbaru.
 
@@ -409,6 +434,8 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
 
 ### PB07 — Kartu POI
 
+- **Pembaruan kartu otomatis (16 November 2026):** kartu memilih POI terdekat di antara trigger aktif, membuka tab Jelajah dari tab lain, dan tampil saat kembali dari latar belakang bila trigger masih aktif. Exit/akhir sesi menutup panel otomatis; Lewati/Back menutup sampai kunjungan berikutnya. Status tetap `in_progress`.
+
 - **Audit interaksi (16 November 2026):** handle kini bisa ditap/ditarik; panel native memiliki extent 35/65/90%, scroll konten dan scrollbar interaktif memakai controller sama. Panel tetap menempel navigasi bawah; Back menutupnya lebih dulu. Transisi enter/exit dan tab mempertahankan state; panel keluar tidak menangkap sentuhan. Regresi gesture/scroll offset, reduced motion dan alur Explore tetap tersedia. Tidak ada label sistem tambahan atau konten baru.
 
 - **Perapian UI (16 November 2026):** panel POI di peta kini full-width dan bottom 0, menempel langsung ke navigasi utama. Mode uji dipindah ke header 8 px, kredit peta bertautan ke atas kanvas 9 px; tidak ada footer di bawah panel. Catatan teknis/label placeholder tambahan di layar demo dihapus sesuai instruksi PM, sementara data belum approved tetap disembunyikan dan aksi tanpa layanan nonaktif. Regresi 320/430 px membuktikan batas bawah panel = batas atas navigasi; status PBI tetap `in_progress`.
@@ -422,6 +449,12 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
 - **Status:** `in_progress` — UI04 memakai ID repository yang sama; kartu manual HP terdahulu dan kartu emulator teruji. P01/P02 approved pada JSON, P03–P10 placeholder/unapproved; pengakuan P02 sebagai konten final masih perlu rekonsiliasi pemilik konten. Video GKUB/GKUT dan kartu dari trigger GPS fisik belum; navigasi demo nonaktif.
 
 ### PB08 — Pemutar narasi audio
+
+- **Perbaikan playback (16 November 2026):** intent klip tersedia sebelum
+  lookup async; stop/load/restart lama tidak menimpa klip/intent baru. Handler
+  pause sebelum mengganti sumber, memuat dari nol dan mengulang dari awal
+  saat play media ditekan pada completed. Regresi dengan player sintetis
+  lulus dalam 282 test proyek; playback/notifikasi/lock screen HP perlu retest.
 
 - **Audit interaksi (16 November 2026):** UI04 memakai playback aktual untuk play/pause/resume, ulang, stop, slider seek dan lompat ±10 detik; auto-play memakai SettingsStore yang sama dengan Pengaturan. Seek dibatasi durasi dan menjaga intent terbaru; jeda saat load/seek/replay tidak boleh tertimpa penyelesaian async lama. Layanan audio menolak metadata belum approved meskipun path aset ada. Widget/unit regression lulus; playback/lock screen fisik terbaru tetap perlu pengujian.
 
@@ -532,6 +565,13 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
 - **Status:** `in_progress` — UI08 FE tersedia. Demo membaca POI repository dengan urutan contoh sintetis dan progres kosong, tanpa berlangganan progres/navigation fake. Aksi Mulai/Pilih rute hanya menjelaskan dependency; test membuktikan Explore aktif tidak diganti. Trail resmi, penyimpanan progres, check-in, lencana dan acceptance belum selesai.
 
 ### PB16 — Fasilitas terdekat
+
+- **Pengaturan developer (16 November 2026):** satu sakelar Mode demo/trial
+  tersambung ke controller asli, hanya pada build internal; default mati dan
+  tidak disimpan. Reset/melewati cooldown untuk uji re-entry tanpa menghapus
+  pengunci saat diam atau validasi dwell/lokasi. Seluruh 286 test lulus,
+  termasuk wiring Pengaturan → sesi → re-entry dan pemisahan UI produk.
+  Tidak menambah fasilitas atau mengubah status PBI; retest HP belum.
 
 - **Track:** LB (`FacilityService`), FE (UI09), LA (data fasilitas di `PoiRepository`) · **Requirement:** F05, F07 · **Prioritas:** Should
 - **Dependency eksternal:** dataset fasilitas.

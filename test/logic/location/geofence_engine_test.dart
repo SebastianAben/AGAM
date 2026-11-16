@@ -60,9 +60,56 @@ class _Harness {
 }
 
 void main() {
+  test('trial resets cooldown but never repeats while remaining inside', () {
+    final h = _Harness();
+    h.trigger();
+    h.engine.setTrialMode(true);
+    expect(h.sample(10000), isEmpty);
+    expect(h.sample(700000), isEmpty); // Still inside, even after 10 minutes.
+    h.distance = 26;
+    expect(h.sample(701000), isEmpty);
+    h.distance = 14;
+    expect(h.sample(702000), isEmpty);
+    expect(h.sample(707000), hasLength(1));
+    h.distance = 26;
+    h.sample(708000);
+    h.distance = 14;
+    expect(h.sample(709000), isEmpty);
+    expect(h.sample(714000), hasLength(1)); // No 10-minute wait in trial.
+    h.engine.setTrialMode(false);
+    h.distance = 26;
+    h.sample(715000);
+    h.distance = 14;
+    h.sample(716000);
+    expect(h.sample(721000), isEmpty); // Normal cooldown is restored.
+  });
+
   group('dwell dan radius', () {
+    test(
+      '5 m contact disk keeps data radius 15 m and accepts approach at 18 m',
+      () {
+        final poi = _poi();
+        expect(poi.radiusM, 15);
+        final h = _Harness()..distance = 18;
+        expect(h.sample(0), isEmpty);
+        expect(h.sample(5000), hasLength(1));
+        h.distance = 25;
+        h.sample(605000);
+        expect(h.engine.activePoiIds, contains(poi.id));
+        h.distance = 25.001;
+        h.sample(606000);
+        expect(h.engine.activePoiIds, isEmpty);
+      },
+    );
+
+    test('beyond contact edge plus approach radius never triggers', () {
+      final h = _Harness()..distance = 20.001;
+      expect(h.sample(0), isEmpty);
+      expect(h.sample(5000), isEmpty);
+    });
+
     test('tepat radius dan dwell; entry memakai timestamp input', () {
-      final h = _Harness()..distance = 15;
+      final h = _Harness()..distance = 20;
       expect(h.sample(0), isEmpty);
       expect(h.sample(4999), isEmpty);
       final entry = h.sample(5000).single;
@@ -73,9 +120,9 @@ void main() {
     test('keluar radius sebelum trigger membatalkan dwell', () {
       final h = _Harness();
       h.sample(0);
-      h.distance = 15.001;
+      h.distance = 20.001;
       expect(h.sample(4000), isEmpty);
-      h.distance = 15;
+      h.distance = 20;
       expect(h.sample(5000), isEmpty);
       expect(h.sample(10000), hasLength(1));
     });
@@ -218,17 +265,17 @@ void main() {
       final h = _Harness();
       h.trigger();
       expect(h.sample(605000), isEmpty);
-      h.distance = 20;
+      h.distance = 25;
       expect(h.sample(606000), isEmpty);
       h.distance = 14;
       expect(h.sample(607000), isEmpty);
       expect(h.sample(612000), isEmpty);
     });
 
-    test('keluar >20 m lalu dwell; cooldown tepat batas diterima', () {
+    test('keluar >25 m lalu dwell; cooldown tepat batas diterima', () {
       final h = _Harness();
       h.trigger();
-      h.distance = 20.001;
+      h.distance = 25.001;
       expect(h.sample(590000), isEmpty);
       h.distance = 14;
       expect(h.sample(595000), isEmpty);
@@ -239,7 +286,7 @@ void main() {
     });
 
     test('margin custom nol melepaskan setelah radius', () {
-      var distance = 15.0;
+      var distance = 20.0;
       final engine = GeofenceEngine(
         pois: [_poi()],
         hysteresisMarginM: 0,
@@ -247,9 +294,9 @@ void main() {
       );
       engine.evaluate(_fix(0), enabled: true);
       expect(engine.evaluate(_fix(5000), enabled: true), hasLength(1));
-      distance = 15.001;
+      distance = 20.001;
       expect(engine.evaluate(_fix(6000), enabled: true), isEmpty);
-      distance = 15;
+      distance = 20;
       expect(engine.evaluate(_fix(605000), enabled: true), isEmpty);
       expect(engine.evaluate(_fix(610000), enabled: true), hasLength(1));
     });
@@ -329,7 +376,7 @@ void main() {
     test('dua entry terurut dan radius per POI dipakai', () {
       final engine = GeofenceEngine(
         pois: [
-          _poi(id: 'synthetic-b', radius: 10),
+          _poi(id: 'synthetic-b', radius: 8),
           _poi(radius: 20),
         ],
         distanceCalculator: (_, _) => 14,
@@ -429,13 +476,13 @@ void main() {
   test('haversine default memakai jarak acuan independen existing', () {
     // Titik referensi PRD existing, bukan koordinat kampus baru.
     // POI test tetap SINTETIS. Acuan test kontrak: Oktagon–TVST 49,3895 m
-    // (Python independen, R=6371 km), sehingga berada di antara 49 dan 50 m.
+    // (Python independen, R=6371 km), sehingga berada di antara radius efektif 44+5 dan 45+5 m.
     const oktagon = GeoPoint(-6.8890603, 107.6100470);
     const tvst = GeoPoint(-6.8895043, 107.6100594);
     final engine = GeofenceEngine(
       pois: [
-        _poi(id: 'synthetic-49', radius: 49, position: oktagon),
-        _poi(id: 'synthetic-50', radius: 50, position: oktagon),
+        _poi(id: 'synthetic-49', radius: 44, position: oktagon),
+        _poi(id: 'synthetic-50', radius: 45, position: oktagon),
       ],
     );
     expect(engine.evaluate(_fix(0, position: tvst), enabled: true), isEmpty);

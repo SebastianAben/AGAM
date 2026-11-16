@@ -42,6 +42,9 @@ class DeviceAudioService implements AudioService, AudioSeekControl {
   Future<void> play(AudioClip clip) async {
     final generation = ++_generation;
     _wantsPlayback = true;
+    // Publish intent before the asynchronous repository lookup so pause/stop
+    // (including leaving a POI) can cancel a prompt that has not loaded yet.
+    _emit(PlaybackState(status: PlaybackStatus.playing, clip: clip));
     final poi = await _pois.poiById(clip.poiId);
     if (generation != _generation) return;
     final path = poi == null ? null : assetPathFor(poi, clip.kind);
@@ -52,7 +55,6 @@ class DeviceAudioService implements AudioService, AudioSeekControl {
       return;
     }
 
-    _emit(PlaybackState(status: PlaybackStatus.playing, clip: clip));
     try {
       final duration = await _backend.load(
         path,
@@ -146,9 +148,12 @@ class DeviceAudioService implements AudioService, AudioSeekControl {
 
   @override
   Future<void> stop() async {
-    _generation++;
+    final generation = ++_generation;
     _wantsPlayback = false;
+    // Invalidate the clip immediately, including a pending POI lookup/load.
+    _emit(const PlaybackState.idle());
     await _backend.stop();
+    if (generation != _generation) return;
     _emit(const PlaybackState.idle());
   }
 

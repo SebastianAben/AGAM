@@ -47,6 +47,7 @@ _createAppServices() async {
   final routing = FakeRoutingService();
   final la = await createLaServices(
     bundledOnly: true,
+    developerTrialAvailable: const bool.fromEnvironment('AGAM_INTERNAL_DEMO'),
     map: map,
     navigation: (location) =>
         FakeNavigationController(location: location, routing: routing),

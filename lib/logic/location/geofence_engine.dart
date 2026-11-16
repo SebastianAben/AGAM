@@ -37,11 +37,33 @@ class GeofenceEngine {
     _pois = _buildStates(pois);
   }
 
+  /// Area kontak di sekitar koordinat trigger; radius pendekatan POI tetap.
+  static const contactRadiusM = 5.0;
+
   final double hysteresisMarginM;
   final Duration maxSampleGap;
   final GeofenceDistanceCalculator _distance;
   late List<_PoiState> _pois;
   DateTime? _lastTimestamp;
+  bool _trialMode = false;
+
+  /// Uji developer: reset cooldown saat diaktifkan dan lewati jedanya selama
+  /// aktif. Pengunci kunjungan tetap: harus keluar sebelum trigger berikutnya.
+  void setTrialMode(bool enabled) {
+    if (_trialMode == enabled) return;
+    _trialMode = enabled;
+    if (enabled) {
+      for (final poi in _pois) {
+        poi.lastTriggeredAt = null;
+      }
+    }
+  }
+
+  /// Snapshot ID kunjungan yang masih terkunci di dalam histeresis.
+  Set<String> get activePoiIds => {
+    for (final poi in _pois)
+      if (poi.triggeredInside) poi.id,
+  };
 
   /// Timestamp sama/mundur diabaikan. Input buruk membatalkan dwell,
   /// tetapi tidak membuktikan keluar dan tidak menghapus cooldown.
@@ -74,13 +96,13 @@ class GeofenceEngine {
         continue;
       }
       if (poi.triggeredInside) {
-        if (distance > poi.radiusM + hysteresisMarginM) {
+        if (distance > poi.radiusM + contactRadiusM + hysteresisMarginM) {
           poi.triggeredInside = false;
           poi.clearCandidate();
         }
         continue;
       }
-      if (distance > poi.radiusM) {
+      if (distance > poi.radiusM + contactRadiusM) {
         poi.clearCandidate();
         continue;
       }
@@ -90,7 +112,8 @@ class GeofenceEngine {
       }
       poi.lastInsideSampleAt = timestamp;
       if (timestamp.difference(poi.enteredAt!) < kTriggerDwell) continue;
-      if (poi.lastTriggeredAt != null &&
+      if (!_trialMode &&
+          poi.lastTriggeredAt != null &&
           timestamp.difference(poi.lastTriggeredAt!) < kTriggerCooldown) {
         continue;
       }

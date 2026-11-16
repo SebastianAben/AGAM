@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:agam/contracts/contracts.dart';
 import 'package:agam/logic/search/poi_search_service.dart';
+import 'package:agam/logic/session/poi_trial_control.dart';
 import 'package:agam/ui/orientation_trail_screen.dart';
 import 'package:agam/ui/poi_detail_screen.dart';
 import 'package:agam/ui/profile_preview_screen.dart';
@@ -43,7 +44,20 @@ class _UnavailableTrail implements TrailService {
       throw StateError('Demo accessed trail: ${invocation.memberName}');
 }
 
-class _RecordingSession implements SessionController {
+class _RecordingSession implements SessionController, PoiTrialControl {
+  @override
+  bool get trialModeAvailable => true;
+  @override
+  bool trialModeEnabled = false;
+  final _trialChanges = StreamController<bool>.broadcast();
+  @override
+  Stream<bool> get trialModeChanges => _trialChanges.stream;
+  @override
+  void setTrialMode(bool enabled) {
+    trialModeEnabled = enabled;
+    _trialChanges.add(enabled);
+  }
+
   final _states = StreamController<SessionState>.broadcast();
   @override
   SessionState current = const SessionState.idle();
@@ -65,6 +79,18 @@ class _RecordingSession implements SessionController {
 }
 
 void main() {
+  testWidgets('developer trial is hidden outside the internal demo', (
+    tester,
+  ) async {
+    final services = demoServices();
+    await tester.pumpWidget(
+      MaterialApp(home: ProfilePreviewScreen(services: services)),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Mode demo/trial'), findsNothing);
+    expect((services.session as PoiTrialControl).trialModeEnabled, isFalse);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
   testWidgets('trail preview cannot start or replace an Explore session', (
     tester,
   ) async {

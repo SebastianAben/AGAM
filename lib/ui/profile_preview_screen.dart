@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
 
 import '../contracts/contracts.dart';
+import '../logic/session/poi_trial_control.dart';
 
 /// UI09 retains the FE account preview alongside available device settings.
 class ProfilePreviewScreen extends StatelessWidget {
-  const ProfilePreviewScreen({super.key, this.services});
+  const ProfilePreviewScreen({
+    super.key,
+    this.services,
+    this.internalDemo = false,
+  });
 
   final AppServices? services;
+  final bool internalDemo;
 
   static const _ink = Color(0xFF172238);
   static const _muted = Color(0xFF596174);
@@ -38,6 +44,21 @@ class ProfilePreviewScreen extends StatelessWidget {
           _accountCard(),
           if (services != null) ...[
             const SizedBox(height: 15),
+            if (services!.session case final PoiTrialControl trial
+                when internalDemo && trial.trialModeAvailable)
+              StreamBuilder<bool>(
+                stream: trial.trialModeChanges,
+                initialData: trial.trialModeEnabled,
+                builder: (context, snapshot) => SwitchListTile(
+                  title: const Text('Mode demo/trial'),
+                  subtitle: const Text(
+                    'Reset cooldown otomatis untuk developer. Keluar lalu masuk '
+                    'POI kembali, tanpa menunggu 10 menit.',
+                  ),
+                  value: snapshot.data ?? false,
+                  onChanged: trial.setTrialMode,
+                ),
+              ),
             ListTile(
               title: const Text('Notifikasi & izin aplikasi'),
               leading: const Icon(Icons.notifications_outlined),

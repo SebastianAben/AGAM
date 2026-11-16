@@ -11,6 +11,7 @@ import '../contracts/services/la_services.dart';
 import '../logic/location/device_location_service.dart';
 import '../logic/location/position_source.dart';
 import '../logic/session/trigger_notifier.dart';
+import '../logic/session/poi_trigger_lifecycle.dart';
 import 'widgets/agam_motion.dart';
 import 'widgets/agam_poi_panel.dart';
 import 'orientation_trail_screen.dart';
@@ -30,8 +31,10 @@ class ExploreMapScreen extends StatefulWidget {
     this.poiMapRequests = const Stream.empty(),
     this.internalDemo = false,
     this.onPoiAction,
+    this.onAutomaticPoi,
   });
 
+  final VoidCallback? onAutomaticPoi;
   final AppServices services;
   final bool embedded;
   final bool isActive;
@@ -60,15 +63,20 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
   Poi? _selectedPoi;
   bool _sessionActive = false;
   bool _showDetail = false;
+  String? _triggeredPoiId;
   bool _changingSession = false;
   bool _openingDetail = false;
   bool _appVisible = true;
+  final _activeTriggerIds = <String>{};
   String? _locationMessage;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _appVisible =
+        WidgetsBinding.instance.lifecycleState == null ||
+        WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
     if (widget.services.location case DeviceLocationService device) {
       _subscriptions.add(
         device.issues.listen((issue) {
@@ -87,6 +95,19 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
       );
     }
     _sessionActive = widget.services.session.current.isActive;
+    if (widget.services.session case PoiTriggerLifecycle lifecycle) {
+      _subscriptions.add(
+        lifecycle.deactivatedPois.listen((id) {
+          _activeTriggerIds.remove(id);
+          if (!mounted || _triggeredPoiId != id) return;
+          setState(() {
+            _triggeredPoiId = null;
+            _showDetail = false;
+          });
+          _showNearestTrigger();
+        }),
+      );
+    }
     _subscriptions.add(widget.poiViewRequests.listen(_openPoiById));
     _subscriptions.add(
       widget.poiMapRequests.listen((id) async {
@@ -94,6 +115,7 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
         if (!mounted || poi == null) return;
         setState(() {
           _selectedPoi = poi;
+          _triggeredPoiId = null;
           _showPois = true;
           _showDetail = false;
         });
@@ -114,19 +136,22 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
     _subscriptions.add(
       widget.services.session.state.listen((state) {
         if (!mounted) return;
-        setState(() => _sessionActive = state.isActive);
+        setState(() {
+          _sessionActive = state.isActive;
+          if (!state.isActive) {
+            _activeTriggerIds.clear();
+            if (_triggeredPoiId != null) _showDetail = false;
+            _triggeredPoiId = null;
+          }
+        });
       }),
     );
     _subscriptions.add(
       widget.services.session.triggers.listen((event) {
         if (!mounted) return;
-        final poi = _findPoi(event.poiId);
-        if (poi == null) return;
-        setState(() {
-          _selectedPoi = poi;
-          _showDetail = true;
-        });
-        _loadFacilities();
+        if (event.response != TriggerResponse.full) return;
+        _activeTriggerIds.add(event.poiId);
+        _showNearestTrigger();
       }),
     );
   }
@@ -159,11 +184,35 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    _appVisible =
-        state == AppLifecycleState.resumed ||
-        state == AppLifecycleState.inactive;
+    _appVisible = state == AppLifecycleState.resumed;
     if (!_appVisible && mounted) setState(() => _fix = null);
     _syncLocationSubscription();
+    if (_appVisible) _showNearestTrigger();
+  }
+
+  void _showNearestTrigger() {
+    if (!mounted || !_appVisible || !_sessionActive) return;
+    final candidates = _pois
+        .where((poi) => _activeTriggerIds.contains(poi.id))
+        .toList();
+    if (candidates.isEmpty) return;
+    final position = widget.services.location.lastFix?.position;
+    if (position != null) {
+      candidates.sort((a, b) {
+        final comparison = position
+            .distanceTo(a.position)
+            .compareTo(position.distanceTo(b.position));
+        return comparison != 0 ? comparison : a.id.compareTo(b.id);
+      });
+    }
+    final poi = candidates.first;
+    setState(() {
+      _selectedPoi = poi;
+      _triggeredPoiId = poi.id;
+      _showDetail = true;
+    });
+    widget.onAutomaticPoi?.call();
+    _loadFacilities();
   }
 
   Poi? _findPoi(String id) {
@@ -245,6 +294,7 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
 
   void _selectPoi(Poi poi) {
     setState(() {
+      _triggeredPoiId = null;
       _selectedPoi = poi;
       _showPois = true;
       _showDetail = true;
@@ -254,7 +304,13 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
   }
 
   Future<void> _poiAction(Poi poi, TriggerAction action) async {
-    if (action == TriggerAction.skip) setState(() => _showDetail = false);
+    if (action == TriggerAction.skip) {
+      _activeTriggerIds.remove(poi.id);
+      setState(() {
+        _triggeredPoiId = null;
+        _showDetail = false;
+      });
+    }
     try {
       final audio = widget.services.audio;
       if (action == TriggerAction.listen &&
@@ -318,7 +374,13 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
       canPop: !widget.isActive || !_showDetail,
       onPopInvokedWithResult: (didPop, result) {
         if (!didPop && widget.isActive && _showDetail) {
-          setState(() => _showDetail = false);
+          if (_triggeredPoiId != null) {
+            _activeTriggerIds.remove(_triggeredPoiId);
+          }
+          setState(() {
+            _triggeredPoiId = null;
+            _showDetail = false;
+          });
         }
       },
       child: Scaffold(
@@ -408,9 +470,15 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
                                           handle: handle,
                                           expanded: expanded,
                                           onToggleExpanded: toggle,
-                                          onClose: () => setState(
-                                            () => _showDetail = false,
-                                          ),
+                                          onClose: () {
+                                            _activeTriggerIds.remove(
+                                              _triggeredPoiId,
+                                            );
+                                            setState(() {
+                                              _triggeredPoiId = null;
+                                              _showDetail = false;
+                                            });
+                                          },
                                           onSkip: () => _poiAction(
                                             poi,
                                             TriggerAction.skip,
