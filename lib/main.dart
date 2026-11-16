@@ -6,6 +6,7 @@ import 'logic/la_bootstrap.dart';
 import 'logic/map/agam_map_config.dart';
 import 'logic/search/poi_search_service.dart';
 import 'ui/app.dart';
+import 'logic/session/trigger_notifier.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,16 +26,23 @@ Future<void> main() async {
     );
     return;
   }
-  final (services, views) = await _createAppServices();
+  final (services, views, actions) = await _createAppServices();
   runApp(
-    AgamApp(services: services, poiViewRequests: views, internalDemo: true),
+    AgamApp(
+      services: services,
+      poiViewRequests: views,
+      onPoiAction: actions,
+      internalDemo: true,
+    ),
   );
 }
 
-/// Demo menampilkan hanya alur dengan sumber data/layanan nyata. Navigation,
-/// trail, rekomendasi, dan fasilitas belum tersedia, sehingga layarnya tidak
-/// dimasukkan ke shell demo.
-Future<(AppServices, Stream<String>)> _createAppServices() async {
+/// Demo menghubungkan layanan nyata dan mempertahankan layar FE yang belum
+/// didukung sebagai pratinjau tanpa menjalankan routing/trail/fasilitas fake.
+Future<
+  (AppServices, Stream<String>, Future<void> Function(String, TriggerAction))
+>
+_createAppServices() async {
   final map = AgamMapConfig.internalDemo();
   final routing = FakeRoutingService();
   final la = await createLaServices(
@@ -67,5 +75,8 @@ Future<(AppServices, Stream<String>)> _createAppServices() async {
       facilities: facilities,
     ),
     la.triggerResponder.viewRequests,
+    (id, action) => la.triggerResponder.handleAction(
+      TriggerActionEvent(poiId: id, action: action),
+    ),
   );
 }

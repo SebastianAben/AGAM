@@ -9,7 +9,7 @@
 | Pembagian kerja | Tiga track paralel: 1 developer frontend, 2 developer logic aplikasi (lihat §2) |
 | Desain layar | UI01–UI09 sudah selesai; frontend tinggal mengimplementasikan. UI10 Daftar & Login (ditambahkan 14 November 2026) belum didesain |
 | Backlog | PB01–PB20 dari PRD resmi, ditambah PB21–PB22 (akun, keputusan PM 6 dan 14 November 2026); ID tidak boleh diubah atau dinomori ulang |
-| Current focus | 16 November 2026: branch lokal `LB` sudah dipush ke `origin/LB`. Shell demo memakai UI FE Jelajah/Cari POI dan data POI repository-backed; format/analyze/build/audit lulus. APK terbaru dipasang ke OPPO CPH2739 dengan hash cocok; launch/UI Cari POI dan uji GPS fisik belum. Trail, fasilitas, rute dan profil tetap tersembunyi karena service/data belum nyata. Status PBI tidak berubah; PB21/PB22 `planned`. |
+| Current focus | 16 November 2026: verifikasi pemetaan demo Sprint 1–2 dan penyelarasan progres total. APK interaktif terbaru 9675dcf6…5cf6c9e terpasang di OPPO dan cold start command sukses; hash APK perangkat cocok. Smoke visual/playback terbaru belum terkonfirmasi, uji fisik Labtek V tidak tersedia. Empat tab FE tersedia; fitur dengan dependency yang belum nyata tetap dibatasi tanpa note sistem tambahan. |
 
 Dokumen ini menetapkan cara tim bekerja paralel, urutan pekerjaan per track, dependency, dan definition of done. Rencana bukan bukti implementasi.
 
@@ -32,6 +32,24 @@ Setiap PBI berstatus `done` wajib memiliki:
 - Pembaruan status di dokumen ini dan `.agent/sessionHandoff.md`.
 
 Bagian satu track yang selesai tetapi belum terintegrasi dicatat sebagai `in_progress` dengan keterangan, misalnya "logic selesai, menunggu integrasi UI".
+
+### Rekap total — 16 November 2026
+
+| Cakupan | `done` | `in_progress` | `planned` | Total |
+| --- | --- | --- | --- | --- |
+| Sprint 1 | 0 | 4 | 0 | 4 |
+| Sprint 2 | 0 | 5 | 0 | 5 |
+| Sprint 3 | 0 | 3 | 2 | 5 |
+| Sprint 4 | 0 | 3 | 2 | 5 |
+| Sprint 5 | 0 | 0 | 3 | 3 |
+| **Seluruh PBI** | **0** | **15** | **7** | **22** |
+
+PBI aktif: PB01–PB12, PB15–PB17. PBI planned: PB13, PB14, PB18–PB22.
+Tidak ada PBI berstatus `blocked`/`deferred`; blocker bagian pekerjaan tetap
+dicatat pada PBI masing-masing. Angka ini menghitung status deliverable, bukan
+persentase kode atau acceptance yang telah terpenuhi. PB17 dikoreksi dari
+`planned` ke `in_progress` karena verifikasi offline parsial sudah dijalankan;
+tidak ada PBI yang dinaikkan menjadi `done`.
 
 ## 2. Model Kerja Paralel
 
@@ -235,9 +253,9 @@ Progres trail, POI dikunjungi, dan pengaturan disimpan per akun (PRD §15.1). Im
 | Sprint | Sprint goal | PBI | Status |
 | --- | --- | --- | --- |
 | S1 — Week 10 | Kontrak, fondasi aplikasi, lokasi, peta | PB01, PB02, PB03, PB04 | `in_progress` |
-| S2 — Week 11 | Geofence, sesi, trigger, kartu POI, audio | PB05, PB06, PB07, PB08, PB09 | `in_progress` — logic LA PB05/PB06/PB08 dan format PB09 ada di source (10 November 2026); UI03/UI04 FE tersedia (14 November 2026); integrasi dan uji perangkat belum |
-| S3 — Week 12 | Pencarian dan navigasi; akun dan log aktivitas | PB10, PB11, PB12, PB21, PB22 | `in_progress` — bagian LA PB12 ada di source (10 November 2026); UI05/UI06 FE tersedia; PB10/PB11 (LB) belum; PB21/PB22 `planned` |
-| S4 — Week 13 | Eyes-free, rekomendasi, trail, fasilitas, offline; Feature Freeze | PB13, PB14, PB15, PB16, PB17 | `in_progress` — UI08 FE/PB15 mulai lebih awal; PBI Sprint 4 lainnya belum dimulai |
+| S2 — Week 11 | Geofence, sesi, trigger, kartu POI, audio | PB05, PB06, PB07, PB08, PB09 | `in_progress` — integrasi demo layanan LA/UI03/UI04 tersedia; simulasi native dan uji HP terdahulu parsial. Trigger fisik, konten lengkap, playback/acceptance belum selesai |
+| S3 — Week 12 | Pencarian dan navigasi; akun dan log aktivitas | PB10, PB11, PB12, PB21, PB22 | `in_progress` — pencarian POI repository pada demo tersedia; UI rute pratinjau, routing/navigation masih fake; LA PB12 teruji unit. PB21/PB22 `planned` |
+| S4 — Week 13 | Eyes-free, rekomendasi, trail, fasilitas, offline; Feature Freeze | PB13, PB14, PB15, PB16, PB17 | `in_progress` — PB15 UI pratinjau, PB16 pengaturan nyata/kategori placeholder, PB17 verifikasi offline parsial. PB13/PB14 tetap `planned` |
 | S5 — Week 14 | Uji acceptance, perbaikan, rilis v1.0 | PB18, PB19, PB20 | `planned` |
 
 ## 5. Sprint 1 — Kontrak, Fondasi, Lokasi, dan Peta
@@ -261,7 +279,10 @@ Progres trail, POI dikunjungi, dan pengaturan disimpan per akun (PRD §15.1). Im
 
 ### PB01 — Project Flutter, repository, pipeline build APK
 
-- **Pemasangan APK shell FE (16 November 2026):** APK `LB` terbaru `185.500.958` byte, SHA-256 `9bf687a32fa492c4cae0e638eadd26e5211087fcdd39baf3903a97d0c37014d6`, dipasang ke OPPO CPH2739 / Android 16 menggunakan `adb install -r`. Hash APK terpasang cocok; data aplikasi tidak dihapus. Launch dan pengujian UI setelah pemasangan belum dilakukan.
+- **Pemetaan terbaru (16 November 2026):** APK demo 213.041.274 byte, SHA-256 `8ee36167b203d3cd91f165278b85005d1db575840c52c69e88346e3b9098b2f1`, sudah di-install `-r` pada OPPO CPH2739. Hash `base.apk` perangkat diperiksa ulang dan identik. `am start -W` menghasilkan `Status: ok`, `LaunchState: HOT`, membawa task ke depan; PID tersedia. Ini bukan cold start atau bukti seluruh UI/playback bebas crash. CI remote/release terbaru belum diuji.
+
+- **Verifikasi source gabungan (16 November 2026):** Build demo 125,4 detik, APK 185.500.754 byte / SHA-256 `d25348dcff1a6808e6be55c80c5ab6ee39f1085911e65bea47819278f8a926d1`, aset/signature/manifest lulus; install/hash emulator cocok. HEAD `046b646` + perubahan lokal; snapshot 156 file identik. HP terbaru/CI remote belum.
+
 - **APK dan perangkat aktual (15 November 2026):** APK terbaru berflag demo dibangun ulang setelah perbaikan lokasi, 199.109.003 byte / SHA-256 `9373c5906d0f779bfa324c2048969e95f8deac0f7aa6f1437a690a5503f92873`. Build 18,4 detik, audit aset/signature/manifest lulus. Install tanpa hapus data dan launch OPPO CPH2739 Android 16 lulus; hash `base.apk` HP/emulator cocok dengan host. Tidak ada publikasi/CI/rilis baru; status keseluruhan tidak dinaikkan hanya karena demo lokal.
 - **Build demo lokal (15 November 2026):** Android SDK disiapkan di `D:\CodexRuntime\agam-android\sdk`; Flutter 3.47.9 berhasil menghasilkan `build/app/outputs/flutter-apk/app-debug.apk` berflag internal, 171.972.503 byte, SHA-256 `e54997a3bd133d933fbbfb968e2a8e7e4696e1107f1563552391099bc305ffce`. Source `dev` HEAD dasar `089883c` + WIP, bukan commit APK bersih. Audit aset APK/signature lulus; install/perangkat fisik dan CI baru belum, status tetap `in_progress`. Recipe toolchain/workaround Kotlin lokal ada di rencana demo/handoff.
 - **Track:** LA · **Requirement:** —
@@ -269,11 +290,13 @@ Progres trail, POI dikunjungi, dan pengaturan disimpan per akun (PRD §15.1). Im
 - **Pemeriksaan lokal:** `dart format` tanpa perubahan, `flutter analyze` tanpa issue, `flutter test` lulus (saat PB01 berisi 1 test; suite tumbuh seiring PBI berikutnya). Build APK **belum** dijalankan lokal karena Android SDK belum terpasang di mesin setup.
 - **CI (terverifikasi 3 November 2026):** workflow `ci.yml` sudah berjalan dan sukses — run 41424657609 (PR #1) dan 41424686250 (`main`), keduanya menghasilkan artifact `agam-debug-apk`. Peringatan deprecation: `actions/checkout@v4`, `actions/setup-java@v4`, `actions/upload-artifact@v4` dipaksa ke Node.js 24; `ubuntu-latest` pindah ke Ubuntu 26 pada 19 Oktober 2026.
 - **Pembaruan CI (10 November 2026, LA):** action dinaikkan ke `actions/checkout@v7`, `actions/setup-java@v6`, `actions/upload-artifact@v7`, `softprops/action-gh-release@v3` (versi dan catatan rilis diperiksa via GitHub API; perubahan utama runtime Node 24). CI kini juga berjalan pada push ke `dev`. `release.yml` kini menjalankan format dan analyze sebelum test. Workflow baru belum dijalankan di GitHub.
-- **Sisa:** APK belum dipasang di perangkat fisik; workflow `release.yml` belum pernah berjalan; keystore rilis ditunda ke PB19 (sampai saat itu APK rilis ditandatangani debug key runner sehingga tidak dapat dipasang menimpa versi sebelumnya).
+- **Sisa:** smoke UI/playback APK terbaru dan workflow CI/release integrasi terbaru; keystore rilis tetap PB19. Instalasi HP sudah terbukti; jangan memakai bukti APK lama sebagai runtime APK baru.
 - **Done:** APK debug terpasang dan dibuka tanpa crash di perangkat uji; workflow CI membangun APK dan mengunggahnya ke Releases.
 - **Status:** `in_progress`
 
 ### PB02 — Onboarding privasi, izin, dan pembacaan lokasi
+
+- **Verifikasi source gabungan (16 November 2026):** Format/analyze dan suite 254 test lulus; posisi simulasi ±5 m, fallback saat Google Accuracy ditolak dan posisi pada peta offline lulus APK emulator. Pengguna belum dapat uji fisik; bukti HP lama tidak mewakili APK baru.
 
 - **Pengujian Android lanjutan (15 November 2026):** GPS OPPO CPH2739 Android 16 terbaca ±4–14 m; marker terlihat setelah Pusatkan di luar coverage tile kampus. Izin akurat/perkiraan/ditolak, pemulihan Settings, GPS mati→aktif, peta Home/resume dan penghentian pembacaan diuji. Dua defect runtime diperbaiki: fallback geolocator LocationManager ketika Google Accuracy ditolak meskipun GPS aktif, serta pemulihan stream/status GPS dan penghapusan `lastFix` lama. 246 test Flutter lulus; snapshot 138 file source cocok dengan input APK final. Pengguna belum bisa berjalan: gerak GPS fisik di atas tile lokal **belum diuji**, PB02 tetap `in_progress`. Tidak ada koordinat/lintasan/screenshot HP yang dicatat.
 - **Verifikasi demo (15 November 2026):** 233 test Flutter dan analyze lulus ulang setelah `pub get --enforce-lockfile`; marker/GPS mati/lifecycle hanya terbukti simulasi widget. Android SDK/emulator/perangkat Android belum terdeteksi, sehingga dialog izin dan GPS fisik Tahap 2 tetap tertunda; status tidak naik.
@@ -285,11 +308,13 @@ Progres trail, POI dikunjungi, dan pengaturan disimpan per akun (PRD §15.1). Im
   - `lib/logic/location/device_location_service.dart` + `position_source.dart`: `LocationService` asli. Peta biasa membaca lokasi hanya saat aplikasi tampil dan ada pendengar; berhenti saat diminimalkan; `lastFix` dihapus saat pembacaan berhenti.
   - Manifest: izin lokasi akurat, foreground service `location`/`mediaPlayback`, notifikasi; `ACCESS_BACKGROUND_LOCATION` dihapus eksplisit (`tools:node="remove"`), dijaga `test/android/manifest_privacy_test.dart`.
 - **UI01/UI02 FE (14 November 2026):** onboarding meminta izin foreground lalu UI02 menampilkan posisi perangkat saat aplikasi aktif. FE sempat memakai adapter Geolocator sendiri di `lib/ui/device_location_services.dart`.
-- **Sisa:** uji perangkat fisik (izin, perkiraan, notifikasi Android 13+, optimasi baterai per merek).
+- **Sisa terkini:** smoke izin/GPS APK terbaru, gerak fisik di atas tile kampus, serta perluasan uji perangkat/optimasi baterai per merek. Bukti OPPO 15 November di atas tetap historis.
 - **Integrasi (14 November 2026):** layanan LA tersambung ke UI lewat `lib/main.dart` di branch integrasi.
 - **Status:** `in_progress` — logic LA/UI01/lokasi/peta terintegrasi; izin/GPS/lifecycle OPPO diuji; gerak GPS fisik di atas tile lokal/lapangan belum
 
 ### PB03 — Dataset 10 POI (Firestore + JSON bawaan)
+
+- **Verifikasi source gabungan (16 November 2026):** Demo kini memakai bootstrap `bundledOnly: true`: JSON APK + memori, tanpa cache konten produksi atau refresh Firestore. Jalur produk default tetap Firestore/cache file. Test memuat 10 POI/P01 tanpa inisialisasi Firebase/path_provider lulus; konten tim tidak diubah.
 
 - **Track:** LA · **Requirement:** F01, F02, F05, A02
 - **Scope:** skema final (PRD §15.3); JSON bawaan; validasi dokumen; sinkronisasi Firestore → cache lokal; fallback ke salinan lokal.
@@ -315,6 +340,12 @@ Progres trail, POI dikunjungi, dan pengaturan disimpan per akun (PRD §15.1). Im
 
 ### PB04 — Explore Map dengan tile vektor dibundel
 
+- **Penyesuaian APK (16 November 2026):** kontrol utara/pusat lokasi/lapisan POI kini berfungsi pada peta lokal; bentuk/posisi FE dipertahankan. Watermark mode uji 8 px dan kredit peta 9 px dipisah dari kanvas/header ke footer. Regresi kontrol, footer 320/430 px dan pencarian-ke-peta lulus; 257 test, analyze, build demo/audit/signature lulus. APK `d54d2b51…24b515` terpasang di OPPO, hash perangkat cocok, cold start command sukses. Visual/playback/manual dan field belum terkonfirmasi; bukan completion PB04.
+
+- **Perapian UI demo (16 November 2026):** chip Mode uji di header, kredit OSM/ODbL dan OpenMapTiles tetap terlihat/bertautan, kontrol kanan dikembalikan langsung ke FE `5db4dd4` (39/42 px, gap 7 px, inset 12 px). Copy dummy diringkas dengan label tetap. Format/analyze, 257 test Flutter serta regresi UI 320/430 px lulus; build demo dan audit APK lulus. Runtime Android terbaru belum diuji; status PBI tetap `in_progress`. Evidence/hash ada di [rencana demo §6](demo-apk-temporary-plan.md#6-progress-log).
+
+- **Verifikasi source gabungan (16 November 2026):** APK source gabungan `046b646` + perubahan lokal dibangun/diaudit; cold start mode pesawat menampilkan peta/atribusi/penanda/posisi simulasi pada emulator API 36. Counter UID online IPv4/IPv6 0 paket/0 byte; belum audit HP/field.
+
 - **Runtime APK (15 November 2026):** cold start mode pesawat (Wi-Fi/data mati, GPS aktif) pada OPPO Android 16; pengguna mengonfirmasi basemap/atribusi/P01 serta pan/zoom tampil dan bisa diinteraksi. Emulator juga lulus cold start offline dan perubahan posisi simulasi. Bundling tiga aset APK final diaudit ulang; marker GPS HP terlihat setelah Pusatkan di luar coverage, gerak di atas tile lokal dan batas layanan produk tetap belum terbukti.
 - **Lanjutan build/audit (15 November 2026):** SDK dipasang; build internal **berhasil** setelah incremental Kotlin dinonaktifkan pada Gradle user home khusus di luar repo. Audit `--apk` memastikan tiga aset peta identik dengan source, signature APK valid. Tidak mengubah source/kontrak/config tracked. Runtime pan/zoom/offline/perangkat tetap belum diuji; `in_progress` dipertahankan. Catatan SDK gagal di bawah adalah percobaan sebelumnya.
 - **Verifikasi demo (15 November 2026):** audit aset sumber dan 21 test pipeline lulus ulang. Build demo gagal sebelum Gradle (`No Android SDK found`); APK target tidak ada, sehingga audit `--apk`, pan/zoom/marker/atribusi/offline pada Android tetap tertunda. Hash aset bukan hash APK; `in_progress` tetap berlaku.
@@ -322,12 +353,11 @@ Progres trail, POI dikunjungi, dan pengaturan disimpan per akun (PRD §15.1). Im
 - **Brief:** [PB04-LB-01 — pipeline OSM ke PMTiles](../task-implementation/backend/PB04-LB-01-tile-pipeline.md).
 - **Ada di source (4 November 2026):** pipeline PowerShell/Python di `tools/tiles/`, generator Planetiler v0.10.2 terverifikasi SHA-256, snapshot batas OSM `way/177629384`, coverage kampus + 200 m, validator arsip dan manifest. Tidak mengubah kontrak, UI, atau dependency Flutter.
 - **Verifikasi lokal:** 18 test tooling lulus; dua build data nyata/cache menghasilkan PMTiles identik (1.035.927 bytes, 13 tile zoom 12–16); validator penuh dan CLI resmi `pmtiles verify` lulus. Manifest di `assets/map/ganesha.manifest.json`; command, checksum, peringatan sumber, dan batas evidence di handoff.
-- **Sisa:** style AGAM, `MapConfig` asli, pendaftaran aset di APK, renderer bersama FE, serta uji offline/perangkat. Batas coverage tile tercatat di PRD §9.3; batas layanan belum diterapkan.
+- **Sisa terkini:** smoke peta APK terbaru, pergerakan GPS fisik di atas tile, batas layanan produk dan field acceptance. Style, konfigurasi engineering demo, aset dan renderer sudah terintegrasi; batas coverage tile bukan batas layanan produk (PRD §9.3).
 - **UI02 FE (14 November 2026):** kerangka Explore Map dengan penanda POI dan posisi; peta masih ilustrasi skematis berlabel, belum merender PMTiles.
 - **Done:** peta tampil offline setelah login pertama; 10 POI dan posisi pengguna yang bergerak terlihat; script tile dapat dijalankan ulang; ukuran tile tercatat.
 - **Integrasi demo lokal (14 November 2026):** WIP `AgamMapConfig`, style, test, dan audit LB disalin ke checkout integrasi tanpa mengubah worktree LB. Pipeline kini melakukan clustering deterministik; PMTiles 1.022.885 byte, SHA-256 `6af43dfb1be0f854480ab45caa5dadc672e865134d50cddf43a316fc97934792`, seluruh 13 payload/metadata tetap sama dengan arsip awal. `OfflineMapTiles` + `OfflineCampusMap` merender vektor ke memori dengan `flutter_map 7.0.2`, `vector_tile_renderer 5.2.0`, `pmtiles 1.3.0`; tidak memakai layer/cache disk `vector_map_tiles`. Aset terdaftar, atribusi bertautan, marker repository, pan dan overzoom 19 lulus widget. 233 test Flutter, 21 test pipeline, analyze, audit aset tanpa APK, dan CLI verify lulus. Batas layanan produk tetap TBD; demo eksplisit memakai coverage engineering bersumber sesuai PRD §9.3.
-- **Verifikasi ulang setelah sinkronisasi (16 November 2026, branch `LB` HEAD `046b646`):** 78 file format tanpa perubahan, analyzer lulus, pipeline 21 test lulus, build APK demo dan audit tiga aset APK lulus. AVD API 36 dalam kondisi Wi-Fi/data mati menampilkan peta/atribusi/marker; mock P01 berhasil memicu UI03 dan membuka UI04. Suite Flutter **251 lulus, 1 gagal** pada assertion PLACEHOLDER P01; `assets/data/pois.json` menandai P01 approved, sedangkan PRD §22 masih menyatakan konten P01–P10 belum tersedia. Rincian serta hash APK ada di [rencana demo sementara](demo-apk-temporary-plan.md).
-- **Status:** `in_progress` — simulasi offline dan trigger pada AVD lulus; APK terbaru belum diuji pada HP, gerak/trigger GPS fisik dan audit privasi runtime belum terbukti; status konten P01 perlu diselaraskan dengan PRD sebelum menerima klaim konten.
+- **Status:** `in_progress` — build/install/peta offline Android diuji; pergerakan GPS di atas tile lokal, batas layanan produk dan field test belum terbukti
 
 
 ## 6. Sprint 2 — Geofence, Sesi, Trigger, Kartu POI, dan Audio
@@ -344,6 +374,8 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
 
 ### PB05 — Engine geofence in-app
 
+- **Verifikasi source gabungan (16 November 2026):** Suite 254 test lulus; APK emulator P01 dwell → UI03/UI04 dan background P02 → notifikasi native → kartu benar, tanpa perubahan threshold. Belum GPS fisik P01; pengguna belum dapat field test.
+
 - **Perbaikan/verifikasi runtime (15 November 2026):** kehilangan GPS kini memutus dwell lewat `interruptDwell()` tanpa menghapus pengunci kunjungan/cooldown atau mengarang fix. Regression mencakup dwell terputus dan tidak terpicu ulang setelah hilang GPS walau cooldown telah lewat. Suite total 246 lulus; APK emulator memicu P01 setelah dwell, tidak pada pemeriksaan 4,05 detik, dan tidak mengulang saat tetap di area/reentry selama cooldown. Semua nilai PRD dipertahankan; ini **simulasi**, belum trigger/kalibrasi GPS fisik Labtek V.
 - **Verifikasi demo (15 November 2026):** seluruh 233 test Flutter lulus ulang, termasuk engine dan alur simulasi P01. Radius 15 m / akurasi maksimal 20 m / dwell 5 detik / cooldown 10 menit dipertahankan. Build terhalang SDK; belum ada bukti trigger GPS fisik atau kalibrasi, tetap `in_progress`.
 - **Track:** LA · **Requirement:** F02
@@ -358,6 +390,10 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
 
 ### PB06 — Sesi lokasi, notifikasi, getar, dan prompt saat trigger
 
+- **Audit interaksi (16 November 2026):** aksi kartu Lihat/Lewati/Dengarkan tersambung ke `TriggerResponder.handleAction` yang sama dengan notifikasi Android, melalui callback UI tanpa perubahan kontrak. Lihat menghapus notifikasi POI sebelum membuka detail; Lewati menutupnya dan menghentikan prompt yang cocok. Respons native yang masih pending setelah Akhiri tidak boleh memulai prompt/notifikasi terlambat (regresi deterministik). Izin notifikasi/pengaturan baterai dapat dibuka dari Pengaturan. Bukan bukti trigger/notifikasi fisik terbaru.
+
+- **Verifikasi source gabungan (16 November 2026):** Explore/service lokasi tipe 0x8, P01 foreground dan native Lihat P02 dari background lulus emulator. Akhiri + Home: registrasi lokasi 0/service lokasi tidak ada. Service media tipe 0x2 masih ada setelah prompt; bukan semua service berhenti. Trafik UID online 0 paket/0 byte, audit HP belum.
+
 - **Native/perangkat (15 November 2026):** APK final diuji pada emulator Android 16 dan OPPO CPH2739 Android 16. Emulator P01→UI03/UI04 dan native Lihat dari background cocok; P02 terpicu ketika Dozing dan native Lihat cocok. Pada HP di luar kampus, Explore menunjukkan request/service/notifikasi sesi aktif; dua snapshot layar benar-benar Dozing tetap aktif. Akhiri saat peta tampil menghilangkan service sesi, kemudian Android Home menghasilkan request/service/notifikasi 0. Pencabutan izin melalui Settings saat Explore juga menghasilkan semuanya 0; `pm revoke` ditolak OEM dan tidak diakali. Cabang GPS off→on di background tidak diklaim pulih otomatis (restart menunggu foreground). Trigger/notifikasi P01 **fisik** belum diuji; audit jaringan fisik lengkap belum tersedia.
 - **Verifikasi demo (15 November 2026):** alur P01→UI03→UI04, view P02, GPS mati dan akhir sesi lulus ulang dalam suite widget. Belum ada APK/emulator/perangkat Android yang siap dipakai; service native, izin/lifecycle Android, background/cold start, notifikasi/layar mati dan audit privasi runtime tetap belum diuji. Tahap 3 dan status `in_progress` dipertahankan.
 - **Track:** LA (`SessionController`, notifikasi), FE (UI03, kontrol sesi) · **Requirement:** F02, F04, A01
@@ -367,27 +403,36 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
   - `lib/logic/session/trigger_notifier.dart`: notifikasi trigger (getar, prioritas tinggi, tombol Dengarkan/Lihat/Lewati, terlihat di lock screen) dan notifikasi ringkas tanpa suara. Tombol tanpa membuka aplikasi diteruskan dari isolate latar belakang plugin ke isolate utama lewat `IsolateNameServer`.
   - `lib/logic/session/trigger_responder.dart`: respons per mode; prompt audio atau narasi langsung bila auto-play aktif; `viewRequests` untuk FE membuka kartu POI.
 - **UI03 FE (14 November 2026):** kartu trigger Dengarkan/Lihat/Lewati di atas UI02 dan kontrol sesi.
-- **Belum:** uji notifikasi/tombol Android saat layar mati, kembali dari background/cold start, dan uji perangkat fisik; teks notifikasi masih rumusan developer dari skenario PRD §5.
+- **Sisa terkini:** smoke APK terbaru, trigger/notifikasi GPS fisik P01 dan audit privasi HP; simulasi native serta service/lifecycle OPPO terdahulu sudah diuji sebagaimana evidence di atas. Teks notifikasi masih rumusan developer dari skenario PRD §5.
 - **Integrasi (14 November 2026):** `DeviceSessionController`/`TriggerResponder` memakai MapConfig demo engineering OSM. `viewRequests` diteruskan dari `main.dart` melalui parameter widget ke UI04 tanpa perubahan kontrak. Uji widget memakai controller/lokasi/repository asli dengan sumber GPS simulasi: menolak akurasi 30 m, tidak trigger sebelum dwell 5 detik, P01 membuka detail P01, permintaan notifikasi P02 membuka detail P02, Akhiri mengakhiri service sesi, dan GPS mati menghapus marker.
 - **Status:** `in_progress` — native emulator dan service/lifecycle/izin OPPO diuji; trigger/notifikasi/kartu GPS fisik P01 dan field acceptance belum
 
 ### PB07 — Kartu POI
 
+- **Audit interaksi (16 November 2026):** handle kini bisa ditap/ditarik; panel native memiliki extent 35/65/90%, scroll konten dan scrollbar interaktif memakai controller sama. Panel tetap menempel navigasi bawah; Back menutupnya lebih dulu. Transisi enter/exit dan tab mempertahankan state; panel keluar tidak menangkap sentuhan. Regresi gesture/scroll offset, reduced motion dan alur Explore tetap tersedia. Tidak ada label sistem tambahan atau konten baru.
+
+- **Perapian UI (16 November 2026):** panel POI di peta kini full-width dan bottom 0, menempel langsung ke navigasi utama. Mode uji dipindah ke header 8 px, kredit peta bertautan ke atas kanvas 9 px; tidak ada footer di bawah panel. Catatan teknis/label placeholder tambahan di layar demo dihapus sesuai instruksi PM, sementara data belum approved tetap disembunyikan dan aksi tanpa layanan nonaktif. Regresi 320/430 px membuktikan batas bawah panel = batas atas navigasi; status PBI tetap `in_progress`.
+
+- **Verifikasi source gabungan (16 November 2026):** APK emulator membuka kartu P01/P02 sesuai trigger/notifikasi. Foto P01 memakai aset tim yang sudah approved di dataset; regression UI memeriksa foto tersebut dan fixture placeholder terpisah. Tidak mengubah persetujuan konten; trigger GPS nyata belum.
+
 - **APK Android (15 November 2026):** emulator P01 dari trigger/UI03 dan native Lihat membuka UI04 P01; P02 dari native juga benar. Pada HP OPPO Android 16, marker P01→Lihat membuka Labtek V dengan PLACEHOLDER, termasuk saat mode pesawat/Wi-Fi/data mati. Ini kartu manual dari repository yang sama, **bukan** bukti kartu dari trigger GPS fisik. Konten/media final belum tersedia.
 - **Verifikasi demo (15 November 2026):** kartu P01/P02 lulus ulang dalam simulasi widget; APK build terhalang SDK, sehingga kartu dari trigger GPS fisik belum terbukti. Placeholder dan status `in_progress` dipertahankan.
 - **Track:** FE (UI04); data dari `PoiRepository` (LA) · **Requirement:** F03
 - **Done:** kartu terbuka dari trigger dan dari peta dengan konten sesuai; video GKUB/GKUT dapat diputar.
-- **Status:** `in_progress` — UI04 memakai repository yang sama; detail P01 terkini pada AVD menampilkan data/media karena metadata dataset menandainya approved. PRD §22 masih menyatakan konten P01–P10 belum tersedia, sehingga status konten dan assertion placeholder belum dapat diterima sampai diselaraskan PM/tim konten. Kartu dari trigger GPS fisik belum diuji pada build terbaru.
+- **Status:** `in_progress` — UI04 memakai ID repository yang sama; kartu manual HP terdahulu dan kartu emulator teruji. P01/P02 approved pada JSON, P03–P10 placeholder/unapproved; pengakuan P02 sebagai konten final masih perlu rekonsiliasi pemilik konten. Video GKUB/GKUT dan kartu dari trigger GPS fisik belum; navigasi demo nonaktif.
 
 ### PB08 — Pemutar narasi audio
+
+- **Audit interaksi (16 November 2026):** UI04 memakai playback aktual untuk play/pause/resume, ulang, stop, slider seek dan lompat ±10 detik; auto-play memakai SettingsStore yang sama dengan Pengaturan. Seek dibatasi durasi dan menjaga intent terbaru; jeda saat load/seek/replay tidak boleh tertimpa penyelesaian async lama. Layanan audio menolak metadata belum approved meskipun path aset ada. Widget/unit regression lulus; playback/lock screen fisik terbaru tetap perlu pengujian.
 
 - **Track:** LA (`AudioService`), FE (kontrol di kartu) · **Requirement:** F03, F04
 - **Done:** narasi dapat dikendalikan dari kartu dan notifikasi.
 - **Ada di source (10 November 2026, LA):** `lib/logic/audio/device_audio_service.dart` (`AudioService` asli; path dari `Poi.media`; konten placeholder → `PlaybackStatus.error` tanpa crash) dan `lib/logic/audio/agam_audio_handler.dart` (`just_audio` + `audio_service`; putar/jeda/berhenti dari notifikasi media dan lock screen). `MainActivity` diturunkan dari `AudioServiceActivity`.
 - **Kontrol di kartu (FE, 14 November 2026):** UI04 memanggil `AudioService`; kontrol aktif bila file narasi POI tersedia.
-- **Sisa:** file audio belum ada (PB09); uji perangkat fisik.
+- **Audit source (16 November 2026):** file narasi/prompt/tiba tersedia untuk P01–P10 (30 file `.m4a`), dengan path dalam JSON. P01/P02 `approved: true`, P03–P10 `isPlaceholder: true`/unapproved. Kehadiran file bukan bukti durasi 45–90 detik, hak penggunaan, persetujuan isi atau playback Android. UI04 menjaga audio dengan metadata approval; rekonsiliasi P02 tetap pada pemilik konten/PM.
+- **Sisa:** playback/jeda/ulang dan kontrol notifikasi/lock screen pada APK terbaru di HP; audit durasi/konten/hak dan approval seluruh POI (PB09).
 - **Integrasi (14 November 2026):** `DeviceAudioService` tersambung ke kontrol UI04 lewat `lib/main.dart`.
-- **Status:** `in_progress` — logic LA dan kontrol UI04 tersambung; menunggu file audio dan uji perangkat
+- **Status:** `in_progress` — logic LA, kontrol UI04 dan aset audio tersedia; kelengkapan/approval konten dan playback perangkat terbaru belum selesai
 
 ### PB09 — Produksi konten 10 POI
 
@@ -395,7 +440,8 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
 - **Catatan:** agent dilarang membuat konten ini.
 - **Bagian LA (10 November 2026):** format aset dan aturan validasi untuk tim konten di [PB09-LA-01](../task-implementation/backend/PB09-LA-01-content-format.md); pemeriksaan otomatis `test/logic/data/content_assets_test.dart`.
 - **Done:** konten 10 POI lengkap, sumber tercatat, hak penggunaan media aman, disetujui tim.
-- **Status:** `in_progress` — format dan validasi LA tersedia; konten belum ada (tim konten)
+- **Audit source (16 November 2026):** 10 POI; 30 file audio; enam foto pada P01/P02/P06 (dua per POI); field video seluruh POI kosong. JSON menandai P01/P02 approved/non-placeholder dan P03–P10 placeholder/unapproved. Ini inventaris source, bukan persetujuan baru dari agent. P02 belum disebut pada catatan approval PRD sebelumnya; pemilik konten/PM perlu merekonsiliasi sebelum klaim final. Konten/metadata tidak diubah.
+- **Status:** `in_progress` — format/validasi serta sebagian konten/aset tim tersedia; kelengkapan F03, hak/approval A02 dan video GKUB/GKUT masih tertunda
 
 ## 7. Sprint 3 — Pencarian, Navigasi, dan Akun
 
@@ -411,10 +457,14 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
 
 ### PB10 — Pencarian dengan alias dan filter kategori
 
+- **Audit interaksi (16 November 2026):** ikon filter membuka pemilih kategori nyata yang mengubah query/filter layanan; tombol hapus mereset query/tujuan. Transisi tab memakai package resmi Flutter animations, state query dan layanan dipertahankan. Regresi kategori → hasil dan clear query tersedia; tidak mengaktifkan routing/fasilitas fake.
+
+- **Penyesuaian APK (16 November 2026):** hasil POI demo memakai kartu PMTiles nyata; Tampilkan di peta memusatkan/menyorot ID repository yang sama di Jelajah, tanpa memulai navigasi atau mengganti Explore. CTA detail/audio tetap ada; dummy ilustrasi rute diganti. Regresi P02/kamera dan isolasi sesi lulus. Graf/routing/fasilitas tetap tertunda; bukan completion PB10/PB11.
+
 - **Track:** LB (`SearchService`), FE (UI05) · **Requirement:** F05
 - **Done:** "labtek 5", "Labtek V", "lab 5" → Labtek V teratas; respons ≤1 detik.
-- **Demo internal (16 November 2026):** UI05 sementara memakai `PoiSearchService` repository-backed di shell `AGAM_INTERNAL_DEMO=true`; hasil alias POI membuka UI04/audio. Fasilitas/rute tidak ditawarkan. Format/analyze dan build APK lulus; test/runtime UI05 belum dijalankan.
-- **Status:** `in_progress` — pencarian demo POI memakai source nyata; PB10 penuh masih memerlukan filter fasilitas, integrasi LB produk, dan verifikasi alias ≤1 detik.
+- **Demo sementara (16 November 2026):** UI05 memakai `PoiSearchService` atas repository, alias Arab/Romawi dan filter kategori POI. Seluruh tab FE dipertahankan; kartu rute/fasilitas dummy berlabel tidak menjalankan fake. Detail/audio tetap nyata. Test UI alias, detail dan isolasi aksi dummy lulus; belum acceptance PB10 penuh karena data fasilitas/graf dan verifikasi performa belum lengkap.
+- **Status:** `in_progress` — UI05 FE tersedia; pencarian repository-backed baru diaktifkan pada jalur demo sementara. Integrasi/acceptance PB10 penuh belum selesai.
 
 ### PB11 — Navigasi jalan kaki di perangkat
 
@@ -479,19 +529,20 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
 - **Track:** LB (`TrailService`), FE (UI08), LA (sesi Trail) · **Requirement:** F08
 - **Dependency eksternal:** urutan trail dari tim.
 - **Done:** progres tersimpan setelah aplikasi ditutup; lencana muncul saat 10/10.
-- **Status:** `in_progress` — layar scrollable UI08 FE tersedia dan membaca `TrailProgress`/POI dari kontrak fake. Urutan yang tampil sintetis dan berlabel; penyimpanan progres, urutan resmi, check-in integrasi, badge acceptance, serta logic sesi/navigasi LA/LB belum selesai.
+- **Status:** `in_progress` — UI08 FE tersedia. Demo membaca POI repository dengan urutan contoh sintetis dan progres kosong, tanpa berlangganan progres/navigation fake. Aksi Mulai/Pilih rute hanya menjelaskan dependency; test membuktikan Explore aktif tidak diganti. Trail resmi, penyimpanan progres, check-in, lencana dan acceptance belum selesai.
 
 ### PB16 — Fasilitas terdekat
 
 - **Track:** LB (`FacilityService`), FE (UI09), LA (data fasilitas di `PoiRepository`) · **Requirement:** F05, F07 · **Prioritas:** Should
 - **Dependency eksternal:** dataset fasilitas.
-- **Status:** `planned`
+- **Status:** `in_progress` — kategori fasilitas dan placeholder FE tampil; UI09 auto-play/Akhiri tersambung SettingsStore/SessionController LA dan diuji widget. Dataset fasilitas/layanan terdekat serta acceptance F05/F07 belum tersedia.
 
 ### PB17 — Verifikasi akses offline
 
 - **Track:** semua · **Requirement:** A03 · **Prioritas:** Could
 - **Done:** trigger, kartu POI, peta, dan navigasi berfungsi dalam mode pesawat tanpa crash.
-- **Status:** `planned`
+- **Evidence parsial:** cold start mode pesawat pada HP 15 November membuktikan peta/atribusi/marker/kartu manual APK lama; emulator 16 November membuktikan peta/posisi simulasi APK sebelum frontend terbaru. Demo terbaru menggunakan JSON bawaan + memori dan aset peta/media lokal, tanpa refresh Firestore dari Dart; regression bootstrap tersedia. Bukti ini tidak menguji login/cache produk atau navigasi nyata.
+- **Status:** `in_progress` — koreksi pencatatan pekerjaan offline yang sudah dimulai; smoke offline APK terbaru, playback, trigger fisik, login pertama/cache produk dan navigasi offline masih tertunda
 
 ## 9. Sprint 5 — Pengujian, Rilis, dan Dokumentasi
 
@@ -541,11 +592,11 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
 | Project Firebase (Firestore + Authentication Email/Password) | PB03, PB21, PB22 (LA) | Dibuat 15 November 2026 (`agam-9e704`) |
 | Desain UI10 Daftar & Login dan teks pemberitahuan privasi | PB21 (FE) | Belum ada; teks wajib disetujui PM |
 | Success metric | PB22 (finalisasi daftar event) | Belum ditetapkan |
-| Konten P01–P10 (teks, foto, audio, video, metadata) | PB07, PB08, PB09 | Belum tersedia |
+| Konten P01–P10 (teks, foto, audio, video, metadata) | PB07, PB08, PB09 | Sebagian tersedia; P01/P02 approved pada JSON, P03–P10 placeholder/unapproved; video belum ada. Approval P02 perlu rekonsiliasi pemilik konten/PM; kelengkapan dan hak seluruh konten belum diterima |
 | Koordinat pintu masuk | PB11, PB12 (LB) | Menunggu survei |
 | Urutan Orientation Trail | PB15 (LB) | Belum ditetapkan |
 | Dataset fasilitas | PB16 (LB) | Akan dikumpulkan |
-| Perangkat uji Android | PB02, PB06, PB18 | Belum ditetapkan |
+| Perangkat uji Android | PB02, PB06, PB18 | OPPO CPH2739 Android 16 tersedia untuk demo; komposisi perangkat acceptance belum ditetapkan, akses field Labtek V belum tersedia |
 
 Jika dependency belum tersedia, kerjakan bagian yang independen dengan fake atau placeholder berlabel, dan catat status `blocked` untuk bagian yang bergantung padanya. Track lain tidak boleh ikut berhenti karena dependency milik satu track.
 

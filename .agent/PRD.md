@@ -3,7 +3,7 @@
 | Atribut | Nilai |
 | --- | --- |
 | Status dokumen | **Kontrak produk kerja v1.0** untuk tim dan coding agent; diturunkan dari PRD resmi dan diperbarui dengan keputusan tim |
-| Status implementasi | Source tersedia sebagian (16 November 2026): layanan LA/UI, sumber Firestore PB03, dan demo internal PMTiles offline → posisi → Explore → trigger/kartu POI tersedia. Sebelum sinkronisasi terbaru, demo diuji widget dan APK debug berflag demo dibangun/audit aset lulus; tree gabungan setelah Firestore, konten, dan WIP peta belum diverifikasi ulang. Login produk, routing/trail asli, dan uji acceptance perangkat/lapangan belum selesai; status per PBI di `.agent/implementationPhases.md` |
+| Status implementasi | Source tersedia sebagian (16 November 2026): demo empat tab FE terintegrasi dengan peta/lokasi/Explore/trigger/detail/audio/pencarian repository. Trail/rute/fasilitas/akun tetap dibatasi sesuai dependency; pengaturan auto-play/Akhiri memakai LA. Source `046b646` + WIP lulus analyze, 271 test Flutter terbaru, 21 test pipeline terdahulu; APK demo fungsional terbaru terpasang di OPPO, hash perangkat cocok, cold start command sukses; kontrol peta dan pencarian-ke-peta aktif, watermark kecil di header/atas peta, panel POI interaktif menempel navigasi. Smoke visual/playback terbaru dan field belum terbukti. Rekap: 15 PBI in_progress, 7 planned, 0 done; lihat implementationPhases/handoff. Login produk, routing/trail asli dan acceptance lapangan belum selesai. |
 | Tanggal | 2 November 2026 |
 | Sumber resmi | Draft PRD W9 (`Kelompok 03_Draft PRD.docx.pdf`, bagian 1–4) dan presentasi PRD lengkap (`Transformasi Digital-PRD-Kel.Warung.pdf`, halaman 1–23). Keduanya berada di luar repository |
 | Mata kuliah | II4011 Transformasi Digital — Prof. Ir. Kridanto Surendro, M.Sc., Ph.D. |
@@ -69,7 +69,13 @@ Labtek V (P01) sebagai POI uji pertama. Pengecualian hanya diaktifkan lewat
 `--dart-define=AGAM_INTERNAL_DEMO=true` dan terlihat pada UI. Default flag false;
 selama PB21 belum tersedia, build biasa menampilkan gerbang login belum tersedia.
 Tidak membuat akun tamu, tidak menambahkan log/server, dan tidak mengganti
-keputusan login wajib produk. Fitur fake di luar alur demo tidak ditampilkan.
+keputusan login wajib produk. Sesuai instruksi PM 16 November 2026, seluruh
+layar FE dipertahankan pada demo: fitur yang belum memiliki logic/data nyata
+tampil sebagai pratinjau, tanpa menjalankan sesi Trail, rute, check-in atau akun
+palsu. Instruksi UI PM terbaru 16 November 2026 menghapus banner/catatan teknis
+dan label placeholder tambahan: data belum tersedia memakai keadaan kosong
+ringkas dan aksi yang belum didukung nonaktif. Metadata approval tetap
+dipertahankan; ini tidak memberi approval konten atau mengubah scope produk.
 
 ## 5. Skenario Utama
 
@@ -386,7 +392,21 @@ Versi Flutter/Dart, application ID, dan SDK Android sudah ditetapkan saat PB01 (
 
 Package LA yang ditambahkan 10 November 2026 (versi diperiksa di pub.dev dan dikunci `pubspec.lock`): `geolocator` ^14.1.2, `flutter_local_notifications` ^22.3.3 (bukan 23.0.0 yang baru dirilis 6 November 2026), `just_audio` ^0.10.6, `audio_service` ^0.18.19, `shared_preferences` ^2.5.6, `path_provider` ^2.1.6; dev: `fake_async` ^1.3.3. Untuk PB12 ditambahkan `flutter_tts` ^4.2.5 (sudah tercantum di stack). `audio_service` membawa `flutter_cache_manager` (http, sqflite) secara transitif untuk gambar sampul; AGAM tidak memberi URL gambar sehingga tidak ada request jaringan dari jalur ini. Sampai 14 November 2026 manifest utama aplikasi tidak mendeklarasikan `INTERNET`; manifest juga secara eksplisit menghapus `ACCESS_BACKGROUND_LOCATION`. Manifest hasil merge build debug (10 November 2026) tidak memuat `ACCESS_BACKGROUND_LOCATION`; `INTERNET` di sana berasal dari manifest debug bawaan Flutter (alat pengembangan) dan `ACCESS_NETWORK_STATE` dari `androidx.media3` (backend `just_audio`). Manifest build rilis belum diperiksa. Sejak 15 November 2026 manifest utama mendeklarasikan `INTERNET` untuk Firebase (PB03). Hal yang masih **wajib diverifikasi**, bukan diasumsikan: versi package yang ditambahkan, kompatibilitas renderer tile vektor, serta ukuran akhir APK.
 
-Untuk Firestore (PB03, 15 November 2026) ditambahkan `firebase_core` ^5.1.0 dan `cloud_firestore` ^7.1.0 (diselesaikan `pub add`), dev: `fake_cloud_firestore` ^4.5.0; Gradle plugin `com.google.gms.google-services` 4.4.4 dipasang FlutterFire CLI dan kompatibilitasnya dengan AGP 9.1.0 belum diverifikasi lewat build APK. Untuk akun dan log aktivitas (PB21–PB22) masih diperlukan `firebase_auth` dan `device_info_plus` (untuk `deviceModel` dan `androidVersion`). Versinya wajib diverifikasi sebelum ditambahkan (`rules.md` §4.2).
+Untuk Firestore (PB03, 15 November 2026) ditambahkan `firebase_core` ^5.1.0 dan `cloud_firestore` ^7.1.0 (diselesaikan `pub add`), dev: `fake_cloud_firestore` ^4.5.0; Gradle plugin `com.google.gms.google-services` 4.4.4 dipasang FlutterFire CLI dan kompatibilitasnya dengan AGP 9.1.0 telah diverifikasi lewat build APK debug demo 16 November 2026 (bukan rilis). Untuk akun dan log aktivitas (PB21–PB22) masih diperlukan `firebase_auth` dan `device_info_plus` (untuk `deviceModel` dan `androidVersion`). Versinya wajib diverifikasi sebelum ditambahkan (`rules.md` §4.2).
+
+**Interaksi UI (16 November 2026):** package resmi Flutter `animations` **3.0.0**
+(versi/API diperiksa di pub.dev dan source package) digunakan untuk transisi tab.
+Dependency baru murni Dart/UI: `material_ui` 1.11.0, `cupertino_ui` 1.1.6 dan
+`flutter_localizations` dari SDK, seluruhnya dikunci di lockfile tanpa upgrade
+package existing. SDK package memerlukan Flutter ≥3.47.0 dan kompatibel dengan
+3.47.9 proyek. Tidak menambah plugin lokasi, analytics, logging atau request
+jaringan runtime. Panel memakai DraggableScrollableSheet/Scrollbar native;
+pressed feedback 140 ms, tab 180 ms, panel/kamera 220 ms (exit 160 ms), dengan
+reduced motion. Aksi kartu dan notifikasi memakai TriggerResponder yang sama;
+auto-play kartu memakai SettingsStore aktif. AudioService kontrak tetap; kemampuan
+seek opsional ada pada implementasi LA. Media belum approved ditolak pada layanan
+audio, termasuk jalur prompt/narasi otomatis. Ini implementasi parsial, bukan
+acceptance F04 atau penyelesaian PBI.
 
 ## 18. Layar (Screen/State)
 
@@ -438,7 +458,7 @@ Item berikut **belum diputuskan atau belum tersedia**. Agent dilarang mengisinya
 | Dataset fasilitas (toilet, musala, kantin, ATM, perpustakaan, layanan akademik) | Akan dikumpulkan | Tim konten |
 | Urutan Orientation Trail | Belum ditetapkan | Tim |
 | Project Firebase (Firestore + Authentication Email/Password) | Dibuat 15 November 2026 (`agam-9e704`); seed pertama 15 November 2026; secret `FIREBASE_SERVICE_ACCOUNT` untuk seed otomatis belum dibuat | PM / Backend |
-| Konten teks, foto, audio, video P01–P10 | Belum tersedia di repository | Tim konten |
+| Konten teks, foto, audio, video P01–P10 | Audit source 16 November: JSON menandai P01/P02 approved/non-placeholder, P03–P10 placeholder/unapproved; 30 file audio, foto P01/P02/P06, tanpa video. P01 foto/kartu terverifikasi di emulator terdahulu. P02 perlu rekonsiliasi pemilik konten/PM sebelum klaim konten final; catatan ini mencatat metadata source tanpa memberi approval baru. Kelengkapan F03, hak aset, durasi dan playback tetap perlu audit/uji | Tim konten / PM |
 | Daftar perangkat uji | Belum ditetapkan | QA |
 | Margin histeresis, kalibrasi radius per POI, dan parameter interval adaptif | Default engineering margin 5 m dan jeda sampel maksimum 10 detik (PB05-LA-01) serta parameter interval adaptif [§9.2](#92-logika-trigger) diterapkan; kalibrasi lapangan tetap tertunda | Developer / QA |
 | Batas area kampus (poligon/bounding box) | Snapshot OSM/coverage tile dan area engineering khusus demo tercatat di §9.3; batas layanan produk dan verifikasi lapangan tetap tertunda | Developer |

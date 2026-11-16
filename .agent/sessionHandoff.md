@@ -1,90 +1,375 @@
 # Session Handoff — AGAM
 
-## Current — APK internal terbaru dipasang ke OPPO, 16 November 2026
+## Delivery Git — 16 November 2026
 
-**Instruksi:** pengguna meminta instalasi APK terbaru pada HP. Branch `LB`
-sebelumnya sudah dipush; APK sumbernya dari `LB` HEAD `d15c57c` (source FE demo
-repository-backed) dan telah dibangun lokal.
+Pengguna menginstruksikan push hasil demo/interaksi ke `LB`, kemudian merge ke
+`dev`. Snapshot source yang sudah lulus 271 test, analyze, build dan audit APK
+dipublikasikan dengan parent `origin/LB`, lalu diintegrasikan ke `dev` tanpa
+perubahan source tambahan. Perubahan lokal pada worktree `AGAM-LB-PB04`
+(`.agent/PRD.md` dan dua berkas tools/tiles) dipertahankan; checkout lokal `LB`
+di sana perlu disinkronkan setelah pemiliknya menangani WIP. Status PBI tetap
+15 in_progress, 7 planned, 0 done; CI remote diperiksa terpisah dari bukti lokal.
 
-**Perangkat/aksi:** ADB mendeteksi OPPO CPH2739 / Android 16. APK
-`build/app/outputs/flutter-apk/app-debug.apk` (`site.agam` 1.0.0+1, minSdk 24,
-targetSdk 36) dipasang dengan `adb install -r`, tanpa uninstall dan tanpa
-menghapus data. ADB melaporkan `Success`.
+## Current — Audit interaksi UI dan motion, 16 November 2026
 
-**Verifikasi:** SHA-256 APK host dan `/data/app/.../base.apk` terpasang sama:
-`9bf687a32fa492c4cae0e638eadd26e5211087fcdd39baf3903a97d0c37014d6`.
-Pemasangan saja yang diminta; aplikasi belum diluncurkan dan UI Cari POI,
-Explore, izin, GPS, atau session baru belum diuji pada build ini. Tidak
-mengambil/mencatat posisi perangkat.
+**APK:** panel POI native dapat ditarik/tap handle, expand/collapse, scroll dan
+scrollbar interaktif (controller sama, extent 35/65/90%); Back menutup panel,
+tetap menempel navigasi. Enter/exit 220/160 ms, tab fade-through 180 ms menjaga
+state, kamera 220 ms dapat diinterupsi, press feedback 140 ms. Reduced motion
+disediakan. Marker posisi tidak lagi menutup klik POI saat bertumpuk.
 
-**Berikutnya:** bila diperlukan, lakukan launch/smoke test UI baru pada perangkat;
-uji fisik Labtek V tetap butuh pengguna berada di lokasi. APK dibangun dengan
-shell demo dua tab, tetapi pemasangan ini belum menjadi bukti acceptance.
+Aksi kartu Lihat/Lewati/Dengarkan memakai TriggerResponder yang sama dengan
+notifikasi Android. Lihat dismiss notifikasi sebelum detail; Lewati dismiss dan
+stop prompt cocok; narasi kartu pause/resume. Guard mencegah respons pending
+muncul setelah Akhiri. Detail: play/pause/resume/replay/stop/seek/±10 detik,
+auto-play ke store Pengaturan. Backend menolak media belum approved dan menjaga
+intent pause saat load/seek/replay async. Filter modal/clear pencarian nyata;
+Pengaturan membuka izin/notifikasi/baterai OS. Onboarding granted langsung masuk.
+Trail/routing/fasilitas/akun tanpa dependency tetap nonaktif; UI tanpa note sistem.
+
+**File:** UI app/Explore/detail/search/Trail/profil/onboarding/nav/offline map;
+widget baru `agam_motion.dart`/`agam_poi_panel.dart`; LA audio capability
+`audio_seek_control.dart`/implementasi, TriggerResponder/main DI; pubspec/lock;
+test audio/responder/helper dan UI. WIP lain dipertahankan. Tidak mengubah
+lib/contracts/aset/threshold/default login. Tidak commit/push/merge/rilis.
+
+**Eksternal:** Flutter animations 3.0.0 (API pub.dev dan cache diperiksa), transitif
+material_ui 1.11.0, cupertino_ui 1.1.6, flutter_localizations SDK. Pure Dart/UI,
+tanpa SDK lokasi/telemetri atau request runtime. Versi existing tidak di-upgrade.
+Skill animate/emil-design-eng dipakai untuk feedback/spatial consistency.
+
+**Verifikasi:** format 85 file/0 perubahan, analyze tanpa issue, **271 test PASS**.
+Gesture/scroll offset, overlap marker, Back, callback notifikasi, transport/seek/
+autoplay, filter/clear, pengaturan OS, onboarding dan reduced motion diuji.
+Unit async intent/race serta approval guard lulus. Bug overlap ditemukan uji,
+tidak dibungkam; pratinjau widget diperiksa visual. Belum manual gesture/audio/
+lock screen native, profil performa atau field. Pipeline tidak diulang (21 PASS
+sebelumnya). Matriks cakupan ada di rencana demo §6; AI material PB20.
+
+**APK terbaru:** `build/app/outputs/flutter-apk/app-debug.apk`, **222.210.865 byte**,
+SHA-256 `9675dcf66852695bb7316642997d6f5b105ffefe0c7de8226fd1eaf2d5cf6c9e`.
+Build demo final 16,2 detik; audit tiga aset APK exit 0/signature v2 valid,
+manifest tanpa ACCESS_BACKGROUND_LOCATION. Warning KGP existing tetap. Source
+`dev` `046b646` + WIP, flag true; snapshot 152 input lib/test/aset/Android/CI/
+pubspec identik pascabuild. Install streaming ditolak verifikasi Android;
+retry standar `--no-streaming -r` sukses, data dipertahankan, pengguna mengonfirmasi
+izin di HP. OPPO CPH2739 launch COLD/ok 3581 ms, PID aktif dan hash base.apk cocok.
+Log/snapshot di `D:\CodexRuntime\agam-android\interaction-*20261116*`.
+
+**Berikutnya:** smoke manual gesture/motion/audio/notifikasi APK ini; field,
+kalibrasi dan privasi fisik Labtek V saat tersedia. Tidak mengambil koordinat/
+lintasan/screenshot posisi HP. CI remote/emulator native terbaru belum diuji.
+Target demo belum lengkap, rencana/pointer aktif. PBI tetap 15 in_progress,
+7 planned, 0 done.
+
+---
+
+## Sebelumnya — Panel POI menempel navigasi dan UI bersih, 16 November 2026
+
+**Perubahan APK:** panel POI full-width, bottom 0 dan menempel langsung ke bar
+navigasi utama. Footer bawah dihapus; kredit OSM/ODbL/OpenMapTiles 9 px bertautan
+berada di atas kanvas, Mode uji 8 px statis di header. Kontrol kanan tetap sama,
+digeser 20 px turun untuk memberi tempat kredit. Note verifikasi konten,
+penjelasan demo, label placeholder tambahan dan notice teknis di layar POI/
+pencarian/Trail/profil dihapus sesuai instruksi PM; PRD mencatat pengecualian
+presentasi ini. Data belum approved tetap tersembunyi/keadaan kosong ringkas.
+Trail/rute/logout tanpa layanan nonaktif; diagram sintetis Trail demo disembunyikan.
+Tidak mengubah metadata, kontrak, dependency, threshold, default login atau PBI.
+
+**File:** app, Explore, detail POI, search, Trail, profil, offline map dan dua
+regression UI existing; docs progres/rencana mengikuti APK. WIP lainnya utuh.
+Regresi 320/430 px membuktikan batas bawah panel = batas atas navigasi, kredit/
+mode di atas peta, note hilang, dan Trail nonaktif tidak mengganti Explore.
+Test konten unapproved tetap membuktikan media tersembunyi/keadaan kosong;
+finder/scroll awal yang gagal sudah diperbaiki. Pratinjau widget diperiksa visual.
+
+**Verifikasi:** format 81 file/0 perubahan, analyze tanpa issue, **257 test PASS**.
+Build demo debug 16,8 detik sukses, audit tiga aset APK exit 0, signature v2 valid,
+manifest tanpa ACCESS_BACKGROUND_LOCATION. Warning KGP existing tetap. Pipeline,
+CI remote, emulator native, field dan audit trafik/penyimpanan HP tidak diulang.
+
+**APK terbaru:** `build/app/outputs/flutter-apk/app-debug.apk`, **213.040.945 byte**,
+SHA-256 `0d5ac9145efbb98dd8243ff916cac8716750cffb717ab2f1588ec6cacfc91f40`.
+Source `dev` `046b646` + WIP, AGAM_INTERNAL_DEMO=true. Install -r OPPO CPH2739
+Success, data dipertahankan; launch COLD/ok 2770 ms, PID aktif. Bukan konfirmasi
+smoke manual visual/playback/GPS fisik. Hash base.apk perangkat telah diperiksa dan identik dengan host. Log/salinan APK di
+`D:\CodexRuntime\agam-android\clean-ui-*20261116*`.
+
+**Berikutnya:** periksa hasil visual/manual di HP, playback dan offline; field
+Labtek V/privasi saat tersedia. Tidak mengambil koordinat/lintasan/screenshot
+posisi HP. Rencana/pointer tetap aktif karena target demo penuh belum tercapai.
+Tidak commit/push/merge/rilis. AI material PB20; total PBI tetap 15 in_progress,
+7 planned, 0 done.
 
 ---
 
-## Current — FE demo sementara repository-backed, 16 November 2026
+## Sebelumnya — APK fungsional dan watermark kecil, 16 November 2026
 
-**Permintaan:** sambungkan tampilan FE yang telah di-merge ke fungsi nyata di
-source, khusus sementara untuk demo, dan dorong pembaruan pada branch `LB`.
+**Mandat:** penyesuaian harus diterapkan ke APK tanpa mengerjakan seluruh PBI;
+watermark/placeholder dipisah dari peta dan area UI asli, sekecil mungkin.
 
-**Implementasi pada branch `LB` (basis `046b646`):** `lib/ui/app.dart` menampilkan
-shell demo dua tab Jelajah/Cari POI, dengan tab FE Cari POI yang memakai layout
-UI05 yang sudah ada. `PoiSearchService` baru membaca dari `PoiRepository`,
-menormalkan alias Arab/Romawi, mengurutkan kecocokan, lalu hasil membuka UI04 dan
-`AudioService` LA. Jalur Explore/UI02/UI03/UI04 tetap memakai peta, posisi, sesi,
-geofence, notifikasi dan repository yang ada. Demo memakai `bundledOnly` agar
-dataset berasal dari JSON APK tanpa cache konten lama atau refresh Firestore.
-Commit source/dokumen rencana dan status PBI: `d15c57c` (`feat: wire real POI
-search into demo shell`). Push fast-forward ke `origin/LB` berhasil; remote
-diverifikasi pada SHA `d15c57ced8f5bf0651ac88ad0f4ba28d4b88960d`.
+**Source:** kontrol kanan FE sekarang nyata: reset orientasi utara, pusat fix
+lokasi (pesan izin/GPS bila kosong), tampil/sembunyikan marker POI. Tidak memakai
+sensor kompas baru. Pencarian demo menampilkan kartu PMTiles nyata; Tampilkan
+di peta memusatkan/menyorot POI di Jelajah tanpa memulai sesi atau menampilkan
+rute dummy. Detail/audio tetap layanan existing. Header FE kembali bebas chip;
+Mode uji · info 8 px menjadi footer di atas nav. Kredit lengkap/bertautan
+OSM/ODbL/OpenMapTiles 9 px berada di luar kanvas. Overlay Pusatkan duplikat
+hilang. Tidak mengubah data/approval, kontrak, radius, layanan lokasi, dependency
+atau default login; routing/Trail/fasilitas/akun tetap menunggu dependency.
 
-**Batas:** perubahan hanya pada flag `AGAM_INTERNAL_DEMO=true`; shell default
-tidak diubah. Trail, fasilitas, navigasi dan profil/akun tidak diekspos karena
-service/graf/data yang diperlukan belum tersedia atau masih TBD. Navigation
-fake masih menjadi dependency `AppServices` tetapi tidak dipanggil/ditampilkan
-di shell demo. Pencarian ini tidak menutup PB10. Konflik konten P01 approved vs
-PRD §22 tetap mengikuti catatan sebelumnya; tidak mengubah data/approval.
+**File sesi:** `lib/ui/app.dart`, `explore_map_screen.dart`,
+`search_route_screen.dart`, `widgets/offline_campus_map.dart`, regression existing
+`test/ui/demo_explore_test.dart` dan `demo_frontend_test.dart`. WIP lain tetap.
+Dokumen progres/rencana hanya mengikuti perubahan APK. PBI tetap 15 in_progress,
+7 planned, 0 done; tidak ada klaim completion baru. Skill redesign-existing-projects
+untuk perbaikan terarah; penggunaan AI material dicakup PB20.
 
-**Verifikasi/perilaku delivery:** formatter 6 file source (0 perubahan),
-`flutter analyze --no-pub` tanpa issue, build APK internal berhasil (16,4 detik)
-dan audit aset APK lulus. APK: 185.500.958 byte, SHA-256
-`9bf687a32fa492c4cae0e638eadd26e5211087fcdd39baf3903a97d0c37014d6`.
-Test Flutter tidak dijalankan setelah update; hasil sebelumnya 251 lulus/1 gagal
-karena assertion PLACEHOLDER P01 tetap belum diselaraskan dengan PRD §22.
-UI Cari POI belum diuji runtime. Tidak mengubah kontrak atau PRD produk.
+**Verifikasi:** format 81 file/0 perubahan; analyze tanpa issue; **257 test
+Flutter PASS**. Regresi kamera/utara/lapisan/fix, pencarian P02 → peta P02,
+footer di luar kanvas pada 320/430 px dan isolasi sesi lulus; pratinjau widget
+diperiksa visual. Build demo debug sukses 31,4 detik; audit tiga aset APK exit 0,
+signature v2 valid; manifest tanpa ACCESS_BACKGROUND_LOCATION. Peringatan KGP
+firebase_core/flutter_tts tetap. Pipeline tidak diubah/diulang (21 PASS sesi
+sebelumnya). Run awal satu test UI gagal akibat scroll belum selesai; test
+menunggu scroll dan seluruh assertion tetap dipertahankan.
 
-**Langkah berikutnya:** setelah review, jalankan test/UI Cari POI pada emulator.
-Uji fisik Labtek V tetap terpisah dan diperlukan untuk menutup temporary demo.
+**APK terbaru:** `build/app/outputs/flutter-apk/app-debug.apk`, **213.046.126 byte**,
+SHA-256 `d54d2b514941a745b28861241e65266eda4b2eda209861b458a287312b24b515`.
+Source `dev` `046b646` + WIP; flag AGAM_INTERNAL_DEMO=true, bukan commit bersih.
+`adb install -r` OPPO CPH2739 sukses (data dipertahankan), `am start -W`
+`Status: ok`, `LaunchState: COLD`, 3212 ms; PID aktif setelah pemeriksaan dan
+hash base.apk perangkat identik. Ini bukti command cold start, bukan seluruh
+UI/playback/manual/GPS/privasi Android. Log dan salinan APK perangkat di
+`D:\CodexRuntime\agam-android\functional-*20261116*`.
+
+**Sisa:** smoke manual kontrol/pencarian/detail/playback di OPPO dan offline APK
+baru; trigger/kalibrasi/audit privasi fisik Labtek V ketika tersedia. Tidak
+mengambil koordinat/lintasan/screenshot posisi HP. Target demo penuh belum
+tercapai, rencana/pointer tetap aktif. Tidak commit/push/merge/rilis.
+
+---
+
+## Sebelumnya — Pemetaan demo dan rekap total, 16 November 2026
+
+**Hasil:** pemetaan Sprint 1–2 pada [rencana demo](demo-apk-temporary-plan.md)
+ditindaklanjuti dan status keseluruhan diselaraskan. Rekap 22 PBI kini
+**15 `in_progress`, 7 `planned`, 0 `done`**. PB17 dikoreksi menjadi
+`in_progress` karena verifikasi offline parsial sudah dijalankan; bukan
+completion offline/navigasi. Ringkasan sprint, sisa PB01/PB02/PB04/PB06/PB07,
+inventaris PB08/PB09 dan dependency diperbaiki pada implementation phases.
+
+**Perangkat/APK:** OPPO CPH2739 terhubung; `base.apk` ditarik ke luar repo,
+hash identik dengan host: `8ee36167b203d3cd91f165278b85005d1db575840c52c69e88346e3b9098b2f1`,
+213.041.274 byte. `am start -W` sukses (`Status: ok`, `LaunchState: HOT`),
+activity existing dibawa ke depan, PID tersedia. Ini bukan bukti cold start,
+smoke visual atau playback. Pertanyaan manual mendapat jawaban “tidak” tanpa
+hasil UI/playback; akses field Labtek V tetap tidak tersedia. Tidak mengambil
+koordinat/lintasan/screenshot posisi atau dump lokasi/logcat umum HP.
+
+**Konten:** audit JSON/aset mencatat 30 audio, enam foto P01/P02/P06, tanpa
+video; P01/P02 approved/non-placeholder pada source, P03–P10 placeholder/
+unapproved. PRD §22 kini mencatat keduanya sebagai fakta metadata; approval
+P02 sebagai konten final tetap perlu rekonsiliasi pemilik konten/PM. Tidak
+mengubah konten/metadata atau memberi approval baru. Fasilitas kosong,
+entrances kosong dan urutan trail null tetap menjadi dependency.
+
+**Verifikasi ulang:** format 81 file/0 perubahan, analyze tanpa issue,
+**257 test Flutter PASS**, **21 test pipeline PASS**; audit tiga aset APK exit 0,
+signature v2 valid, manifest tanpa `ACCESS_BACKGROUND_LOCATION`. `INTERNET`
+ada; audit statis bukan bukti privasi runtime. Rekap 22 status PBI dan tautan
+file lokal empat dokumen diperiksa otomatis; `git diff --check` lulus.
+Log test dan salinan APK perangkat
+di `D:\CodexRuntime\agam-android\mapping-*-20261116.*`. Build tidak diulang
+karena source/aset tidak berubah. CI remote, cold start, smoke visual/playback,
+trafik/penyimpanan HP dan field belum dijalankan/dikonfirmasi.
+
+**Lingkup:** hanya `.agent/demo-apk-temporary-plan.md`, `implementationPhases.md`,
+`PRD.md`, dan handoff ini. Semua WIP source `dev` `046b646` dipertahankan.
+Tidak mengubah branch, kode, aset, kontrak, dependency, threshold atau default
+login; tidak commit/push/merge/rilis. Penggunaan AI material dicakup PB20.
+
+**Berikutnya:** smoke UI/playback P01 dan mulai/akhiri Explore pada HP;
+ulang offline APK terbaru bila memungkinkan; field trigger/kalibrasi/privasi
+Labtek V ketika tersedia. Pemilik konten/PM merekonsiliasi P02 dan kelengkapan/
+hak/durasi/video. Target demo belum lengkap, rencana/pointer tetap aktif.
 
 ---
 
-## Sebelumnya — Pemeriksaan temporary demo pada branch LB, 16 November 2026
+## Sebelumnya — Copy demo dan baseline kontrol kanan FE, 16 November 2026
 
-**Branch/source:** pekerjaan berada di worktree `AGAM-LB-PB04`, branch lokal `LB`, HEAD `046b646` (sama dengan `dev`). Tidak melakukan commit atau push. WIP dokumentasi yang sudah ada di worktree dipertahankan; dependency dipulihkan dengan `flutter pub get --enforce-lockfile`, tanpa perubahan `pubspec.lock`.
+**Hasil:** MaterialBanner demo diganti chip Mode uji di header tanpa menambah
+baris peta; ketukan membuka keterangan skip login/cakupan engineering. Kredit
+peta tetap lengkap/bertautan ke OSM contributors (ODbL) dan OpenMapTiles dalam
+baris kecil. Kontrol kanan disalin langsung dari `origin/FE` `5db4dd4`, dengan
+posisi/ukuran/gap/warna/ikon/bentuk/elevation yang sama. Tooltip sesi memberi
+label Mulai Explore/Akhiri sesi; kompas/lapisan tetap PRATINJAU. Copy akun/rute/
+pengaturan diringkas. Judul onboarding Selamat Datang di AGAM tetap sama.
 
-**Verifikasi source:** Flutter 3.47.9 / Dart 3.13.7; format 78 file tanpa perubahan; analyzer lulus; suite Flutter **251 lulus, 1 gagal** pada `test/ui/demo_explore_test.dart:187` karena assertion mencari `PLACEHOLDER`, sementara data P01 menandai `isPlaceholder: false` dan `approved: true`. PRD §22 masih menyatakan konten P01–P10 belum tersedia. Tidak mengubah test/UI milik FE atau data milik LA; minta PM/tim konten menyelaraskan status sumber sebelum menganggap P01 konten final.
+**Lingkup:** `lib/ui/app.dart`, `explore_map_screen.dart`,
+`orientation_trail_screen.dart`, `profile_preview_screen.dart`,
+`search_route_screen.dart`, widget header/kredit peta, serta regression existing
+`test/ui/demo_explore_test.dart`. WIP awal dicadangkan di luar repo dan diperiksa;
+file di luar lingkup identik. Tidak mengubah layanan, mode, flag/default login,
+POI, kontrak, radius, dependency atau lisensi. Tidak commit/push/merge/rilis.
 
-**Build/peta:** 21 test pipeline lulus; audit source lulus. Build APK internal dari `LB` HEAD `046b646` lulus; `build/app/outputs/flutter-apk/app-debug.apk`, 185.500.958 byte, SHA-256 `162edfa6c98d805e30ae0d356846c68829c4f8b800ef75a174817441026c1329`. Audit APK memastikan PMTiles, style, dan manifest identik dengan source.
+**Verifikasi:** format 81 file/0 perubahan, analyzer tanpa issue, **257 test
+Flutter PASS**. Regresi tambahan menguji geometri kontrol sesuai FE, info chip,
+kredit satu baris pada lebar 430/320 px; dua test Explore lalu enam test UI diulang
+pada source final dan lulus. Pratinjau widget diperiksa visual. Build demo final
+29,4 detik berhasil, audit tiga aset APK exit 0, `git diff --check` lulus.
+Peringatan KGP plugin tetap ada; build awal juga memberi peringatan SDK XML.
+Pipeline tidak diubah/diulang. ADB menemukan satu perangkat; install/launch,
+runtime Android, signature/manifest/jaringan dan field test terbaru tidak diuji.
 
-**Runtime simulasi:** AVD `agam_demo_api36` (API 36) dipakai dengan Wi-Fi/data mati. APK terbaru menampilkan basemap, atribusi, POI dan posisi simulasi; Explore dimulai; mock location dari koordinat P01 di dataset menghasilkan trigger UI03 dan tombol Lihat membuka detail Labtek V. Log Android tidak menunjukkan crash selama smoke test. Ini bukan bukti GPS/trigger fisik, field acceptance, atau audit privasi runtime lengkap. AVD dihentikan setelah test; `adb devices -l` tidak menemukan perangkat fisik ketika diperiksa.
+**APK terbaru:** `build/app/outputs/flutter-apk/app-debug.apk`, **213.041.274 byte**,
+SHA-256 `8ee36167b203d3cd91f165278b85005d1db575840c52c69e88346e3b9098b2f1`.
+Input `dev` `046b646` + WIP, `AGAM_INTERNAL_DEMO=true`; bukan commit bersih.
+Log `D:\CodexRuntime\agam-android\copy-ui-*20261116*`; snapshot awal
+`copy-ui-before-20261116` pada direktori luar repo yang sama.
 
-**Temporary demo belum selesai:** perangkat fisik di Labtek V belum tersedia, build terbaru belum dipasang di OPPO, field trigger dan audit storage/network belum dilakukan, dan suite Flutter belum seluruhnya hijau. Checklist serta bukti terbaru dicatat di [rencana demo sementara](demo-apk-temporary-plan.md); pertahankan file dan pointer sampai semua kriteria §5 tercapai. PB04 tetap `in_progress`.
-
-**Berikutnya:** selaraskan status konten P01 antara PRD §22 dan dataset dengan PM/tim konten; minta FE menyesuaikan assertion setelah sumber kebenaran dipastikan, lalu ulangi suite. Saat HP dan lokasi tersedia, install APK hash di atas, jalankan uji fisik P01 serta audit privasi; hanya setelah itu tinjau kriteria penghapusan rencana.
+**Berikutnya:** smoke APK terbaru di Android dan lanjutkan uji fisik/privasi
+Labtek V ketika tersedia. [Rencana demo](demo-apk-temporary-plan.md) tetap aktif;
+kriteria demo penuh belum tercapai dan status PBI tidak dinaikkan. Catatan
+PB04 diperbarui; keputusan produk tetap. Penggunaan AI material dicakup PB20.
 
 ---
-## Sebelumnya — Sinkronisasi branch LB dengan dev, 16 November 2026
 
-**Branch/worktree:** `LB` sudah aktif di worktree `AGAM-LB-PB04`, pada `d602fed`; `dev` dan `origin/dev` berada di `046b646` dan 11 commit lebih maju. WIP tracked/untracked LB disimpan dengan stash `Preserve LB work before syncing dev`, lalu `LB` di-fast-forward ke `046b646`, sehingga HEAD branch sama dengan `dev`.
+## Sebelumnya — Seluruh frontend FE pada demo integrasi, 16 November 2026
 
-**Pemulihan WIP:** konflik dokumentasi diselesaikan dengan mempertahankan status terbaru dari `dev` dan menggabungkan keterangan batas area pada PRD. File lokal yang beradu dengan file baru di `dev` tidak menimpa versi `dev`; salinan pra-sinkronisasi tetap berada di stash. `tools/tiles/PB04-integration.md` dan `tools/tiles/pubspec-map-assets.patch` yang tidak bertabrakan dipulihkan ke worktree. Tidak ada commit atau push.
+**Permintaan:** periksa branch FE dan pertahankan seluruh frontend/style dummy,
+sambil menyambungkan fitur yang sudah tersedia pada progres demo sementara.
+`origin/FE` `5db4dd4` terbukti ancestor HEAD `dev` `046b646`; tidak diperlukan
+merge Git. Working tree awal berisi WIP yang dipertahankan. Tidak commit/push,
+merge, switch branch atau mengubah kontrak/dependency/data POI.
 
-**Verifikasi:** fast-forward berhasil; automated test, analyzer, dan build tidak dijalankan karena sesi ini hanya menyelaraskan branch dan merapikan konflik dokumentasi. Status PBI tidak berubah.
+**Implementasi:** `lib/ui/app.dart` menampilkan Jelajah, Trail, Cari & Rute,
+Pengaturan dan ikon profil yang berfungsi. Font, warna, kartu dan ilustrasi FE
+dipertahankan. Peta/lokasi/Explore/geofence/notifikasi/detail/audio dan pencarian
+repository tetap memakai layanan nyata. `search_route_screen.dart` mempertahankan
+kartu ilustrasi rute dan kategori fasilitas berlabel PRATINJAU/PLACEHOLDER;
+Lihat Detail POI membuka data/audio repository. Aksi navigasi/tutup rute dummy
+tidak memulai/mengakhiri sesi nyata. Pencarian memakai nomor request agar hasil
+query/filter lama tidak menimpa yang baru.
 
-**Berikutnya:** lanjutkan pekerjaan LB dari basis `046b646`; sebelum memakai kembali salinan lama dari stash, bandingkan dengan implementasi terbaru yang kini ada di `dev`. Jalankan pemeriksaan PB04 yang relevan sebelum mengajukan PR.
+`orientation_trail_screen.dart` mempertahankan UI progres/lencana/list/ilustrasi,
+tetapi pada demo tidak membaca TrailService/NavigationController fake: daftar
+memakai POI repository dalam urutan contoh sintetis, progres kosong dan aksi
+penjelasan dependency. Tidak membuat check-in/trail palsu. Profil tetap pratinjau
+berlabel tanpa identitas pribadi contoh; auto-play dan Akhiri memakai layanan LA.
+Sheet Explore memuat foto aset bila metadata approved dan menjaga media/konten
+belum approved. Rencana demo dan pengecualian PRD diselaraskan dengan instruksi PM
+untuk menampilkan dummy berlabel. PB16 mulai `in_progress` karena UI09 pengaturan
+terintegrasi, tetapi fasilitas/acceptance belum selesai; PBI lain tidak dinaikkan.
+
+**Verifikasi aktual:** format 81 file/0 perubahan, `flutter analyze --no-pub`
+tanpa issue, **257 test Flutter lulus**. Tiga regression widget baru memeriksa
+isolasi Trail/navigation lewat layanan yang melempar saat diakses, alias ke
+detail, serta auto-play/Akhiri; test Explore existing juga memeriksa empat tab,
+ikon profil, dwell/trigger/detail dan lifecycle. Pratinjau widget diperiksa
+visual; bukan screenshot Android/GPS nyata. Build debug demo sukses (34,4 detik),
+audit tiga aset APK exit 0, `git diff --check` lulus. Peringatan Built-in Kotlin
+firebase_core/flutter_tts tetap ada. Pipeline Python tidak diulang karena tidak
+diubah (21 PASS sebelumnya). ADB daftar kosong: emulator/HP/runtime Android,
+signature/manifest dan audit jaringan terbaru tidak dijalankan pada sesi ini.
+
+**APK terbaru:** `build/app/outputs/flutter-apk/app-debug.apk`, **213.038.726 byte**,
+SHA-256 `9e415636b54eca36de0a63445f51d742d80baa3660303bed05f363fd2fd1425d`.
+Dibangun dari `046b646` + WIP, flag `AGAM_INTERNAL_DEMO=true`; APK/evidence
+simulasi native sebelumnya tidak memverifikasi perubahan frontend terbaru.
+Log tes/build/audit: `D:\CodexRuntime\agam-android\frontend-20261116-*`.
+Penggunaan AI material untuk integrasi dan regression dicakup PB20.
+
+**Berikutnya:** install APK terbaru dan smoke seluruh tab di Android; ulangi
+skenario fisik Labtek V/akhir sesi/privasi saat perangkat/lokasi tersedia.
+Routing/trail/fasilitas/akun menunggu dependency resminya. Target demo penuh belum
+selesai, rencana/pointer tetap dipertahankan. Login default produk tetap wajib.
 
 ---
+
+## Sebelumnya — Integrasi FE nyata ke shell demo sementara, 16 November 2026
+
+**Permintaan:** sambungkan tampilan FE yang telah di-merge ke fungsi nyata yang
+tersedia, khusus jalur sementara `AGAM_INTERNAL_DEMO=true`, dan pertahankan
+perilaku source lain.
+
+**Source:** `lib/ui/app.dart` kini menampilkan shell demo FE dua tab, Jelajah dan
+Cari POI. UI01 izin nyata, Explore/peta/lokasi/geofence/notifikasi/detail/audio
+yang telah ada tetap digunakan. `lib/logic/search/poi_search_service.dart`
+menambahkan `PoiSearchService` yang mengambil POI langsung dari repository,
+menormalkan alias Arab/Romawi, dan mengembalikan hasil POI nyata. UI05 demo
+memakai service itu; daftar/hasil membuka UI04 dan audio LA. Pencarian melalui
+dataset bundled-only tetap offline. Tidak mengambil sumber fake POI untuk alur
+tersebut.
+
+**Batas jujur:** tab/aksi Trail, fasilitas, rute, dan profil/akun tidak
+ditampilkan karena urutan trail/data fasilitas/graf/akun belum merupakan
+service nyata atau masih TBD. CTA navigasi UI04 nonaktif. Fitur/fakes yang belum
+dipakai shell masih menjadi dependency wajib `AppServices`, tetapi tidak
+ditampilkan/dijalankan pada alur demo. Shell mode selain demo tetap memakai susunan
+FE sebelumnya. Tidak ada kontrak, radius, konten, atau aturan privasi yang
+diubah; PRD tidak diubah karena ini perubahan internal-demo saja.
+
+**Verifikasi:** hanya `dart format` pada 5 file Dart (0 file berubah oleh formatter).
+Tidak menjalankan test, analyzer, build atau runtime; APK dan evidence emulator
+16 November sebelumnya dibuat sebelum perubahan shell ini. Jangan menyamakan
+hasil APK lama itu dengan source baru. Belum ada commit/push.
+
+**Berikutnya:** jalankan analyzer/test/build dan smoke UI pada emulator bila
+pengguna meminta verifikasi; setelah build, ulangi audit APK. Tetap uji fisik
+Labtek V untuk menyelesaikan target demo penuh.
+
+---
+
+## Sebelumnya — Verifikasi demo APK source gabungan, 16 November 2026
+
+**Mandat/status:** melanjutkan rencana demo hingga tercapai. Pengguna mengonfirmasi
+**belum dapat melakukan uji fisik**; ADB hanya emulator, tidak ada HP. Demo belum
+selesai penuh: GPS nyata berjalan/trigger P01, install APK terbaru pada HP dan
+audit jaringan fisik masih tertunda. Rencana sementara/pointer tetap dipertahankan.
+
+**Source/perbaikan:** awal `dev` bersih pada `046b64629c14eea7550b62c28d8c2f0d2bd5b801`.
+`main.dart` dan `la_bootstrap.dart` kini mengisolasi demo ke JSON bawaan + cache
+memori tanpa refresh Firestore/inisialisasi Firebase dari Dart; jalur layanan
+produk default tetap ada. Plugin native Firebase tetap dibundel. Test bootstrap
+baru di `test/logic/demo_bootstrap_test.dart`; test UI demo diperbarui untuk media
+P01 yang kini approved serta regression fixture placeholder terpisah. Tidak
+mengubah konten/metadata, dependency, kontrak atau threshold. Tidak commit/push,
+merge, rilis, atau memindahkan branch.
+
+**Verifikasi:** format 79 file; analyze tanpa issue; **254 test Flutter / 21 test
+pipeline lulus**. Kegagalan awal test PLACEHOLDER akibat konten baru ditangani
+dengan assertion foto repository + test placeholder terpisah. Build demo debug
+125,4 detik berhasil memakai toolchain existing. Audit tiga aset APK, signature
+v2 dan manifest lulus; INTERNET ada, ACCESS_BACKGROUND_LOCATION tidak ada.
+
+**APK terbaru:** `build/app/outputs/flutter-apk/app-debug.apk`, `site.agam`
+1.0.0+1, **185.500.754 byte**, SHA-256
+`d25348dcff1a6808e6be55c80c5ab6ee39f1085911e65bea47819278f8a926d1`.
+APK berasal dari HEAD di atas **+ perubahan lokal**, bukan commit bersih.
+Hash APK emulator cocok; snapshot 156 file source/test/aset/konfigurasi identik
+setelah uji. APK lama/evidence HP 15 November bukan verifikasi APK terbaru.
+
+**Emulator API 36 (SIMULASI):** install/launch, posisi ±5 m → Explore → dwell
+P01 → UI03 → UI04 Labtek V dengan foto; cold start mode pesawat → peta/atribusi/
+marker/posisi; Home + P02 → notifikasi native Lihat → kartu Labtek VI lulus.
+Akhiri + Home: request lokasi 0/service lokasi tipe 0x8 tidak ada; service media
+0x2 masih ada setelah prompt, bukan klaim semua service hilang. Counter OUTPUT
+UID 10216 online IPv4/IPv6 tetap 0 paket/0 byte; snapshot penyimpanan terbatas
+tidak mendeteksi field posisi. Database Firestore existing identik; hanya cache
+prompt P02 aset + profileInstalled berubah pada pembanding online→final. Bukan
+audit OS/GMS/HP atau baseline instalasi bersih. Rule counter dibersihkan dan
+emulator dihentikan. Artefak di `D:\CodexRuntime\agam-android\demo-20261116-*`
+dan `simulation-*`; rincian command/evidence pada rencana demo. Peringatan
+Built-in Kotlin firebase_core/flutter_tts masih ada. AI material dicakup PB20.
+
+**Berikutnya:** ketika HP/lokasi tersedia, install `-r` APK hash di atas dan uji
+berjalan/trigger P01 serta privasi fisik, tanpa merekam posisi pengguna. PBI tetap
+`in_progress`. Review/integrasi formal dan CI remote belum dijalankan. Jangan
+menghapus rencana sampai seluruh kriteria demo terbukti.
+
+---
+
 ## Sebelumnya — Sinkronisasi `dev` dan pemulihan WIP, 16 November 2026
 
 **Git:** `git fetch origin` menemukan `origin/dev` maju dari `d602fed` ke `8950a27`; checkout lokal `dev` berada di `089883c` dan tertinggal 11 commit. Seluruh perubahan tracked/untracked disimpan sementara dengan `git stash push --include-untracked`, lalu branch di-fast-forward ke `8950a27`. WIP diterapkan kembali tanpa reset atau force; stash pengaman masih dipertahankan.

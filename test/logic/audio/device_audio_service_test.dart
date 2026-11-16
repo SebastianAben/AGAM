@@ -14,6 +14,7 @@ class _FakeBackend implements AudioBackend {
   Duration? duration = const Duration(seconds: 60);
   bool failLoad = false;
   Completer<void>? loadGate;
+  Completer<void>? seekGate;
   String? lastTitle;
 
   @override
@@ -42,7 +43,10 @@ class _FakeBackend implements AudioBackend {
   Future<void> pause() async => calls.add('pause');
 
   @override
-  Future<void> seek(Duration position) async => calls.add('seek:$position');
+  Future<void> seek(Duration position) async {
+    calls.add('seek:$position');
+    await seekGate?.future;
+  }
 
   @override
   Future<void> stop() async => calls.add('stop');
@@ -64,7 +68,18 @@ void main() {
       backend: backend,
       pois: FakePoiRepository(
         pois: [
-          syntheticPoi(media: _media, name: 'Gedung Sintetis'),
+          syntheticPoi(
+            media: _media,
+            name: 'Gedung Sintetis',
+            metadata: ContentMetadata(
+              sources: const ['SINTETIS'],
+              verifiedAt: syntheticEpoch,
+              owner: 'SINTETIS',
+              assetAttribution: const ['SINTETIS'],
+              approved: true,
+            ),
+          ),
+          syntheticPoi(id: 'unapproved-with-media', media: _media),
           syntheticPoi(id: 'placeholder'),
         ],
       ),
@@ -85,6 +100,85 @@ void main() {
     expect(audio.current.status, PlaybackStatus.playing);
     expect(audio.current.clip, narration);
     expect(audio.current.duration, const Duration(seconds: 60));
+  });
+
+  test('seek clamps to clip bounds and preserves pause state', () async {
+    await audio.play(narration);
+    backend.emit(
+      const BackendSnapshot(
+        phase: BackendPhase.ready,
+        playing: false,
+        position: Duration(seconds: 20),
+        duration: Duration(seconds: 60),
+      ),
+    );
+    await pumpEventQueue();
+    await audio.seekTo(const Duration(seconds: -10));
+    expect(audio.current.position, Duration.zero);
+    expect(audio.current.status, PlaybackStatus.paused);
+    expect(backend.calls.last, 'seek:0:00:00.000000');
+    await audio.seekTo(const Duration(seconds: 90));
+    expect(audio.current.position, const Duration(seconds: 60));
+    expect(backend.calls.last, 'seek:0:01:00.000000');
+  });
+
+  test('pending seek does not overwrite a newer pause intent', () async {
+    await audio.play(narration);
+    final gate = backend.seekGate = Completer<void>();
+    final seeking = audio.seekTo(const Duration(seconds: 20));
+    await pumpEventQueue();
+    await audio.pause();
+    gate.complete();
+    await seeking;
+    expect(audio.current.status, PlaybackStatus.paused);
+    expect(audio.current.position, const Duration(seconds: 20));
+  });
+
+  test('pause interrupts replay before its pending seek completes', () async {
+    await audio.play(narration);
+    final gate = backend.seekGate = Completer<void>();
+    final replaying = audio.replay();
+    await pumpEventQueue();
+    await audio.pause();
+    gate.complete();
+    await replaying;
+    expect(audio.current.status, PlaybackStatus.paused);
+    expect(backend.calls.where((call) => call == 'play'), hasLength(1));
+  });
+
+  test('seek without a loaded duration never touches the backend', () async {
+    await audio.seekTo(const Duration(seconds: 5));
+    expect(backend.calls, isEmpty);
+    backend.duration = null;
+    await audio.play(narration);
+    final before = List<String>.of(backend.calls);
+    await audio.seekTo(const Duration(seconds: 5));
+    expect(backend.calls, before);
+  });
+
+  test('pause while loading prevents an unwanted late auto-start', () async {
+    final gate = backend.loadGate = Completer<void>();
+    final loading = audio.play(narration);
+    await pumpEventQueue();
+    await audio.pause();
+    expect(audio.current.status, PlaybackStatus.paused);
+    gate.complete();
+    await loading;
+    expect(backend.calls, ['load:assets/media/synthetic/narasi.mp3']);
+    expect(audio.current.status, PlaybackStatus.paused);
+    await audio.resume();
+    expect(backend.calls.last, 'play');
+  });
+
+  test('unapproved media cannot play from trigger or transport', () async {
+    await audio.play(
+      const AudioClip(
+        poiId: 'unapproved-with-media',
+        kind: AudioClipKind.narration,
+      ),
+    );
+    expect(audio.current.status, PlaybackStatus.error);
+    expect(backend.calls, ['stop']);
   });
 
   test('konten placeholder tanpa file → error tanpa melempar', () async {

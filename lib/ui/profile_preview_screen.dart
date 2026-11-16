@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 
-/// Static preview of the profile reference. AGAM has no account or logout flow.
+import '../contracts/contracts.dart';
+
+/// UI09 retains the FE account preview alongside available device settings.
 class ProfilePreviewScreen extends StatelessWidget {
-  const ProfilePreviewScreen({super.key});
+  const ProfilePreviewScreen({super.key, this.services});
+
+  final AppServices? services;
 
   static const _ink = Color(0xFF172238);
   static const _muted = Color(0xFF596174);
@@ -32,19 +36,74 @@ class ProfilePreviewScreen extends StatelessWidget {
           _identityCard(),
           const SizedBox(height: 15),
           _accountCard(),
+          if (services != null) ...[
+            const SizedBox(height: 15),
+            ListTile(
+              title: const Text('Notifikasi & izin aplikasi'),
+              leading: const Icon(Icons.notifications_outlined),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: services!.permissions.openAppSettings,
+            ),
+            ListTile(
+              title: const Text('Pengaturan baterai'),
+              leading: const Icon(Icons.battery_saver_outlined),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: services!.permissions.openBatteryOptimizationSettings,
+            ),
+            StreamBuilder<AppSettings>(
+              stream: services!.settings.settings,
+              initialData: services!.settings.current,
+              builder: (context, snapshot) => SwitchListTile(
+                title: const Text('Putar narasi otomatis'),
+                subtitle: const Text(
+                  'Putar narasi saat tiba di POI pada sesi Explore.',
+                ),
+                value: snapshot.data!.autoPlayNarration,
+                onChanged: (value) async {
+                  try {
+                    await services!.settings.update(
+                      services!.settings.current.copyWith(
+                        autoPlayNarration: value,
+                      ),
+                    );
+                  } catch (_) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Pengaturan belum dapat disimpan.'),
+                        ),
+                      );
+                    }
+                  }
+                },
+              ),
+            ),
+            StreamBuilder<SessionState>(
+              stream: services!.session.state,
+              initialData: services!.session.current,
+              builder: (context, snapshot) => ListTile(
+                title: Text(
+                  snapshot.data!.isActive
+                      ? 'Sesi Explore aktif'
+                      : 'Tidak ada sesi aktif',
+                ),
+                trailing: TextButton(
+                  onPressed: snapshot.data!.isActive
+                      ? () => services!.session.end()
+                      : null,
+                  child: const Text('Akhiri'),
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: 19),
           SizedBox(
             height: 44,
             child: FilledButton.icon(
-              onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Preview UI — fitur akun belum tersedia.'),
-                  behavior: SnackBarBehavior.floating,
-                ),
-              ),
+              onPressed: null,
               icon: const Icon(Icons.logout_rounded, size: 19),
               label: const Text(
-                'Logout',
+                'Keluar akun',
                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
               ),
               style: FilledButton.styleFrom(
@@ -78,7 +137,7 @@ class ProfilePreviewScreen extends StatelessWidget {
     child: Column(
       children: [
         Semantics(
-          label: 'Placeholder foto profil',
+          label: 'Foto profil',
           child: const CircleAvatar(
             radius: 40,
             backgroundColor: Color(0xFFE8EBF3),
@@ -91,7 +150,7 @@ class ProfilePreviewScreen extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         const Text(
-          'Sabrina Carpenter',
+          'Pengguna',
           textAlign: TextAlign.center,
           style: TextStyle(
             color: _ink,
@@ -102,12 +161,7 @@ class ProfilePreviewScreen extends StatelessWidget {
         ),
         const SizedBox(height: 1),
         const Text(
-          '16524089',
-          style: TextStyle(color: Color(0xFF164E9F), fontSize: 12),
-        ),
-        const SizedBox(height: 1),
-        const Text(
-          '16524089@mahasiswa.itb.ac.id',
+          'Email belum tersedia',
           textAlign: TextAlign.center,
           style: TextStyle(color: _muted, fontSize: 12),
         ),
@@ -148,16 +202,16 @@ class ProfilePreviewScreen extends StatelessWidget {
           ),
           child: const Column(
             children: [
-              _AccountRow(label: 'Peran Akun', value: 'Mahasiswa TPB ITB'),
+              _AccountRow(label: 'Peran Akun', value: 'Belum tersedia'),
               SizedBox(height: 8),
               _AccountRow(
                 label: 'Fakultas /\nSekolah',
-                value: 'Sekolah Teknik Elektro &\nInformatika',
+                value: 'Belum tersedia',
               ),
               SizedBox(height: 8),
               _AccountRow(
                 label: 'Akses Lokasi GPS',
-                value: 'Kampus ITB Ganesha',
+                value: 'Lihat izin perangkat',
               ),
             ],
           ),
