@@ -7,6 +7,8 @@ import '../../contracts/contracts.dart';
 import '../location/device_location_service.dart';
 import '../location/geofence_engine.dart';
 import '../location/position_source.dart';
+import 'poi_trigger_lifecycle.dart';
+import 'poi_trial_control.dart';
 
 /// Mengatur sesi Explore/Navigasi/Trail (PRD §6) dan memancarkan trigger POI
 /// dari [GeofenceEngine].
@@ -27,11 +29,13 @@ import '../location/position_source.dart';
 ///
 /// Engine geofence dipertahankan antar-sesi sehingga cooldown 10 menit per
 /// POI tetap berlaku jika pengguna mengakhiri lalu memulai sesi baru.
-class DeviceSessionController implements SessionController {
+class DeviceSessionController
+    implements SessionController, PoiTriggerLifecycle, PoiTrialControl {
   DeviceSessionController({
     required this._location,
     required PoiRepository pois,
     required this._isInsideCampus,
+    this.trialModeAvailable = false,
     DateTime Function()? clock,
     GeofenceEngine Function(List<Poi> pois)? engineFactory,
   }) : _poiRepository = pois,
@@ -42,10 +46,33 @@ class DeviceSessionController implements SessionController {
   final PoiRepository _poiRepository;
   final bool Function(GeoPoint point) _isInsideCampus;
   final DateTime Function() _clock;
+  @override
+  final bool trialModeAvailable;
+  bool _trialModeEnabled = false;
+  final _trialModeController = StreamController<bool>.broadcast();
+
+  @override
+  bool get trialModeEnabled => _trialModeEnabled;
+
+  @override
+  Stream<bool> get trialModeChanges => _trialModeController.stream;
+
+  @override
+  void setTrialMode(bool enabled) {
+    if (!trialModeAvailable || enabled == _trialModeEnabled) return;
+    _trialModeEnabled = enabled;
+    _engine?.setTrialMode(enabled);
+    _trialModeController.add(enabled);
+  }
+
   final GeofenceEngine Function(List<Poi> pois) _engineFactory;
 
   final _stateController = StreamController<SessionState>.broadcast();
   final _triggerController = StreamController<PoiTriggerEvent>.broadcast();
+  final _deactivatedController = StreamController<String>.broadcast();
+
+  @override
+  Stream<String> get deactivatedPois => _deactivatedController.stream;
 
   SessionState _current = const SessionState.idle();
   GeofenceEngine? _engine;
@@ -100,13 +127,17 @@ class DeviceSessionController implements SessionController {
     await _poiSubscription?.cancel();
     await _stateController.close();
     await _triggerController.close();
+    await _deactivatedController.close();
+    await _trialModeController.close();
   }
 
   Future<void> _end(SessionEndReason reason) async {
     if (!_current.isActive) return;
     _outsideTimer?.cancel();
     _outsideTimer = null;
+    final active = _engine?.activePoiIds ?? <String>{};
     _engine?.suspend();
+    _emitDeactivated(active);
     final fixes = _fixSubscription;
     final issues = _issueSubscription;
     _fixSubscription = null;
@@ -123,8 +154,11 @@ class DeviceSessionController implements SessionController {
     try {
       if (engine == null) {
         _engine = _engineFactory(pois);
+        _engine!.setTrialMode(_trialModeEnabled);
       } else {
+        final active = engine.activePoiIds;
         engine.updatePois(pois);
+        _emitDeactivated(active.difference(engine.activePoiIds));
       }
     } on ArgumentError {
       // Data sudah divalidasi PoiRepository; jika tetap ditolak engine,
@@ -139,7 +173,9 @@ class DeviceSessionController implements SessionController {
 
     final engine = _engine;
     if (engine == null) return;
+    final active = engine.activePoiIds;
     final entries = engine.evaluate(fix, enabled: _insideCampus);
+    _emitDeactivated(active.difference(engine.activePoiIds));
     final mode = _current.mode;
     for (final entry in entries) {
       _triggerController.add(
@@ -180,5 +216,11 @@ class DeviceSessionController implements SessionController {
   void _setState(SessionState state) {
     _current = state;
     _stateController.add(state);
+  }
+
+  void _emitDeactivated(Iterable<String> ids) {
+    for (final id in ids) {
+      _deactivatedController.add(id);
+    }
   }
 }

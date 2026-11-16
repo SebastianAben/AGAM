@@ -1,5 +1,175 @@
 # Session Handoff — AGAM
 
+## Delivery — Instalasi dan integrasi LB → dev, 16 November 2026
+
+Pengguna mengotorisasi instalasi APK terbaru, commit/push ke `LB`, lalu merge
+ke `dev`. Snapshot mencakup perbaikan lifecycle/audio, trial developer, dan area
+kontak/kartu foreground dari tiga sesi terakhir; 290 test lulus, analyze bersih,
+APK build dan audit tiga aset peta sudah lulus sebagaimana catatan berikut.
+APK SHA-256 `a1a07f41bede049b636b7a7ffce31744182f1130f351acbb6c9ad7e6e7fc1e80`
+berhasil dipasang pada OPPO CPH2739 melalui `adb install --no-streaming -r`
+(`Success`), data aplikasi dipertahankan. USB terputus sebelum launch/hash
+base.apk perangkat dapat diverifikasi; bukan bukti smoke visual/playback/GPS.
+Log instalasi di `D:\CodexRuntime\agam-android\contact-install-20261116.log`.
+
+Publikasi menggunakan worktree detached dari `origin/LB`, karena checkout `LB`
+lokal di `AGAM-LB-PB04` tertinggal satu commit dan memiliki WIP PRD/tools yang
+harus dipertahankan. Tree `dev` dan `origin/LB` identik sebelum delivery.
+Integrasi langsung sesuai instruksi pengguna, tanpa PR/review manusia baru;
+tidak membuat rilis atau menyentuh main. Status PBI tetap 15 in_progress,
+7 planned, 0 done; instalasi tidak memenuhi acceptance field test.
+
+---
+
+## Current — Area kontak 5 m dan kartu foreground, 16 November 2026
+
+**Permintaan/keputusan:** titik trigger menjadi area kontak lingkaran radius
+5 m. Radius pendekatan per POI tetap 15 m pada dataset; jarak dihitung ke
+tepi area kontak, sehingga batas efektif masuk ≤20 m dari pusat dan keluar
+histeresis >25 m. Tidak mengubah radius tiba navigasi 15 m, data/koordinat,
+dwell 5 detik, akurasi 20 m, cooldown atau pengunci kunjungan/trial.
+
+**Source:** GeofenceEngine menambahkan konstanta area kontak. TriggerResponder
+menerima visibilitas lifecycle dari bootstrap: Explore/Trail saat resumed
+memutar audio tanpa popup sistem, saat background tetap notifikasi/getar/audio.
+Explore memilih kartu POI terdekat di antara trigger aktif, membuka tab Jelajah
+dari tab lain, menunda kartu background sampai resume, dan menutupnya pada
+exit/akhir sesi. Lewati/Back/Tutup menutup panel sampai kunjungan berikutnya.
+Navigasi mempertahankan respons ringkas tanpa audio/kartu otomatis. Sesi tetap
+wajib; force-stop aplikasi bukan kondisi background yang dijamin berfungsi.
+Kontrak bersama, dependency, data konten dan jaringan/privasi tidak diubah.
+
+**Lingkup:** engine, responder, bootstrap, app/Explore, regression geofence,
+responder, demo Explore dan test baru foreground_trigger_test.dart. PRD §7/9/23
+dan PB05/PB06/PB07 diselaraskan. WIP sesi sebelumnya dipertahankan di checkout
+`dev`; tidak commit/push/merge/rilis atau install ke perangkat.
+
+**Verifikasi:** seluruh 290 test Flutter lulus; setelah perapian close panel,
+3 test widget terdampak lulus lagi. Analyze --no-pub tanpa issue; format 89
+file/0 perubahan dan git diff --check lulus.
+Batas masuk 20 m, luar 20,001 m, histeresis 25/25,001 m, pendekatan 18 m,
+cooldown/trial, nearest saat event lebih jauh datang terakhir, tab dan lifecycle
+teruji sintetis. Fixture acuan haversine 49,3895 m tetap memakai nilai independen,
+radius pendekatan fixture menjadi 44/45 m agar batas efektifnya 49/50 m.
+Dua assertion geometri lama gagal pada run awal, lalu fixture diperbarui sesuai
+kontrak baru. Test lifecycle dipisah agar tidak memengaruhi fokus test UI lain.
+Flutter analyze/build awal tidak mengeluarkan hasil dalam waktu wajar; proses
+milik sesi dihentikan dan diulang dengan --suppress-analytics --no-version-check.
+Log di `D:\CodexRuntime\agam-android\contact-*20261116.log`.
+
+**APK:** build debug demo dengan AGAM_INTERNAL_DEMO=true sukses (Gradle
+256,7 detik), audit tiga aset peta APK exit 0. APK
+`build/app/outputs/flutter-apk/app-debug.apk`, 222219488 byte,
+SHA-256 `a1a07f41bede049b636b7a7ffce31744182f1130f351acbb6c9ad7e6e7fc1e80`.
+Warning KGP firebase_core/flutter_tts dan SDK XML existing tetap ada.
+Tidak mengulang signature/manifest atau audit privasi runtime.
+
+**Status:** PB05/PB06/PB07 tetap in_progress; total 15 in_progress/7 planned/0 done.
+Belum uji GPS/audio/notifikasi fisik atau acceptance/kalibrasi lapangan. Penggunaan
+AI material sesi ini dicakup PB20. Berikutnya: uji HP pada pendekatan area baru,
+foreground dari tab lain, background/layar mati, re-entry/trial dan keluar >25 m.
+
+---
+
+## Current — Sakelar demo/trial developer, 16 November 2026
+
+**Permintaan:** pastikan POI tidak terpicu lagi hanya karena 10 menit berlalu
+saat pengguna diam; tambahkan satu kontrol Pengaturan untuk uji cooldown.
+Pengunci `triggeredInside` sudah menghalangi pengulangan sampai ada sampel
+keluar >radius + margin. Regresi normal dan trial membuktikan perilaku ini.
+
+**Implementasi:** sakelar **Mode demo/trial** hanya tampil pada Pengaturan build
+internal jika controller mengizinkan. Bootstrap menerima opt-in eksplisit dari
+`AGAM_INTERNAL_DEMO`; default controller false, sakelar default mati. Kemampuan
+LA opsional baru `PoiTrialControl` tidak mengubah `lib/contracts`. Mengaktifkan
+trial mereset cooldown engine dan melewati jedanya selama aktif; pengunci
+kunjungan, dwell 5 detik, histeresis/akurasi/area/sesi tetap berlaku. Tetap harus
+keluar lalu masuk kembali. Menonaktifkan kembali memeriksa cooldown normal
+terhadap trigger terakhir; trial hanya di memori, tidak disimpan antar-restart.
+Tidak mengubah data POI, konten, progres atau menambah request/log lokasi.
+
+**File:** engine, DeviceSessionController, `poi_trial_control.dart`, bootstrap,
+main, app/ProfilePreviewScreen, unit engine/sesi, regression demo frontend dan
+Explore dengan controller asli/GPS simulasi. PRD §9.2/§23 dan PB05/PB16 mencatat
+alat uji ini. Semua perubahan sesi perbaikan trigger sebelumnya dipertahankan;
+tetap di `dev`, tanpa commit/push/merge/rilis.
+
+**Verifikasi:** seluruh **286 test PASS**: mode normal/trial tidak mengulang
+saat tetap di area >10 menit; re-entry trial tanpa tunggu 10 menit; kembali
+normal setelah dimatikan; controller produk menolak aktivasi; toggle sebelum
+dataset dimuat; UI tersembunyi di luar demo; sakelar Pengaturan → controller
+asli → exit/re-entry cepat terpicu. Log di
+`D:\CodexRuntime\agam-android\poi-trial-*-20261116.log`. Analyze --no-pub tanpa
+issue; format 88 file/0 perubahan dan git diff --check lulus. Build debug demo
+sukses (Gradle 56,8 detik), audit tiga aset peta APK exit 0; warning KGP existing
+tetap. APK `build/app/outputs/flutter-apk/app-debug.apk`, 222.217.320 byte,
+SHA-256 `6e75ff7effce6b6f417435a7cf158f80bf0003c05c3a03e0adfde31a3de2afba`.
+Belum install/retest GPS/audio Android/field, signature/manifest terbaru atau
+audit privasi runtime; AI material PB20.
+Status tetap 15 in_progress/7 planned/0 done, termasuk PB05/PB06/PB08/PB16.
+
+**Berikutnya:** pasang APK terbaru dan uji sakelar di HP. Trial mati: diam
+>10 menit tidak mengulang; exit/re-entry tetap mengikuti cooldown. Trial aktif:
+exit >20 m → re-entry ≤15 m/dwell ≥5 detik memicu tanpa menunggu 10 menit.
+Matikan untuk kembali uji produk normal; restart aplikasi mengembalikan mati.
+
+---
+
+## Current — Perbaikan lifecycle trigger POI/audio, 16 November 2026
+
+**Laporan pengguna:** trigger awal muncul, tetapi kartu terlihat tetap aktif
+setelah meninggalkan gedung; saat kembali suara tidak muncul dan kontrol audio
+terasa terkunci. Audit source memastikan engine sudah melepas pengunci setelah
+jarak > radius + 5 m, namun belum ada propagasi keluar ke UI/notifikasi. Diam
+saat kembali sebelum cooldown 10 menit habis merupakan perilaku PRD, bukan
+bukti pengunci permanen. Kondisi HP yang dilaporkan belum direproduksi langsung.
+
+**Perbaikan:** kemampuan opsional LA `PoiTriggerLifecycle.deactivatedPois`
+diimplementasikan DeviceSessionController dari snapshot ID aktif engine.
+Keluar histeresis, keluar kampus, penghapusan/perubahan geometri dataset dan
+akhir sesi melepas trigger; pembacaan buruk tidak membuktikan keluar.
+Explore menutup panel yang dibuka trigger tersebut; panel pilihan manual tetap
+tersedia. Responder menghapus notifikasi dan menghentikan prompt terkait;
+narasi yang sedang didengarkan dipertahankan. Revisi per POI membatalkan prompt
+terlambat setelah Dengarkan/Lihat/Lewati/keluar. Aksi async juga dibatalkan saat
+sesi berakhir. Kontrak bersama/radius/dwell/cooldown tidak diubah.
+
+**Audio:** intent klip dipancarkan sebelum lookup repository agar prompt pending
+dapat dihentikan. Stop lama tidak boleh menghapus state klip baru. Handler
+menjeda sebelum load, memuat dari nol, dan seek ke nol ketika tombol play media
+ditekan setelah completed; guard mencegah load/restart lama menimpa intent baru.
+Perilaku `just_audio` 0.10.6 diperiksa pada source cache: `playing` dapat tetap
+true setelah completed dan saat sumber diganti. Tidak menambah dependency.
+
+**File:** engine, DeviceSessionController, lifecycle opsional baru,
+TriggerResponder, DeviceAudioService, AgamAudioHandler, Explore serta regression
+unit/widget terkait (termasuk test baru handler dengan player sintetis).
+Checkout awal `dev` bersih; tetap di checkout itu, tanpa commit/push/merge/rilis.
+Tidak mengubah data POI/aset/approval, lib/contracts, atau mengirim posisi.
+
+**Verifikasi:** Flutter 3.47.9: analyze --no-pub tanpa issue; seluruh **282 test
+PASS**. Uji mencakup exit/re-entry/histeresis/akurasi/cooldown dan panel nyata
+dengan GPS simulasi, prompt tertunda setelah aksi/exit, pending lookup/stop,
+completed → play, load lama dan pause saat restart. Log test/analyze/build di
+`D:\CodexRuntime\agam-android\poi-trigger-*-20261116.log`. Format 87 file/0
+perubahan dan git diff --check lulus. Build debug demo
+`--dart-define=AGAM_INTERNAL_DEMO=true` sukses (Gradle 237,3 detik), audit tiga
+aset peta APK exit 0. Upaya build pertama gagal karena JAVA_HOME mengarah ke
+folder yang tidak ada; retry memakai JDK 21.0.12 existing. Warning KGP existing
+dan SDK XML tetap ada. APK `build/app/outputs/flutter-apk/app-debug.apk`,
+222.215.344 byte, SHA-256
+`99351444528311dcc1d9f8aebc009bbceb0dab7a05f3a6adb33c3c93fcf9a1f7`.
+Belum install/uji Android/field, signature/manifest terbaru atau audit privasi
+runtime. Penggunaan AI material sesi ini dicakup PB20.
+
+**Status/berikutnya:** PB05/PB06/PB08 tetap in_progress, total PBI tetap
+15 in_progress/7 planned/0 done. Uji APK di HP: trigger setelah dwell 5 detik;
+keluar >20 m menutup trigger/prompt; masuk sebelum 10 menit tetap diam; masuk
+setelah cooldown dan dwell memicu kembali; Dengarkan/jeda/lanjut/ulang selesai
+serta lock screen. Kalibrasi dan acceptance fisik tetap belum selesai.
+
+---
+
 ## Delivery Git — 16 November 2026
 
 Pengguna menginstruksikan push hasil demo/interaksi ke `LB`, kemudian merge ke

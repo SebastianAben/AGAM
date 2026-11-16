@@ -84,7 +84,7 @@ Raka (18 tahun, mahasiswa baru S1 Teknik Informatika) datang pertama kali ke Gan
 1. **Onboarding.** Membuka AGAM; aplikasi menjelaskan bahwa lokasi hanya diproses di ponsel, lalu meminta izin lokasi (akurat) dan notifikasi.
 2. **Peta.** Peta kampus, posisi Raka, dan penanda 10 POI tampil.
 3. **Mulai sesi.** Raka memilih Orientation Trail (atau Explore) dan mulai berjalan.
-4. **Trigger.** Saat masuk radius 15 m dari GKUT dan bertahan ≥5 detik, ponsel bergetar dan terdengar prompt: *"Anda mendekati Gedung Kuliah Umum Timur. Apakah Anda ingin mendengarkan ceritanya?"*
+4. **Trigger.** Saat mendekati ≤15 m dari area kontak radius 5 m GKUT dan bertahan ≥5 detik, ponsel bergetar dan terdengar prompt: *"Anda mendekati Gedung Kuliah Umum Timur. Apakah Anda ingin mendengarkan ceritanya?"*
 5. **Eksplorasi.** Raka mengetuk tombol besar **Dengarkan**; kartu POI terbuka (foto, fungsi, fasilitas, trivia) dan narasi diputar. POI tercatat "dikunjungi"; selama Raka masih di area, trigger tidak berulang.
 6. **Pencarian.** Raka mengetik "labtek 5"; aplikasi mengenali alias sebagai Labtek V.
 7. **Navigasi.** Rute jalan kaki, jarak, ETA, dan arahan suara di setiap belokan tampil. POI lain yang dilewati hanya memunculkan notifikasi ringkas tanpa audio.
@@ -119,7 +119,7 @@ Semua berprioritas **Must**.
 | ID | Requirement | Deskripsi | Acceptance criteria |
 | --- | --- | --- | --- |
 | F01 | Location Awareness | Membaca posisi melalui Fused Location Provider (GPS + Wi-Fi/seluler) setiap ±3 detik atau 5 m perpindahan dan menampilkannya di peta kampus | Posisi tampil ≤10 detik setelah izin diberikan dan diperbarui saat berjalan; akurasi yang dilaporkan ≤20 m di area terbuka kampus pada perangkat uji |
-| F02 | Location-Based Trigger | Geofence lingkaran per POI **radius 15 m [CL]** dihitung in-app dengan haversine; trigger saat masuk area dan bertahan ≥5 detik; cooldown 10 menit per POI; berjalan di foreground dan background **selama sesi** | Notifikasi dan prompt suara POI yang benar muncul ≤10 detik setelah masuk radius; tidak terpicu ulang selama pengguna tetap di area; berhasil pada ≥8 dari 10 POI saat field test |
+| F02 | Location-Based Trigger | Area kontak trigger **radius 5 m** dengan jarak pendekatan POI **15 m [CL]** dihitung in-app dengan haversine; trigger saat masuk area dan bertahan ≥5 detik; cooldown 10 menit per POI; berjalan di foreground dan background **selama sesi** | Kartu saat foreground atau notifikasi saat background, disertai prompt suara POI yang benar, muncul ≤10 detik setelah masuk area pendekatan; tidak terpicu ulang selama pengguna tetap di area; berhasil pada ≥8 dari 10 POI saat field test |
 | F03 | Multimodal Exploration | Kartu POI memuat foto, deskripsi fungsi gedung, fasilitas di dalam gedung, trivia/sejarah singkat, dan narasi audio 45–90 detik; video narasi untuk GKUB dan GKUT | Seluruh 10 POI memiliki minimal 1 foto, teks, dan narasi audio yang dapat diputar, dijeda, dan diulang **[CL: termasuk P01–P05]**; video GKUB/GKUT dapat diputar di kartu; sumber konten dicantumkan pada setiap kartu |
 | F04 | Eyes-Free Interaction | Prompt suara dan getar saat trigger; tombol aksi besar (Dengarkan/Lewati); opsi auto-play narasi; arahan navigasi suara; kontrol dari notifikasi saat layar terkunci | Pengguna dapat menerima trigger, memutar narasi, dan mengikuti navigasi sampai tujuan tanpa membaca teks layar (diuji ≥3 penguji) |
 | F05 | Search & Destination | Pencarian gedung, fasilitas, dan ruang/unit penting dengan alias (angka Arab/Romawi, singkatan seperti "GKUT", "Labtek Biru") dan filter kategori | "labtek 5", "Labtek V", atau "lab 5" menampilkan Labtek V di urutan teratas; seluruh 10 POI dan kategori fasilitas dapat ditemukan; respons ≤1 detik |
@@ -161,15 +161,25 @@ Jarak antar-POI terdekat ±49 m (P08–P09) dan ±50 m (P01–P02), sehingga rad
 1. Posisi diperoleh dari Fused Location Provider (plugin `geolocator`). POI tidak membutuhkan perangkat keras; cukup koordinat tersimpan.
 2. Pembacaan dengan akurasi lebih buruk dari **20 m diabaikan** untuk trigger (tetap boleh ditampilkan di peta).
 3. Setiap pembaruan, jarak haversine ke seluruh POI dihitung.
-4. Pengguna dianggap **masuk** jika jarak ≤ radius POI dan bertahan **≥5 detik** (dwell).
-5. **Histeresis:** pengguna dianggap keluar hanya jika jarak > radius + margin. Nilai margin adalah pilihan engineering, dikalibrasi saat field test, dan dicatat di dokumen ini.
+4. **[CL — instruksi PM 16 November 2026]** Koordinat trigger menjadi area kontak lingkaran radius **5 m**. Radius pendekatan per POI tetap **15 m** pada dataset; jarak ke area kontak = max(0, jarak haversine ke pusat − 5 m). Pengguna dianggap **masuk** jika jarak ke area kontak ≤ radius POI dan bertahan **≥5 detik** (dwell). Dengan data default, batas efektif masuk adalah ≤20 m dari pusat. Tidak mengubah koordinat/data POI atau radius tiba navigasi 15 m.
+5. **Histeresis:** pengguna dianggap keluar hanya jika jarak ke area kontak > radius + margin (default >25 m dari pusat). Nilai margin adalah pilihan engineering, dikalibrasi saat field test, dan dicatat di dokumen ini.
 6. **Cooldown 10 menit** per POI setelah trigger; trigger tidak berulang selama pengguna tetap di area.
-7. Respons trigger bergantung pada mode: Explore/Trail → getar + prompt audio + notifikasi + tombol Dengarkan/Lihat/Lewati; Navigasi → notifikasi ringkas tanpa audio untuk POI yang bukan tujuan.
+7. Respons trigger bergantung pada mode dan visibilitas: Explore/Trail saat aplikasi tampil (`resumed`) → kartu POI otomatis + prompt audio (atau narasi sesuai auto-play); latar belakang/layar mati → notifikasi + getar + audio. Kartu menampilkan POI terdekat di antara trigger yang masih aktif dan membuka tab Jelajah, termasuk setelah kembali dari latar belakang; keluar area/akhir sesi menutup kartu otomatis. Lewati/Back menutup kartu sampai kunjungan berikutnya. Navigasi di latar belakang tetap notifikasi ringkas tanpa audio untuk POI yang bukan tujuan dan tidak membuka kartu otomatis. Tidak ada trigger tanpa sesi; aplikasi yang dimatikan paksa tidak dijamin berjalan.
 8. Trigger di dalam sesi otomatis mencatat POI sebagai **dikunjungi** (check-in trail).
 9. **Efisiensi baterai:** interval pembaruan diperlambat (±10 detik) bila pengguna diam atau berada >200 m dari POI terdekat.
 10. Radius disimpan per POI di data sehingga dapat dikalibrasi lewat Firestore tanpa membangun ulang aplikasi.
 
 **Parameter engineering PB05-LA-01 (4 November 2026):** engine sinkron menggunakan default margin histeresis **5 m** dan jeda sampel maksimum **10 detik**, keduanya configurable dan **telah diterapkan, belum dikalibrasi di lapangan**. Jeda yang lebih besar membatalkan kontinuitas dwell; jeda tepat 10 detik diterima. Sampel invalid membatalkan kandidat dwell tetapi tidak membuktikan keluar dan tidak menghapus cooldown. Timestamp sama/mundur diabaikan. Saat engine dinonaktifkan, dwell/pengunci kunjungan dibersihkan tetapi cooldown dipertahankan. Setelah keluar dan masuk kembali selama cooldown, dwell dapat berjalan; trigger berikutnya hanya muncul pada sampel valid setelah dwell dan cooldown terpenuhi. Ini bukan perubahan radius produk, pengaturan interval GPS, atau evidence acceptance F02. Rincian ada pada [brief PB05-LA-01](../task-implementation/backend/PB05-LA-01-geofence-engine.md); integrasi sesi dan kalibrasi masih tertunda.
+
+**Uji developer (instruksi PM 16 November 2026):** Pengaturan pada build internal
+`AGAM_INTERNAL_DEMO=true` menyediakan satu sakelar **Mode demo/trial**, default
+mati. Mengaktifkannya mereset cooldown di memori dan melewati jeda cooldown
+selama aktif agar keluar–masuk POI dapat diuji berulang. Pengunci kunjungan,
+radius, histeresis, akurasi, dwell dan prasyarat sesi/area tetap berlaku:
+diam di POI tidak memicu ulang walaupun sudah lewat 10 menit. Mematikannya
+mengembalikan pemeriksaan cooldown normal sejak trigger terakhir; perubahan
+tidak disimpan dan kembali mati saat aplikasi dimulai ulang. Ini alat uji
+developer, bukan tambahan mode sesi §6 atau perubahan cooldown produk.
 
 **Parameter engineering lokasi dan sesi LA Sprint 1–2 (10 November 2026)** — **telah diterapkan, belum dikalibrasi**; tidak mengubah keputusan produk:
 
@@ -484,6 +494,8 @@ Perubahan berikut wajib dicatat PM pada Change Log PRD resmi.
 | PB17 | Cache konten & tile peta saat offline | Tile sudah dibundel sejak S1; PB17 menjadi verifikasi offline konten | Keputusan tile |
 | Akun pengguna | Tidak disebut di requirement, backlog, maupun sprint plan | Login wajib (email + password), role Mahasiswa ITB/Pengunjung, hapus akun (§4, §16) | Pencatatan jumlah pengguna dan success metric oleh tim (keputusan PM 6 November 2026) |
 | Demo internal sementara | Tidak dirinci | Flag eksplisit melewati login untuk demo integrasi dengan P01; area demo memakai coverage engineering OSM berlabel. Keputusan produk login wajib/batas layanan final tetap berlaku | Instruksi PM 14 November 2026 untuk memprioritaskan integrasi FE/logic, menyesuaikan kebutuhan demo, dan skip login sementara |
+| Area kontak dan visual trigger | Tidak dirinci | Titik POI menjadi area kontak radius 5 m; radius pendekatan dataset tetap 15 m (efektif masuk 20 m, keluar >25 m). Explore/Trail menampilkan kartu terdekat + audio saat resumed, notifikasi + audio di latar belakang | Instruksi PM 16 November 2026 untuk memperluas kontak dan memperjelas respons di layar |
+| Uji developer trigger | Tidak dirinci | Sakelar Mode demo/trial di Pengaturan build internal mereset/melewati cooldown; pengunci saat tetap di POI dan validasi lokasi/dwell dipertahankan | Instruksi PM 16 November 2026 agar pengujian ulang tidak menunggu 10 menit; default mati, hanya memori |
 | Log aktivitas | Tidak disebut | Daftar event tertutup tanpa data lokasi (§15.5) | Success metric; tetap mematuhi NG04/A01 |
 | Backlog | PB01–PB20 | Ditambah PB21 (akun dan login wajib) dan PB22 (log aktivitas) pada Sprint 3; nomor PB01–PB20 tidak berubah | Fitur akun sebelum Feature Freeze |
 | Layar | UI01–UI09 | Ditambah UI10 Daftar & Login; UI09 memuat akun, logout, dan hapus akun | Akun |

@@ -21,7 +21,7 @@ void main() {
   late List<PoiTriggerEvent> triggers;
   late StreamSubscription<PoiTriggerEvent> triggerSub;
 
-  void setUpSession() {
+  void setUpSession({bool trialAvailable = false}) {
     source = RecordingPositionSource();
     location = DeviceLocationService(source: source, appVisible: false);
     session = DeviceSessionController(
@@ -29,6 +29,7 @@ void main() {
       pois: FakePoiRepository(pois: [syntheticPoi()]),
       isInsideCampus: _insideSyntheticCampus,
       clock: () => syntheticEpoch,
+      trialModeAvailable: trialAvailable,
     );
     triggers = [];
     triggerSub = session.triggers.listen(triggers.add);
@@ -53,6 +54,38 @@ void main() {
     test('start(none) ditolak', () {
       expect(() => session.start(SessionMode.none), throwsArgumentError);
     });
+
+    test('production controller cannot enable developer trial', () {
+      session.setTrialMode(true);
+      expect(session.trialModeEnabled, isFalse);
+    });
+
+    test(
+      'trial selected before dataset arrives supports quick re-entry',
+      () async {
+        await triggerSub.cancel();
+        await session.dispose();
+        await location.dispose();
+        setUpSession(trialAvailable: true);
+        session.setTrialMode(true);
+        await session.start(SessionMode.explore);
+        await dwell(0, 5);
+        source.emit(syntheticFix(6, metersNorth: 30));
+        await pumpEventQueue();
+        await dwell(7, 5);
+        expect(triggers, hasLength(2));
+        await dwell(610, 5);
+        expect(triggers, hasLength(2)); // Staying still cannot repeat.
+        session.setTrialMode(false);
+        source.emit(syntheticFix(616, metersNorth: 30));
+        await pumpEventQueue();
+        await dwell(617, 5);
+        expect(
+          triggers,
+          hasLength(3),
+        ); // Previous trigger at 12: cooldown expired.
+      },
+    );
 
     test('start memulai pembacaan lokasi dengan foreground service', () async {
       await session.start(SessionMode.explore);
@@ -162,6 +195,30 @@ void main() {
       await dwell(0, 5);
       expect(triggers.single.mode, SessionMode.navigation);
       expect(triggers.single.response, TriggerResponse.brief);
+    });
+
+    test('exit clears active trigger, rejects jitter, and respects re-entry cooldown', () async {
+      final exits = <String>[];
+      final sub = session.deactivatedPois.listen(exits.add);
+      await session.start(SessionMode.explore);
+      await dwell(0, 5);
+      expect(triggers, hasLength(1));
+      source.emit(syntheticFix(6, metersNorth: 19));
+      source.emit(syntheticFix(7, metersNorth: 30, accuracy: 50));
+      await pumpEventQueue();
+      expect(exits, isEmpty);
+      source.emit(syntheticFix(8, metersNorth: 30));
+      source.emit(syntheticFix(9, metersNorth: 40));
+      await pumpEventQueue();
+      expect(exits, ['synthetic-a']);
+      await dwell(10, 5);
+      expect(triggers, hasLength(1));
+      await dwell(605, 5);
+      expect(triggers, hasLength(2));
+      await session.end();
+      await pumpEventQueue();
+      expect(exits, ['synthetic-a', 'synthetic-a']);
+      await sub.cancel();
     });
 
     test('tidak terpicu ulang selama tetap di area', () async {

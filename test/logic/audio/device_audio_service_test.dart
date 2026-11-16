@@ -15,6 +15,7 @@ class _FakeBackend implements AudioBackend {
   bool failLoad = false;
   Completer<void>? loadGate;
   Completer<void>? seekGate;
+  Completer<void>? stopGate;
   String? lastTitle;
 
   @override
@@ -49,7 +50,10 @@ class _FakeBackend implements AudioBackend {
   }
 
   @override
-  Future<void> stop() async => calls.add('stop');
+  Future<void> stop() async {
+    calls.add('stop');
+    await stopGate?.future;
+  }
 }
 
 // SINTETIS. Path aset fiktif; tidak ada file audio sungguhan.
@@ -57,6 +61,16 @@ const _media = PoiMedia(
   narrationAudio: 'assets/media/synthetic/narasi.mp3',
   promptAudio: 'assets/media/synthetic/prompt.mp3',
 );
+
+class _DelayedRepository extends FakePoiRepository {
+  _DelayedRepository() : super(pois: [syntheticPoi(media: _media)]);
+  final gate = Completer<void>();
+  @override
+  Future<Poi?> poiById(String id) async {
+    await gate.future;
+    return super.poiById(id);
+  }
+}
 
 void main() {
   late _FakeBackend backend;
@@ -92,6 +106,21 @@ void main() {
     poiId: 'synthetic-a',
     kind: AudioClipKind.narration,
   );
+
+  test('stop cancels prompt even during repository lookup', () async {
+    final repository = _DelayedRepository();
+    final pendingAudio = DeviceAudioService(backend: backend, pois: repository);
+    addTearDown(pendingAudio.dispose);
+    final loading = pendingAudio.play(
+      const AudioClip(poiId: 'synthetic-a', kind: AudioClipKind.prompt),
+    );
+    expect(pendingAudio.current.clip?.kind, AudioClipKind.prompt);
+    await pendingAudio.stop();
+    repository.gate.complete();
+    await loading;
+    expect(pendingAudio.current.status, PlaybackStatus.idle);
+    expect(backend.calls, ['stop']);
+  });
 
   test('memutar narasi dari path aset POI', () async {
     await audio.play(narration);
@@ -300,6 +329,18 @@ void main() {
     );
     await pumpEventQueue();
     expect(audio.current.status, PlaybackStatus.idle);
+  });
+
+  test('pending stop cannot erase a newer narration', () async {
+    await audio.play(narration);
+    backend.stopGate = Completer<void>();
+    final stopping = audio.stop();
+    expect(audio.current.status, PlaybackStatus.idle);
+    await audio.play(narration);
+    backend.stopGate!.complete();
+    await stopping;
+    expect(audio.current.clip, narration);
+    expect(audio.current.status, PlaybackStatus.playing);
   });
 
   test('judul notifikasi per jenis klip', () {

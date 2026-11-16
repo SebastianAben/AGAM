@@ -101,6 +101,7 @@ void main() {
         location: location,
         pois: repository,
         isInsideCampus: map.isInsideCampus,
+        trialModeAvailable: true,
       );
       final fake = AppServices.fake();
       final services = AppServices(
@@ -330,6 +331,8 @@ void main() {
       await tester.runAsync(() => pumpEventQueue(times: 5));
       await tester.pump();
       expect(find.text('Lihat'), findsNothing); // <5 seconds dwell.
+      await tester.tap(find.text('Cari & Rute'));
+      await tester.pumpAndSettle();
       emit(13);
       await tester.runAsync(() => pumpEventQueue(times: 5));
       await tester.pumpAndSettle();
@@ -372,6 +375,62 @@ void main() {
         await preview.writeAsBytes(png!.buffer.asUint8List());
         image.dispose();
       });
+      // SIMULASI exit/re-entry: an inaccurate fix cannot dismiss the trigger;
+      // a valid fix beyond hysteresis does, and cooldown still prevents spam.
+      void leave(int second, {double accuracy = 5}) => source.emit(
+        LocationFix(
+          position: GeoPoint(poi.position.lat + 0.0003, poi.position.lng),
+          accuracyM: accuracy,
+          timestamp: epoch.add(Duration(seconds: second)),
+        ),
+      );
+      leave(14, accuracy: 50);
+      await tester.runAsync(() => pumpEventQueue(times: 5));
+      await tester.pumpAndSettle();
+      expect(find.text('Lihat'), findsOneWidget);
+      leave(15);
+      await tester.runAsync(() => pumpEventQueue(times: 5));
+      await tester.pumpAndSettle();
+      expect(find.text('Lihat'), findsNothing);
+      emit(16);
+      emit(19);
+      emit(22);
+      await tester.runAsync(() => pumpEventQueue(times: 5));
+      await tester.pumpAndSettle();
+      expect(find.text('Lihat'), findsNothing);
+      emit(613);
+      emit(616);
+      emit(619);
+      await tester.runAsync(() => pumpEventQueue(times: 5));
+      await tester.pumpAndSettle();
+      expect(find.text('Lihat'), findsOneWidget);
+      await tester.tap(find.text('Pengaturan'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Mode demo/trial'));
+      await tester.tap(find.text('Mode demo/trial'));
+      await tester.pumpAndSettle();
+      expect(session.trialModeEnabled, isTrue);
+      expect(session.current.mode, SessionMode.explore);
+      await tester.tap(find.text('Jelajah'));
+      await tester.pumpAndSettle();
+      leave(620);
+      await tester.runAsync(() => pumpEventQueue(times: 5));
+      await tester.pumpAndSettle();
+      expect(find.text('Lihat'), findsNothing);
+      emit(621);
+      emit(624);
+      emit(627);
+      await tester.runAsync(() => pumpEventQueue(times: 5));
+      await tester.pumpAndSettle();
+      expect(find.text('Lihat'), findsOneWidget); // Trial skips cooldown.
+      await tester.tap(find.text('Pengaturan'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Mode demo/trial'));
+      await tester.tap(find.text('Mode demo/trial'));
+      await tester.pumpAndSettle();
+      expect(session.trialModeEnabled, isFalse);
+      await tester.tap(find.text('Jelajah'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Lewati'));
       await tester.pumpAndSettle();
       expect(actions.last.action, TriggerAction.skip);

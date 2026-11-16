@@ -6,6 +6,7 @@ library;
 
 import 'dart:async';
 
+import 'package:flutter/widgets.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:geolocator/geolocator.dart';
 
@@ -62,6 +63,7 @@ class LaServices {
 /// tidak memerlukan Firebase dan tidak membaca cache konten produksi.
 Future<LaServices> createLaServices({
   bool bundledOnly = false,
+  bool developerTrialAvailable = false,
   required MapConfig map,
   required NavigationController Function(LocationService location) navigation,
 }) async {
@@ -84,6 +86,7 @@ Future<LaServices> createLaServices({
     location: location,
     pois: pois,
     isInsideCampus: map.isInsideCampus,
+    trialModeAvailable: developerTrialAvailable,
   );
 
   final audio = DeviceAudioService(
@@ -97,6 +100,8 @@ Future<LaServices> createLaServices({
     notifier: notifier,
     audio: audio,
     settings: settings,
+    isAppVisible: () =>
+        WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed,
   )..start();
 
   final navigationController = navigation(location);

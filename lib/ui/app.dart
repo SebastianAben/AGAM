@@ -155,6 +155,7 @@ class _AgamMainShellState extends State<AgamMainShell> {
                   poiViewRequests: widget.poiViewRequests,
                   poiMapRequests: _mapRequests.stream,
                   onPoiAction: widget.onPoiAction,
+                  onAutomaticPoi: () => _selectTab(0),
                   internalDemo: widget.internalDemo,
                 ),
                 OrientationTrailScreen(
@@ -172,7 +173,10 @@ class _AgamMainShellState extends State<AgamMainShell> {
                   internalDemo: widget.internalDemo,
                   onTabSelected: _selectTab,
                 ),
-                ProfilePreviewScreen(services: widget.services),
+                ProfilePreviewScreen(
+                  services: widget.services,
+                  internalDemo: widget.internalDemo,
+                ),
               ],
             ),
           ),

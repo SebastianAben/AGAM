@@ -4,11 +4,16 @@ import 'package:agam/contracts/contracts.dart';
 import 'package:agam/contracts/fakes/fake_la_services.dart';
 import 'package:agam/logic/session/trigger_notifier.dart';
 import 'package:agam/logic/session/trigger_responder.dart';
+import 'package:agam/logic/session/poi_trigger_lifecycle.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../support/synthetic.dart';
 
-class _ManualSession implements SessionController {
+class _ManualSession implements SessionController, PoiTriggerLifecycle {
+  final _deactivated = StreamController<String>.broadcast();
+  @override
+  Stream<String> get deactivatedPois => _deactivated.stream;
+  void leave(String id) => _deactivated.add(id);
   final _triggers = StreamController<PoiTriggerEvent>.broadcast();
   final _state = StreamController<SessionState>.broadcast();
   SessionState _current = const SessionState(mode: SessionMode.explore);
@@ -78,8 +83,10 @@ void main() {
   late FakeAudioService audio;
   late FakeSettingsStore settings;
   late TriggerResponder responder;
+  var visible = false;
 
   setUp(() {
+    visible = false;
     session = _ManualSession();
     notifier = _RecordingNotifier();
     audio = FakeAudioService(tick: const Duration(hours: 1));
@@ -90,6 +97,7 @@ void main() {
       notifier: notifier,
       audio: audio,
       settings: settings,
+      isAppVisible: () => visible,
     )..start();
   });
 
@@ -97,6 +105,22 @@ void main() {
     await responder.dispose();
     audio.dispose();
   });
+
+  test(
+    'foreground plays audio without system popup; background keeps popup',
+    () async {
+      visible = true;
+      session.fire('synthetic-a', TriggerResponse.full);
+      await pumpEventQueue();
+      expect(notifier.calls, isEmpty);
+      expect(audio.current.clip?.kind, AudioClipKind.prompt);
+      visible = false;
+      session.fire('synthetic-a', TriggerResponse.full);
+      await pumpEventQueue();
+      expect(notifier.calls, ['full:synthetic-a']);
+      expect(audio.current.clip?.kind, AudioClipKind.prompt);
+    },
+  );
 
   test('respons penuh: notifikasi lalu prompt audio', () async {
     session.fire('synthetic-a', TriggerResponse.full);
@@ -110,6 +134,65 @@ void main() {
     session.fire('synthetic-a', TriggerResponse.full);
     await pumpEventQueue();
     expect(audio.current.clip?.kind, AudioClipKind.narration);
+  });
+
+  test(
+    'exit dismisses trigger and stops its prompt; next entry plays again',
+    () async {
+      session.fire('synthetic-a', TriggerResponse.full);
+      await pumpEventQueue();
+      session.leave('synthetic-a');
+      await pumpEventQueue();
+      expect(audio.current.status, PlaybackStatus.idle);
+      expect(notifier.calls.last, 'dismiss:synthetic-a');
+      session.fire('synthetic-a', TriggerResponse.full);
+      await pumpEventQueue();
+      expect(audio.current.clip?.kind, AudioClipKind.prompt);
+      expect(audio.current.status, PlaybackStatus.playing);
+    },
+  );
+
+  test('exit preserves narration explicitly requested by listener', () async {
+    await responder.handleAction(
+      const TriggerActionEvent(
+        poiId: 'synthetic-a',
+        action: TriggerAction.listen,
+      ),
+    );
+    session.leave('synthetic-a');
+    await pumpEventQueue();
+    expect(audio.current.clip?.kind, AudioClipKind.narration);
+    expect(audio.current.status, PlaybackStatus.playing);
+  });
+
+  test(
+    'listen during pending notification cannot be replaced by late prompt',
+    () async {
+      notifier.fullGate = Completer<void>();
+      session.fire('synthetic-a', TriggerResponse.full);
+      await pumpEventQueue();
+      await responder.handleAction(
+        const TriggerActionEvent(
+          poiId: 'synthetic-a',
+          action: TriggerAction.listen,
+        ),
+      );
+      notifier.fullGate!.complete();
+      await pumpEventQueue();
+      expect(audio.current.clip?.kind, AudioClipKind.narration);
+    },
+  );
+
+  test('exit while notification pending cancels late prompt', () async {
+    notifier.fullGate = Completer<void>();
+    session.fire('synthetic-a', TriggerResponse.full);
+    await pumpEventQueue();
+    session.leave('synthetic-a');
+    await pumpEventQueue();
+    notifier.fullGate!.complete();
+    await pumpEventQueue();
+    expect(audio.current.status, PlaybackStatus.idle);
+    expect(notifier.calls.last, 'dismiss:synthetic-a');
   });
 
   test('respons ringkas (Navigasi): notifikasi tanpa audio', () async {
