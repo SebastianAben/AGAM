@@ -1,5 +1,19 @@
 # Session Handoff — AGAM
 
+## Current — LA disamakan dengan dev, kontrak v1.1, PB21–PB22 bagian LA, 17 November 2026
+
+**Branch:** atas instruksi pengguna, `LA` di-reset ke `dev` `dded02b` (PR #4 konten POI sudah di-merge). Dua commit lama disimpan di branch lokal `backup/LA-sebelum-reset-2026-11-17` (tidak di-push). Di atas `dev`:
+
+- `f033e4d` fix PB08: `android/app/src/main/res/raw/keep.xml` menjaga ikon `audio_service_*` dari resource shrinking. Tanpa ini, APK **release** tidak menampilkan notifikasi media (`AudioService.setState` gagal: "You must specify an icon resource id to build a CustomAction"); APK debug tidak terdampak, sehingga verifikasi LB di OPPO (debug) tidak menangkapnya.
+- `cefa34f` kontrak v1.1 (akun + log aktivitas) dipulihkan; `PoiViewRequests` dibuang karena `dev` sudah mengoper tombol Lihat lewat `AgamApp.poiViewRequests`. Empat test UI ikut diberi `auth`/`activity`.
+- commit "feat: PB21 PB22 add Firebase account, per-account settings, and activity logging": implementasi asli PB21/PB22 bagian LA di `lib/logic/account/`, pengaturan per `uid`, `LocalTriggerNotifier.launchedFromNotification()`, dependency `firebase_auth`, `package_info_plus`, `device_info_plus` (versi dari `pub add`). Rincian di implementationPhases PB21/PB22.
+
+**Pemeriksaan:** format bersih; `fvm flutter analyze` tanpa issue; `fvm flutter test` **363 lulus**; `fvm flutter build apk --release` berhasil (63,1 MB). Ketiga commit di `LA` lokal; belum di-push, belum ada PR.
+
+**Berikutnya:** pengguna menentukan commit dan push; PR kontrak v1.1 ke `dev` butuh persetujuan FE + LB; FE membuat UI10 dan gerbang login, lalu `lib/main.dart` jalur non-demo memanggil `createLaAccountServices(la)` dan mengisi `AppServices.auth`/`activity` dari situ; LB menyimpan progres trail per `uid` dan mencatat `trailCompleted`/`featureUsed` pencarian; test rules emulator (butuh Firebase CLI + Java) dan uji perangkat terhadap `agam-9e704`.
+
+---
+
 ## Delivery — Instalasi dan integrasi LB → dev, 16 November 2026
 
 Pengguna mengotorisasi instalasi APK terbaru, commit/push ke `LB`, lalu merge
