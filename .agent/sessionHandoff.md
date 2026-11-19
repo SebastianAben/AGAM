@@ -1,5 +1,39 @@
 # Session Handoff — AGAM
 
+## Current — PB10/PB11 Logic LB untuk push, 19 November 2026
+
+Perubahan disiapkan di atas `origin/LB` `9bc83cd`. Checkout lama `LB` pada
+`../AGAM-LB-PB04` berada di `a5ca3ea`, empat commit di depan remote dan memuat
+riwayat onboarding FE serta WIP PB04 (`.agent/PRD.md` dan dua file `tools/tiles`).
+WIP itu dipertahankan. Push ini hanya memuat implementasi Logic LB Sprint 3 dan
+catatan status PB10/PB11.
+
+- `PoiSearchService` mencari POI serta fasilitas approved, memakai kategori,
+  alias Arab/Romawi dan urutan hasil deterministik.
+- `CampusRoutingService` menghitung graf GeoJSON lokal memakai Dijkstra,
+  snapping segmen terbatas, jarak, ETA dan arahan belokan.
+  `DeviceNavigationController` mengikat rute ke sesi, memperbarui langkah,
+  melakukan reroute melewati 25 m, dan tiba dalam 15 m. Geometri test berlabel
+  sintetis dan tidak masuk aset produksi.
+- `RepositoryFacilityService` hanya mengembalikan fasilitas approved.
+  `UnavailableRecommendationService` dan `UnavailableTrailService` menjaga
+  alur rekomendasi/Trail tetap tertutup sampai data resmi tersedia.
+  `AccountVisitStore` menyimpan ID kunjungan lokal dalam ruang per UID.
+- `OfflineMapTiles` menggunakan ulang raster aset yang sama dalam memori,
+  dengan kunci path aset saja.
+
+**Verifikasi:** Flutter 3.47.9, `pub get --enforce-lockfile`, format delapan
+file tanpa perubahan, `git diff --check`, `flutter analyze --no-pub` bersih,
+dan tujuh test routing, pencarian, serta penyimpanan UID lulus. Tidak ada data
+graf kampus atau fasilitas produksi yang ditambahkan. Uji manual/perangkat dan
+integrasi UI/LA belum tercakup.
+
+**Menunggu:** tim menyediakan graf jalan hasil survei, batas layanan dan titik
+pintu masuk. Tim konten menyediakan dataset fasilitas dengan metadata yang
+terverifikasi. QA menguji rute di kampus sebelum acceptance F06.
+
+---
+
 ## Delivery — Instalasi dan integrasi LB → dev, 16 November 2026
 
 Pengguna mengotorisasi instalasi APK terbaru, commit/push ke `LB`, lalu merge

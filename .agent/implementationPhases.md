@@ -496,15 +496,15 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
 
 - **Track:** LB (`SearchService`), FE (UI05) · **Requirement:** F05
 - **Done:** "labtek 5", "Labtek V", "lab 5" → Labtek V teratas; respons ≤1 detik.
-- **Demo sementara (16 November 2026):** UI05 memakai `PoiSearchService` atas repository, alias Arab/Romawi dan filter kategori POI. Seluruh tab FE dipertahankan; kartu rute/fasilitas dummy berlabel tidak menjalankan fake. Detail/audio tetap nyata. Test UI alias, detail dan isolasi aksi dummy lulus; belum acceptance PB10 penuh karena data fasilitas/graf dan verifikasi performa belum lengkap.
-- **Status:** `in_progress` — UI05 FE tersedia; pencarian repository-backed baru diaktifkan pada jalur demo sementara. Integrasi/acceptance PB10 penuh belum selesai.
+- **Integrasi layanan produk (19 November 2026):** `PoiSearchService` mencari POI dan fasilitas dengan metadata approved, filter kategori, normalisasi angka Romawi, dan hasil stabil. Dataset bawaan berisi 10 POI. Test lokal mencakup alias, keadaan fasilitas kosong, fasilitas placeholder, dan batas respons ≤1 detik. Acceptance fasilitas menunggu dataset resmi tim konten.
+- **Status:** `in_progress` — logic pencarian produk tersedia di `SearchService`; pengujian UI lintas branch dan acceptance fasilitas masih menunggu integrasi FE/data tim konten.
 
 ### PB11 — Navigasi jalan kaki di perangkat
 
 - **Track:** LB (graf, `RoutingService`, `NavigationController`), FE (UI06), LA (sesi Navigasi) · **Requirement:** F06, A01
 - **Dependency eksternal:** koordinat pintu masuk (survei).
 - **Done:** rute tampil ke pintu masuk tujuan; rerouting berjalan; tidak ada request routing ke server.
-- **Status:** `in_progress` — UI06 FE menampilkan pratinjau tujuan, jarak, ETA, dan langkah bila tersedia, serta memulai sesi/navigasi dari posisi perangkat. Shell masih memakai routing/navigation fake; graf jalur, pintu masuk survei, rerouting, dan verifikasi lapangan LB belum tersedia.
+- **Status:** `in_progress` — `CampusRoutingService` dan `DeviceNavigationController` asli tersedia. Dijkstra, langkah, ETA, reroute >25 m, tiba ≤15 m, serta pembatalan perhitungan tertunda lulus test fixture sintetis. Integrasi UI/LA dan verifikasi lapangan belum selesai. Aktivasi rute produk menunggu graf jalan bersumber, batas layanan yang ditetapkan tim, dan koordinat pintu masuk hasil survei.
 
 ### PB12 — Arahan suara navigasi dan deteksi tiba
 
