@@ -1,6 +1,6 @@
-import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
-import '../../contracts/contracts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Stores POI IDs only, scoped to the UID captured when the trigger occurred.
 /// Reads, additions, and deletion are serialized to avoid losing check-ins
@@ -32,36 +32,41 @@ class AccountVisitStore {
   });
 
   Future<void> clear(String uid) => _enqueue((preferences) async {
-    if (!await preferences.remove(_key(uid))) {
+    final visitsRemoved = await preferences.remove(_key(uid));
+    final trailRemoved = await preferences.remove(_trailKey(uid));
+    if (!visitsRemoved || !trailRemoved) {
       throw StateError('Progres belum dapat dihapus.');
     }
   });
+
+  static String _trailKey(String uid) => 'account.$uid.trailProgress';
+
+  Future<({Set<String> ids, DateTime? date})> readTrail(String uid) =>
+      _enqueue((preferences) async {
+        final raw = preferences.getString(_trailKey(uid));
+        if (raw == null) return (ids: <String>{}, date: null);
+        final data = jsonDecode(raw) as Map<String, dynamic>;
+        return (
+          ids: (data['ids'] as List).whereType<String>().toSet(),
+          date: DateTime.tryParse(data['date'] as String? ?? ''),
+        );
+      });
+
+  Future<void> saveTrail(String uid, Set<String> ids, DateTime? date) =>
+      _enqueue((preferences) async {
+        final saved = await preferences.setString(
+          _trailKey(uid),
+          jsonEncode({
+            'ids': ids.toList(),
+            'date': date?.toIso8601String().split('T').first,
+          }),
+        );
+        if (!saved) throw StateError('Progres Trail belum dapat disimpan.');
+      });
 
   Future<T> _enqueue<T>(Future<T> Function(SharedPreferences) action) {
     final next = _pending.then((_) async => action(await _preferences));
     _pending = next.then<void>((_) {}, onError: (Object _) {});
     return next;
   }
-}
-
-/// Trail is unavailable until the content team supplies an official order.
-class UnavailableTrailService implements TrailService {
-  const UnavailableTrailService();
-
-  @override
-  TrailProgress get current =>
-      const TrailProgress(order: [], visited: {}, active: false);
-
-  @override
-  Stream<TrailProgress> get progress => const Stream.empty();
-
-  @override
-  Future<void> start() =>
-      Future.error(StateError('Orientation Trail belum tersedia.'));
-
-  @override
-  Future<void> stop() async {}
-
-  @override
-  Future<void> reset() async {}
 }

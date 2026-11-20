@@ -36,7 +36,8 @@ class DeviceNavigationController implements NavigationController {
     final generation = ++_generation;
     _detach();
     _progressM = 0;
-    if (_session.current.mode != SessionMode.navigation ||
+    final mode = _session.current.mode;
+    if ((mode != SessionMode.navigation && mode != SessionMode.trail) ||
         !_map.isInsideCampus(target.point)) {
       _publish(NavigationState(status: NavigationStatus.error, target: target));
       return;
@@ -45,7 +46,7 @@ class DeviceNavigationController implements NavigationController {
       NavigationState(status: NavigationStatus.calculating, target: target),
     );
     _sessions = _session.state.listen((state) {
-      if (generation == _generation && state.mode != SessionMode.navigation) {
+      if (generation == _generation && state.mode != mode) {
         unawaited(stop());
       }
     });
@@ -124,6 +125,8 @@ class DeviceNavigationController implements NavigationController {
   }
 
   void _arrive(NavigationTarget target, WalkingRoute route) {
+    final mode = _session.current.mode;
+    final generation = _generation;
     _detach();
     _publish(
       NavigationState(
@@ -136,7 +139,7 @@ class DeviceNavigationController implements NavigationController {
     );
     // The session remains explicit and can be ended from UI07 or Settings.
     _sessions = _session.state.listen((state) {
-      if (state.mode != SessionMode.navigation) unawaited(stop());
+      if (generation == _generation && state.mode != mode) unawaited(stop());
     });
   }
 
