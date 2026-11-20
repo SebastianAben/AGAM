@@ -100,9 +100,8 @@ void main() {
         {'mode': 'navigation'},
       );
       expect(
-        const ActivityEvent.featureUsed(
-          feature: ActivityFeature.poiCard,
-        ).fields,
+        const ActivityEvent.featureUsed(feature: ActivityFeature.poiCard)
+            .fields,
         {'feature': 'poiCard'},
       );
       expect(ActivityFeature.values.map((f) => f.name), [
