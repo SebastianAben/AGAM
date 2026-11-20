@@ -4,6 +4,8 @@ library;
 
 import 'dart:async';
 
+import '../models/account.dart';
+import '../models/activity.dart';
 import '../models/audio.dart';
 import '../models/content.dart';
 import '../models/geo.dart';
@@ -373,4 +375,138 @@ class FakeSettingsStore implements SettingsStore {
     _current = settings;
     _controller.add(settings);
   }
+}
+
+/// Akun di memori, hilang saat aplikasi ditutup. Tidak mengakses jaringan.
+///
+/// Meniru aturan Firebase Auth yang terlihat UI: email wajib mengandung `@`,
+/// password minimal 6 karakter, email tidak boleh dipakai dua kali, dan
+/// email/password salah tidak dibedakan. Akun dan UID SINTETIS.
+class FakeAuthService implements AuthService {
+  /// [signedInAs] untuk memulai dalam keadaan sudah login (mis. melewati
+  /// layar login saat mengembangkan layar lain). Jika [activity] diberikan,
+  /// event akun dicatat seperti implementasi asli.
+  FakeAuthService({UserAccount? signedInAs, this._activity})
+    : _current = signedInAs == null
+          ? const AuthState.signedOut()
+          : AuthState.signedIn(signedInAs) {
+    if (signedInAs != null) {
+      _accounts[signedInAs.email] = (password: '', account: signedInAs);
+    }
+  }
+
+  final ActivityLogger? _activity;
+  final _accounts = <String, ({String password, UserAccount account})>{};
+  final _controller = StreamController<AuthState>.broadcast();
+  AuthState _current;
+  int _nextUid = 1;
+
+  /// Ubah ke `true` untuk mencoba pesan offline di layar login.
+  bool offline = false;
+
+  @override
+  AuthState get current => _current;
+
+  @override
+  Stream<AuthState> get state => Stream.multi((listener) {
+    listener.add(_current);
+    final subscription = _controller.stream.listen(listener.add);
+    listener.onCancel = subscription.cancel;
+  });
+
+  @override
+  Future<UserAccount> signUp({
+    required String email,
+    required String password,
+    required UserRole role,
+  }) async {
+    _checkOnline();
+    final key = _normalize(email);
+    if (!key.contains('@')) {
+      throw const AuthException(AuthErrorCode.invalidEmail);
+    }
+    if (password.length < 6) {
+      throw const AuthException(AuthErrorCode.weakPassword);
+    }
+    if (_accounts.containsKey(key)) {
+      throw const AuthException(AuthErrorCode.emailAlreadyInUse);
+    }
+    final account = UserAccount(
+      uid: 'fake-uid-${_nextUid++}',
+      email: key,
+      role: role,
+    );
+    _accounts[key] = (password: password, account: account);
+    _emit(AuthState.signedIn(account));
+    _activity?.log(ActivityEvent.signUp(role: role));
+    return account;
+  }
+
+  @override
+  Future<UserAccount> login({
+    required String email,
+    required String password,
+  }) async {
+    _checkOnline();
+    final entry = _accounts[_normalize(email)];
+    // Akun dari [signedInAs] tidak punya password dan tidak dapat login
+    // ulang setelah logout; daftarkan akun baru untuk mencoba alur login.
+    if (entry == null || entry.password.isEmpty || entry.password != password) {
+      throw const AuthException(AuthErrorCode.wrongCredentials);
+    }
+    _emit(AuthState.signedIn(entry.account));
+    _activity?.log(const ActivityEvent.login());
+    return entry.account;
+  }
+
+  @override
+  Future<void> logout() async {
+    if (!_current.isSignedIn) return;
+    // Dicatat sebelum keluar karena log membutuhkan akun yang login.
+    _activity?.log(const ActivityEvent.logout());
+    _emit(const AuthState.signedOut());
+  }
+
+  @override
+  Future<void> sendPasswordReset({required String email}) async {
+    _checkOnline();
+    if (!_normalize(email).contains('@')) {
+      throw const AuthException(AuthErrorCode.invalidEmail);
+    }
+  }
+
+  @override
+  Future<void> deleteAccount({required String password}) async {
+    final account = _current.account;
+    if (account == null) return;
+    _checkOnline();
+    // Akun dari [signedInAs] tidak punya password sehingga selalu lolos.
+    final entry = _accounts[account.email];
+    if (entry != null &&
+        entry.password.isNotEmpty &&
+        entry.password != password) {
+      throw const AuthException(AuthErrorCode.wrongCredentials);
+    }
+    _accounts.remove(account.email);
+    _emit(const AuthState.signedOut());
+  }
+
+  void _checkOnline() {
+    if (offline) throw const AuthException(AuthErrorCode.network);
+  }
+
+  void _emit(AuthState state) {
+    _current = state;
+    _controller.add(state);
+  }
+
+  static String _normalize(String email) => email.trim().toLowerCase();
+}
+
+/// Mencatat event ke memori, tanpa jaringan. Untuk test dan pengembangan UI.
+class FakeActivityLogger implements ActivityLogger {
+  final events = <ActivityEvent>[];
+
+  @override
+  void log(ActivityEvent event) => events.add(event);
 }

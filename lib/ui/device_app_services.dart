@@ -20,6 +20,8 @@ AppServices createDeviceAppServices() {
     audio: FakeAudioService(),
     voice: FakeVoiceGuidance(),
     settings: FakeSettingsStore(),
+    auth: FakeAuthService(),
+    activity: FakeActivityLogger(),
     map: FakeMapConfig(),
     routing: routing,
     navigation: FakeNavigationController(location: location, routing: routing),
