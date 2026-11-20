@@ -1,6 +1,45 @@
 # Session Handoff — AGAM
 
-## Current — Redesign onboarding UI01, 17 November 2026
+## Current — PB10/PB11 Logic LB untuk push, 19 November 2026
+
+Perubahan disiapkan di atas `origin/LB` `9bc83cd`. Checkout lama `LB` pada
+`../AGAM-LB-PB04` berada di `a5ca3ea`, empat commit di depan remote dan memuat
+riwayat onboarding FE serta WIP PB04 (`.agent/PRD.md` dan dua file `tools/tiles`).
+WIP itu dipertahankan. Push ini hanya memuat implementasi Logic LB Sprint 3 dan
+catatan status PB10/PB11.
+
+- `PoiSearchService` mencari POI serta fasilitas approved, memakai kategori,
+  alias Arab/Romawi dan urutan hasil deterministik.
+- `CampusRoutingService` menghitung graf GeoJSON lokal memakai Dijkstra,
+  snapping segmen terbatas, jarak, ETA dan arahan belokan.
+  `DeviceNavigationController` mengikat rute ke sesi, memperbarui langkah,
+  melakukan reroute melewati 25 m, dan tiba dalam 15 m. Geometri test berlabel
+  sintetis dan tidak masuk aset produksi.
+- `RepositoryFacilityService` hanya mengembalikan fasilitas approved.
+  `UnavailableRecommendationService` dan `UnavailableTrailService` menjaga
+  alur rekomendasi/Trail tetap tertutup sampai data resmi tersedia.
+  `AccountVisitStore` menyimpan ID kunjungan lokal dalam ruang per UID.
+- `OfflineMapTiles` menggunakan ulang raster aset yang sama dalam memori,
+  dengan kunci path aset saja.
+
+**Verifikasi:** Flutter 3.47.9, `pub get --enforce-lockfile`, format delapan
+file tanpa perubahan, `git diff --check`, `flutter analyze --no-pub` bersih,
+dan tujuh test routing, pencarian, serta penyimpanan UID lulus. Tidak ada data
+graf kampus atau fasilitas produksi yang ditambahkan. Uji manual/perangkat dan
+integrasi UI/LA belum tercakup.
+
+**Menunggu:** tim menyediakan graf jalan hasil survei, batas layanan dan titik
+pintu masuk. Tim konten menyediakan dataset fasilitas dengan metadata yang
+terverifikasi. QA menguji rute di kampus sebelum acceptance F06.
+
+**Integrasi ke dev (20 November 2026):** `dev` (sudah berisi PR #7 `LA` dan
+PR #6 onboarding) di-merge ke `LB` agar PR `LB` → `dev` bebas konflik. Satu-
+satunya konflik ada di file ini; ketiga entri 17–19 November dipertahankan
+berurutan dari yang terbaru. Kode tidak berkonflik.
+
+---
+
+## Sebelumnya — Redesign onboarding UI01, 17 November 2026
 
 **Permintaan:** pengguna meminta onboarding yang tidak lagi satu halaman
 statis, dengan animasi dan alur yang lebih intuitif (referensi: onboarding
@@ -49,10 +88,13 @@ berencana mengubah desain FE keseluruhan nanti; sesi ini sengaja hanya
 menyentuh onboarding. Pengguna menguji desain lewat preview web sementara
 (entrypoint khusus + `FakePermissionService`, sudah dihapus; aplikasi penuh
 tidak jalan di web), lalu mengotorisasi commit dan push ke
-`origin/feat/onboarding-redesign`. Belum PR/merge ke `dev`. Mac ini tidak
-punya Android SDK/adb; APK untuk OPPO perlu dibangun di mesin lain dari branch
-tersebut.
-## Current — LA disamakan dengan dev, kontrak v1.1, PB21–PB22 bagian LA, 17 November 2026
+`origin/feat/onboarding-redesign`, lalu di-merge ke `dev` lewat PR #6
+(`4ee0b7d`); branch remote sudah dihapus. Mac ini tidak punya Android
+SDK/adb; APK untuk OPPO perlu dibangun di mesin lain dari `dev`.
+
+---
+
+## Sebelumnya — LA disamakan dengan dev, kontrak v1.1, PB21–PB22 bagian LA, 17 November 2026
 
 **Branch:** atas instruksi pengguna, `LA` di-reset ke `dev` `dded02b` (PR #4 konten POI sudah di-merge). Dua commit lama disimpan di branch lokal `backup/LA-sebelum-reset-2026-11-17` (tidak di-push). Di atas `dev`:
 
@@ -62,7 +104,8 @@ tersebut.
 
 **Pemeriksaan:** format bersih; `fvm flutter analyze` tanpa issue; `fvm flutter test` **363 lulus**; `fvm flutter build apk --release` berhasil (63,1 MB). Ketiga commit di `LA` lokal; belum di-push, belum ada PR.
 
-**Berikutnya:** pengguna menentukan commit dan push; PR kontrak v1.1 ke `dev` butuh persetujuan FE + LB; FE membuat UI10 dan gerbang login, lalu `lib/main.dart` jalur non-demo memanggil `createLaAccountServices(la)` dan mengisi `AppServices.auth`/`activity` dari situ; LB menyimpan progres trail per `uid` dan mencatat `trailCompleted`/`featureUsed` pencarian; test rules emulator (butuh Firebase CLI + Java) dan uji perangkat terhadap `agam-9e704`.
+**Berikutnya:** pengguna menentukan commit dan push; PR kontrak v1.1 ke `dev` butuh persetujuan FE + LB; FE membuat UI10 dan gerbang login, lalu `lib/main.dart` jalur non-demo memanggil `createLaAccountServices(la)` dan mengisi `AppServices.auth`/`activity` dari situ; LB menyimpan progres trail per `uid` dan mencatat `trailCompleted`/`featureUsed` pencarian; test rules emulator (butuh Firebase CLI + Java) dan uji perangkat terhadap `agam-9e704`. (Status terkini: ketiga commit sudah
+di-merge ke `dev` lewat PR #7 `a84fb67`.)
 
 ---
 

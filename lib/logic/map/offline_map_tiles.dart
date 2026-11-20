@@ -16,11 +16,32 @@ class OfflineMapTiles {
   final int minZoom;
   final int maxZoom;
 
+  // Reuse the same bundled pixels across Explore, destination and reroutes.
+  // The cache key contains only asset names.
+  static final _bundled = <(String, String), Future<OfflineMapTiles>>{};
+
   static Future<OfflineMapTiles> load(
     MapStyleSource source, {
     AssetBundle? bundle,
-  }) async {
-    final assets = bundle ?? rootBundle;
+  }) {
+    if (bundle != null) return _render(source, bundle);
+    final key = (source.tilesAssetPath, source.styleAssetPath);
+    return _bundled.putIfAbsent(
+      key,
+      () => _render(source, rootBundle).catchError((
+        Object error,
+        StackTrace stack,
+      ) {
+        _bundled.remove(key);
+        Error.throwWithStackTrace(error, stack);
+      }),
+    );
+  }
+
+  static Future<OfflineMapTiles> _render(
+    MapStyleSource source,
+    AssetBundle assets,
+  ) async {
     if (!source.tilesAssetPath.startsWith('assets/map/') ||
         !source.styleAssetPath.startsWith('assets/map/')) {
       throw const FormatException('Sumber peta wajib aset lokal AGAM.');

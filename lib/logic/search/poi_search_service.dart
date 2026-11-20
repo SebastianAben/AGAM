@@ -1,11 +1,14 @@
+import 'dart:async';
+
 import '../../contracts/contracts.dart';
 
-/// Pencarian sementara untuk demo yang memakai POI dari repository aktif.
-/// Hasil hanya berisi POI; layanan ini tidak mengarang fasilitas atau rute.
+/// Searches the current on-device dataset, including verified facilities when
+/// the content team supplies them.
 class PoiSearchService implements SearchService {
-  const PoiSearchService({required this.pois});
+  const PoiSearchService({required this.pois, this.onSearch});
 
   final PoiRepository pois;
+  final void Function()? onSearch;
 
   static const _romanNumerals = {
     'i': '1',
@@ -28,39 +31,72 @@ class PoiSearchService implements SearchService {
     bool includePois = true,
   }) async {
     final normalizedQuery = _normalize(query);
-    if (!includePois || normalizedQuery.isEmpty) return const [];
-
-    final availablePois = await pois.watchPois().first;
+    if (normalizedQuery.isEmpty) return const [];
+    onSearch?.call();
+    final (availablePois, availableFacilities) = await (
+      includePois ? pois.watchPois().first : Future.value(const <Poi>[]),
+      (facilityCategories?.isNotEmpty ?? true)
+          ? pois.watchFacilities().first
+          : Future.value(const <Facility>[]),
+    ).wait;
     final results = <SearchResult>[];
-    for (final poi in availablePois) {
-      var score = 0.0;
-      for (final candidate in [poi.name, ...poi.aliases]) {
-        final normalizedCandidate = _normalize(candidate);
-        final candidateScore = normalizedCandidate == normalizedQuery
-            ? 1.0
-            : normalizedCandidate.startsWith(normalizedQuery)
-            ? 0.8
-            : normalizedCandidate.contains(normalizedQuery)
-            ? 0.5
-            : 0.0;
-        if (candidateScore > score) score = candidateScore;
-      }
-      if (score > 0) {
-        results.add(
-          SearchResult(
-            kind: SearchResultKind.poi,
-            id: poi.id,
-            name: poi.name,
-            score: score,
-          ),
-        );
+    if (includePois) {
+      for (final poi in availablePois) {
+        var score = _score(poi.name, normalizedQuery);
+        for (final alias in poi.aliases) {
+          final aliasScore = _score(alias, normalizedQuery);
+          if (aliasScore > score) score = aliasScore;
+        }
+        if (score > 0) {
+          results.add(
+            SearchResult(
+              kind: SearchResultKind.poi,
+              id: poi.id,
+              name: poi.name,
+              score: score,
+            ),
+          );
+        }
       }
     }
-    results.sort((a, b) => b.score.compareTo(a.score));
+    if (facilityCategories?.isNotEmpty ?? true) {
+      for (final facility in availableFacilities) {
+        if (!facility.metadata.approved ||
+            facility.metadata.isPlaceholder ||
+            !(facilityCategories?.contains(facility.category) ?? true)) {
+          continue;
+        }
+        final score = _score(facility.name, normalizedQuery);
+        if (score > 0) {
+          results.add(
+            SearchResult(
+              kind: SearchResultKind.facility,
+              id: facility.id,
+              name: facility.name,
+              score: score,
+            ),
+          );
+        }
+      }
+    }
+    results.sort((a, b) {
+      final score = b.score.compareTo(a.score);
+      if (score != 0) return score;
+      final kind = a.kind.index.compareTo(b.kind.index);
+      return kind == 0 ? a.id.compareTo(b.id) : kind;
+    });
     return results;
   }
 
-  String _normalize(String text) => text
+  static double _score(String text, String query) {
+    final candidate = _normalize(text);
+    if (candidate == query) return 1;
+    if (candidate.startsWith(query)) return 0.8;
+    if (candidate.contains(query)) return 0.5;
+    return 0;
+  }
+
+  static String _normalize(String text) => text
       .toLowerCase()
       .replaceAll(RegExp(r'[^a-z0-9& ]'), ' ')
       .split(RegExp(r'\s+'))
