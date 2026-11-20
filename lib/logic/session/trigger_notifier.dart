@@ -93,6 +93,17 @@ class LocalTriggerNotifier implements TriggerNotifier {
     );
   }
 
+  /// Apakah proses ini dibuka dengan mengetuk notifikasi trigger. Dipakai
+  /// agar `appOpen` tidak mencatat waktu trigger (PRD §15.5).
+  Future<bool> launchedFromNotification() async {
+    try {
+      final details = await _plugin.getNotificationAppLaunchDetails();
+      return details?.didNotificationLaunchApp ?? false;
+    } on Object {
+      return false;
+    }
+  }
+
   /// ID POI yang notifikasinya mungkin masih tampil.
   final _shown = <String>{};
 

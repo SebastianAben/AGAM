@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Ikon tombol kontrol narasi (PB08) dicari audio_service lewat nama, jadi
+     resource shrinker build release menganggapnya tidak terpakai dan
+     membuangnya. Tanpa ikon ini notifikasi media tidak muncul. -->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/audio_service_*" />

@@ -221,6 +221,8 @@ Titik sambung antar-logic: `TrailService` (LB) mendengarkan `PoiTriggerEvent` da
 
 **Status: usulan, belum disepakati.** Wajib disetujui ketiga track sesuai §2.4 sebelum di-merge.
 
+**Ditulis di kode (branch `LA`, dipulihkan di atas `dev` `dded02b` pada 17 November 2026, belum di-PR):** `lib/contracts/models/account.dart` (`UserRole`, `UserAccount`, `AuthState`, serta `AuthErrorCode`/`AuthException` agar FE dapat memetakan pesan kesalahan), `lib/contracts/models/activity.dart` (`ActivityEvent` sebagai `sealed class` dengan delapan subclass `final`; `ActivityTimePrecision` menentukan `at` atau `date`; `ActivityMode`, `ActivityFeature`; `durationMin` dibulatkan ke 5 menit terdekat), `AuthService` dan `ActivityLogger` di `lib/contracts/services/la_services.dart`, `FakeAuthService` dan `FakeActivityLogger` di `lib/contracts/fakes/fake_la_services.dart`, serta `AppServices.auth`/`activity`. Keputusan rancangan yang perlu direview: event `signUp`/`login`/`logout` dicatat oleh implementasi `AuthService`, bukan UI; `ActivityLogger.log` bersifat `void` (tidak ditunggu, tidak melempar); `deleteAccount` meminta password untuk autentikasi ulang Firebase; mengakhiri sesi saat logout dilakukan perangkaian LA, bukan UI. Pemakai yang ikut diperbarui: `lib/main.dart`, dua baris di `lib/ui/device_app_services.dart` (FE), dan konstruksi `AppServices` di empat test UI (`auth`/`activity` dari `AppServices.fake()`). Tombol "Lihat" tidak masuk kontrak karena `dev` sudah mengopernya lewat parameter `AgamApp.poiViewRequests`. Test: `test/contracts/account_test.dart`.
+
 | Tambahan | Isi | Pemilik |
 | --- | --- | --- |
 | `UserRole` | `mahasiswaItb`, `pengunjung` | LA |
@@ -295,6 +297,8 @@ Progres trail, POI dikunjungi, dan pengaturan disimpan per akun (PRD §15.1). Im
 - **Status:** `in_progress`
 
 ### PB02 — Onboarding privasi, izin, dan pembacaan lokasi
+
+- **Redesign UI01 (17 November 2026, branch `feat/onboarding-redesign` atas instruksi pengguna):** onboarding menjadi 4 halaman (Selamat datang, Cerita otomatis, Privasi, Izin) dengan logo resmi dan foto P01/P02/P06, parallax mengikuti geseran, serta animasi sekali jalan yang menghormati reduced motion. "Lewati" hanya menuju halaman izin. Logika izin tetap (lokasi wajib, notifikasi opsional, granted langsung masuk). Panduan optimasi baterai kini tampil di UI01 sebagai baris tidak memblokir (`isBatteryOptimized`/`openBatteryOptimizationSettings`). Analyze bersih, 293 test lulus; render diperiksa lewat golden sementara 390×844 dan 360×640. **Belum** dijalankan di emulator/perangkat. Status PB02 tidak berubah.
 
 - **Verifikasi source gabungan (16 November 2026):** Format/analyze dan suite 254 test lulus; posisi simulasi ±5 m, fallback saat Google Accuracy ditolak dan posisi pada peta offline lulus APK emulator. Pengguna belum dapat uji fisik; bukti HP lama tidak mewakili APK baru.
 
@@ -524,7 +528,15 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
 - **Scope:** daftar dengan email, password, pilihan role, dan persetujuan pemberitahuan privasi; login; lupa password lewat email reset; logout; hapus akun (profil, log, data lokal milik akun, akun Auth); pesan offline saat login pertama; sesi login bertahan setelah aplikasi ditutup; progres lokal per akun (PRD §15.1). Tanpa verifikasi email.
 - **Dependency:** project Firebase (Firestore + Authentication Email/Password); kontrak v1.1 (§3.3); teks pemberitahuan privasi disetujui PM; desain UI10.
 - **Done:** pengguna baru tidak dapat masuk tanpa daftar/login; setelah login pertama aplikasi dapat dipakai dalam mode pesawat; logout kembali ke UI10 tanpa menghapus progres, dan login kembali dengan akun yang sama memulihkan progres; akun lain di perangkat yang sama tidak melihat progres akun pertama; hapus akun menghapus profil, log, dan data lokalnya; test rules dengan emulator menolak akses ke profil pengguna lain.
-- **Status:** `planned`
+- **Ada di source LA (17 November 2026, branch `LA` commit "feat: PB21 PB22 add Firebase account…", belum di-push):**
+  - `lib/logic/account/auth_gateway.dart`: `FirebaseAuthGateway` (firebase_auth ^7.1.0) dan pemetaan kode error ke `AuthErrorCode`; email/password salah tidak dibedakan.
+  - `lib/logic/account/profile_store.dart`: `FirestoreProfileStore` (`users/{uid}`: `role`, `createdAt` server timestamp) dan `LocalAccountStore` (salinan role per `uid` agar sesi yang dipulihkan berjalan dalam mode pesawat).
+  - `lib/logic/account/device_auth_service.dart`: `DeviceAuthService` (`AuthService` asli): daftar membatalkan akun Auth bila profil gagal dibuat; login tanpa profil ditolak; `restore()` memulihkan sesi saat cold start; logout mengakhiri sesi, mencatat `logout`, menunggu log terkirim (maks. 3 detik), lalu keluar; hapus akun: autentikasi ulang → akhiri sesi tanpa log → hapus log → profil → data lokal → akun Auth.
+  - `lib/logic/settings/device_settings_store.dart`: pengaturan per `uid` (`switchAccount`, `clearAccount`); sebelum akun dipakai tetap memakai kunci perangkat agar demo tidak berubah.
+  - `lib/logic/account/account_bootstrap.dart`: `createLaAccountServices(la)`; pengaturan mengikuti akun, akun yang keluar dari luar aplikasi ikut mengakhiri sesi.
+  - Test: `test/logic/account/device_auth_service_test.dart`, tambahan per akun di `test/logic/settings/device_settings_store_test.dart`.
+- **Belum:** `lib/main.dart` belum memakai akun asli karena gerbang login/UI10 (FE) belum ada; jalur non-demo masih menampilkan "Login wajib belum tersedia". Progres trail per akun (LB). Test rules emulator (`tools/firestore/rules.test.mjs`) tidak dijalankan ulang di mesin ini karena Firebase CLI tidak terpasang; rules tidak diubah. Uji perangkat dengan project `agam-9e704`.
+- **Status:** `in_progress` — logic LA tersedia dan teruji unit; menunggu UI10, perangkaian `main.dart`, dan uji perangkat
 
 ### PB22 — Log aktivitas internal
 
@@ -533,7 +545,12 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
 - **Scope:** seluruh event PRD §15.5 dengan field yang diizinkan saja; antrean offline; `appOpen` hanya saat cold start; event mode dan trail selesai hanya bertanggal.
 - **Dependency:** PB21; `SearchService` dan `TrailService` asli (LB) untuk event LB. Jika belum tersedia di Sprint 3, bagian LB pindah ke Sprint 4, tetap sebelum Feature Freeze.
 - **Done:** setiap event PRD §15.5 tercatat dengan field yang benar; test rules dengan emulator menolak dokumen berfield tambahan (mis. `lat`) dan dokumen dengan `uid` milik orang lain; pemeriksaan lalu lintas jaringan menunjukkan tidak ada koordinat, ID POI, atau tujuan yang terkirim.
-- **Status:** `planned`
+- **Ada di source LA (17 November 2026, branch `LA` commit "feat: PB21 PB22 add Firebase account…", belum di-push):**
+  - `lib/logic/account/firestore_activity_logger.dart`: `FirestoreActivityLogger` (`activity_logs`, tidak ditunggu dan tidak melempar; antrean offline dari cache Firestore; event tanpa akun diabaikan; `flush`, `deleteAllFor`). `activityLogDocument` membentuk dokumen persis seperti `hasExactly` di `firestore.rules`; `date` memakai tanggal lokal perangkat.
+  - `lib/logic/account/activity_recorders.dart`: `SessionActivityRecorder` (`modeStart`/`modeEnd` dari `SessionController`, ganti mode = akhir lama + awal baru, tanpa alasan berakhir) dan `AppOpenRecorder` (sekali per proses; bila belum login dicatat saat login pertama; tidak dicatat bila aplikasi dibuka dari notifikasi trigger). Info perangkat dari package_info_plus ^10.2.2 dan device_info_plus ^13.3.0, dipotong 1–64 karakter.
+  - Test: `test/logic/account/activity_log_test.dart` (field per event dibandingkan dengan daftar rules; uji mutasi: menyisipkan `lat` menggagalkan 8 test).
+- **Belum:** event `featureUsed` (FE) dan `trailCompleted`/pencarian (LB); perangkaian `main.dart` (bersama PB21); test rules emulator dan pemeriksaan lalu lintas jaringan di perangkat.
+- **Status:** `in_progress` — bagian LA tersedia dan teruji unit
 
 ## 8. Sprint 4 — Eyes-free, Rekomendasi, Trail, Fasilitas; Feature Freeze
 
