@@ -1,5 +1,57 @@
 # Session Handoff — AGAM
 
+## Current — Redesign onboarding UI01, 17 November 2026
+
+**Permintaan:** pengguna meminta onboarding yang tidak lagi satu halaman
+statis, dengan animasi dan alur yang lebih intuitif (referensi: onboarding
+multi-halaman berlatar warna + lembar teks putih). Semua branch lokal
+di-fast-forward lebih dulu, lalu dibuat branch `feat/onboarding-redesign`
+dari `dev` @ `dded02b` atas instruksi eksplisit pengguna (pengecualian dari
+model branch track). Login UI10 belum dibuat dan sengaja tidak disentuh.
+
+**Perubahan:** `lib/ui/onboarding_screen.dart` ditulis ulang. Kontrak
+`OnboardingScreen(permissions:, onAccessGranted:)` dan `app.dart` tidak
+berubah.
+- 4 halaman dalam satu layar UI01: Selamat Datang di AGAM (judul
+  dipertahankan), Cerita gedung datang sendiri (replay prompt trigger memakai
+  templat PRD §5 dan nama POI P06 asli), Lokasi Anda tetap di ponsel (A01),
+  Izinkan akses untuk mulai.
+- Aset nyata: `logo.png` menggantikan mark placeholder; foto P01 foto-1,
+  P02 foto-2, P06 foto-1/foto-2. Tidak ada konten/ilustrasi karangan.
+- Motion: warna latar, parallax visual/teks, indikator titik, dan tinggi lembar
+  mengikuti `PageController.page` (1:1 dengan jari, bisa diinterupsi).
+  Tombol panah bulat berubah menjadi CTA lebar di halaman terakhir. Animasi
+  reveal per halaman sekali jalan (tanpa loop), getar ringan saat prompt
+  contoh muncul. Reduced motion mematikan gerak dan reveal.
+- "Lewati" hanya menuju halaman izin; Back sistem kembali ke halaman
+  sebelumnya. Logika izin sama (perkiraan/ditolak permanen/GPS mati memakai
+  dialog; notifikasi opsional; granted langsung masuk). Spinner CTA kini
+  berhenti sebelum dialog modal tampil.
+- Halaman izin menampilkan status lokasi/notifikasi/baterai secara langsung
+  dan menyegarkannya saat kembali dari Pengaturan. Panduan optimasi baterai
+  (PRD UI01) tampil sebagai baris "Atur" yang tidak memblokir masuk.
+- Test: test onboarding lama diperbarui (CTA di halaman 4); ditambah test
+  navigasi/back, lokasi ditolak permanen, dan baris baterai. Fake `_Permissions`
+  di test kini meniru efek membuka pengaturan baterai.
+
+**Verifikasi:** `fvm dart format`, `fvm flutter analyze --no-pub` bersih,
+`fvm flutter test --no-pub` **293 test lulus**, `git diff --check` bersih.
+Render diperiksa via golden sementara (390×844 dan 360×640, sudah dihapus).
+**Tidak** dijalankan di emulator/perangkat (Mac ini tanpa AVD/perangkat).
+Catatan: worktree baru wajib `fvm flutter pub get --enforce-lockfile`; tanpa
+itu Flutter memakai `package_config` checkout induk dan test berjalan pada
+source `dev`.
+
+**Belum/berikutnya:** smoke APK di OPPO (getar, dialog izin nyata, halaman
+baterai OEM); keputusan apakah onboarding perlu disimpan sebagai "sudah
+dilihat" (sekarang tampil setiap cold start seperti sebelumnya). Pengguna
+berencana mengubah desain FE keseluruhan nanti; sesi ini sengaja hanya
+menyentuh onboarding. Pengguna menguji desain lewat preview web sementara
+(entrypoint khusus + `FakePermissionService`, sudah dihapus; aplikasi penuh
+tidak jalan di web), lalu mengotorisasi commit dan push ke
+`origin/feat/onboarding-redesign`. Belum PR/merge ke `dev`. Mac ini tidak
+punya Android SDK/adb; APK untuk OPPO perlu dibangun di mesin lain dari branch
+tersebut.
 ## Current — LA disamakan dengan dev, kontrak v1.1, PB21–PB22 bagian LA, 17 November 2026
 
 **Branch:** atas instruksi pengguna, `LA` di-reset ke `dev` `dded02b` (PR #4 konten POI sudah di-merge). Dua commit lama disimpan di branch lokal `backup/LA-sebelum-reset-2026-11-17` (tidak di-push). Di atas `dev`:

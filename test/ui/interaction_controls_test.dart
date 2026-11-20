@@ -104,8 +104,10 @@ class _Permissions extends FakePermissionService {
   @override
   Future<void> openAppSettings() async => calls.add('appSettings');
   @override
-  Future<void> openBatteryOptimizationSettings() async =>
-      calls.add('batterySettings');
+  Future<void> openBatteryOptimizationSettings() async {
+    calls.add('batterySettings');
+    batteryOptimized = false;
+  }
 }
 
 void main() {
@@ -252,8 +254,11 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      await tester.ensureVisible(find.text('Izinkan Lokasi & Mulai Jelajah'));
+      // The permission CTA lives on the last onboarding page.
+      expect(find.text('Izinkan Lokasi & Mulai Jelajah'), findsNothing);
+      await tester.tap(find.byKey(const ValueKey('onboarding-skip')));
       await tester.pumpAndSettle();
+      expect(entered, isFalse);
       await tester.tap(find.text('Izinkan Lokasi & Mulai Jelajah'));
       await tester.pumpAndSettle();
       expect(entered, isTrue);
@@ -269,6 +274,72 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
     },
   );
+
+  testWidgets('onboarding pages advance one at a time and back returns', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(home: OnboardingScreen(permissions: _Permissions())),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Selamat Datang di AGAM'), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.arrow_forward_rounded));
+    await tester.pumpAndSettle();
+    expect(find.text('Cerita gedung datang sendiri'), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.arrow_forward_rounded));
+    await tester.pumpAndSettle();
+    expect(find.text('Lokasi Anda tetap di ponsel'), findsOneWidget);
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.text('Cerita gedung datang sendiri'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('onboarding keeps the user in place when location is refused', (
+    tester,
+  ) async {
+    var entered = false;
+    final permissions = _Permissions()
+      ..locationResult = LocationPermissionStatus.permanentlyDenied;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: OnboardingScreen(
+          permissions: permissions,
+          onAccessGranted: () => entered = true,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('onboarding-skip')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Izinkan Lokasi & Mulai Jelajah'));
+    await tester.pumpAndSettle();
+    expect(find.text('Izin lokasi ditolak'), findsOneWidget);
+    await tester.tap(find.text('Buka Pengaturan'));
+    await tester.pumpAndSettle();
+    expect(permissions.calls, contains('appSettings'));
+    expect(entered, isFalse);
+    expect(find.text('Ditolak'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('onboarding battery row opens settings without blocking entry', (
+    tester,
+  ) async {
+    final permissions = _Permissions();
+    await tester.pumpWidget(
+      MaterialApp(home: OnboardingScreen(permissions: permissions)),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('onboarding-skip')));
+    await tester.pumpAndSettle();
+    expect(find.text('Optimasi baterai'), findsOneWidget);
+    await tester.tap(find.text('Atur'));
+    await tester.pumpAndSettle();
+    expect(permissions.calls, contains('batterySettings'));
+    expect(find.byKey(const ValueKey('battery-ok')), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
 
   testWidgets('settings links invoke native permission and battery services', (
     tester,
