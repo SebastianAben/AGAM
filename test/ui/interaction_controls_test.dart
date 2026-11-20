@@ -354,6 +354,8 @@ void main() {
       audio: fake.audio,
       voice: fake.voice,
       settings: fake.settings,
+      auth: fake.auth,
+      activity: fake.activity,
       map: fake.map,
       routing: fake.routing,
       navigation: fake.navigation,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'contracts/contracts.dart';
+import 'contracts/fakes/fake_la_services.dart';
 import 'contracts/fakes/fake_lb_services.dart';
 import 'logic/la_bootstrap.dart';
 import 'logic/map/agam_map_config.dart';
@@ -54,6 +55,8 @@ _createAppServices() async {
   );
   final trail = FakeTrailService(session: la.session);
   final facilities = FakeFacilityService();
+  // Akun masih fake sampai implementasi Firebase Auth tersedia (PB21).
+  final activity = FakeActivityLogger();
 
   return (
     AppServices(
@@ -64,6 +67,8 @@ _createAppServices() async {
       audio: la.audio,
       voice: la.voice,
       settings: la.settings,
+      auth: FakeAuthService(activity: activity),
+      activity: activity,
       map: map,
       routing: routing,
       navigation: la.navigation,
