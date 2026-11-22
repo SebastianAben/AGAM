@@ -126,7 +126,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Cari & Rute'));
+      await tester.tap(find.text('Trail')); // Any tab other than Jelajah.
       await tester.pumpAndSettle();
       session.fire('P01');
       session.fire('P02'); // Farther event arrives last: it must not win.
@@ -141,7 +141,7 @@ void main() {
       await tester.ensureVisible(find.text('Lewati'));
       await tester.tap(find.text('Lewati'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Cari & Rute'));
+      await tester.tap(find.text('Trail')); // Any tab other than Jelajah.
       await tester.pumpAndSettle();
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);

@@ -33,21 +33,16 @@ const _grounds = [
 ];
 
 const _copy = [
-  (
-    'Selamat Datang di AGAM',
-    'Pemandu Kampus ITB Ganesha. Temukan 10 gedung penting, cari fasilitas, '
-        'dan ikuti rute jalan kaki sejak hari pertama.',
-  ),
+  ('Selamat Datang di AGAM', 'Pemandu Kampus ITB Ganesha.'),
   (
     'Cerita gedung datang sendiri',
-    'Saat sesi Explore atau Trail berjalan, ponsel bergetar ketika Anda '
-        'mendekati gedung. Ketuk Dengarkan untuk memutar narasinya tanpa '
-        'menatap layar.',
+    'Ponsel bergetar saat Anda mendekati gedung. Ketuk Dengarkan untuk '
+        'memutar ceritanya.',
   ),
   (
     'Lokasi Anda tetap di ponsel',
-    'Posisi diproses langsung di perangkat, tidak dikirim ke server, dan '
-        'tidak disimpan sebagai riwayat.',
+    'Posisi diproses di perangkat, tidak dikirim ke server, dan tidak '
+        'disimpan.',
   ),
   (
     'Izinkan akses untuk mulai',
@@ -561,7 +556,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       _AccessRow(
         icon: Icons.notifications_active_rounded,
         title: 'Notifikasi',
-        subtitle: 'Pemberitahuan saat dekat gedung',
         trailing: _notificationTrailing(),
       ),
       if (_batteryShown)
@@ -569,8 +563,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           icon: Icons.battery_charging_full_rounded,
           title: 'Optimasi baterai',
           subtitle:
-              'Disarankan · pilih Tanpa batasan agar sesi tetap '
-              'berjalan saat layar mati',
+              'Pilih Tanpa batasan agar sesi tetap berjalan saat '
+              'layar mati',
           trailing: _batteryOptimized
               ? TextButton(
                   onPressed: _openBatterySettings,
@@ -1551,13 +1545,13 @@ class _AccessRow extends StatelessWidget {
   const _AccessRow({
     required this.icon,
     required this.title,
-    required this.subtitle,
+    this.subtitle,
     required this.trailing,
   });
 
   final IconData icon;
   final String title;
-  final String subtitle;
+  final String? subtitle;
   final Widget trailing;
 
   @override
@@ -1592,15 +1586,17 @@ class _AccessRow extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              const SizedBox(height: 2),
-              Text(
-                subtitle,
-                style: const TextStyle(
-                  color: _muted,
-                  fontSize: 12,
-                  height: 1.3,
+              if (subtitle != null) ...[
+                const SizedBox(height: 2),
+                Text(
+                  subtitle!,
+                  style: const TextStyle(
+                    color: _muted,
+                    fontSize: 12,
+                    height: 1.3,
+                  ),
                 ),
-              ),
+              ],
             ],
           ),
         ),

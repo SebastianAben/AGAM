@@ -2,8 +2,12 @@ import 'package:flutter/material.dart';
 
 import '../contracts/contracts.dart';
 import '../logic/session/poi_trial_control.dart';
+import 'widgets/agam_components.dart';
+import 'widgets/agam_motion.dart';
+import 'widgets/agam_theme.dart';
 
-/// UI09 retains the FE account preview alongside available device settings.
+/// UI09, opened from the account button in the header: the account preview
+/// and the device settings that already work, grouped by what they affect.
 class ProfilePreviewScreen extends StatelessWidget {
   const ProfilePreviewScreen({
     super.key,
@@ -14,264 +18,409 @@ class ProfilePreviewScreen extends StatelessWidget {
   final AppServices? services;
   final bool internalDemo;
 
-  static const _ink = Color(0xFF172238);
-  static const _muted = Color(0xFF596174);
-  static const _pale = Color(0xFFF0F1FF);
-
   @override
-  Widget build(BuildContext context) => Scaffold(
-    backgroundColor: const Color(0xFFFAF8FF),
-    body: SafeArea(
-      bottom: false,
-      child: ListView(
+  Widget build(BuildContext context) {
+    final services = this.services;
+    final canPop = Navigator.canPop(context);
+    final trial = switch (services?.session) {
+      final PoiTrialControl control
+          when internalDemo && control.trialModeAvailable =>
+        control,
+      _ => null,
+    };
+    var order = 0;
+    Widget reveal(Widget child) => AgamReveal(order: order++, child: child);
+
+    return Scaffold(
+      backgroundColor: AgamColors.canvas,
+      body: CustomScrollView(
         physics: const ClampingScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(24, 14, 24, 24),
-        children: [
-          const Center(
-            child: Text(
+        slivers: [
+          // The identity shrinks away on scroll; the bar with the back
+          // button and title stays pinned.
+          SliverAppBar(
+            pinned: true,
+            expandedHeight: 290,
+            backgroundColor: AgamColors.brandDeep,
+            foregroundColor: Colors.white,
+            surfaceTintColor: Colors.transparent,
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            centerTitle: true,
+            automaticallyImplyLeading: false,
+            leadingWidth: 64,
+            leading: canPop
+                ? const Padding(
+                    padding: EdgeInsets.only(left: 10),
+                    child: AgamBackButton(onDark: true),
+                  )
+                : null,
+            title: const Text(
               'Profil Pengguna',
               style: TextStyle(
-                color: _ink,
-                fontSize: 21,
+                color: Colors.white,
+                fontSize: 17,
                 fontWeight: FontWeight.w700,
-                letterSpacing: -0.5,
+              ),
+            ),
+            flexibleSpace: const FlexibleSpaceBar(background: _Identity()),
+          ),
+          // A box adapter measures the real height; SliverFillRemaining would
+          // size from intrinsics, which underestimate these rows.
+          SliverToBoxAdapter(
+            child: Container(
+              color: AgamColors.canvas,
+              padding: EdgeInsets.fromLTRB(
+                16,
+                4,
+                16,
+                24 + MediaQuery.paddingOf(context).bottom,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  reveal(const AgamSectionHeader('Detail Akun')),
+                  reveal(
+                    const AgamGroup(
+                      children: [
+                        _InfoRow(
+                          icon: Icons.badge_rounded,
+                          label: 'Peran Akun',
+                          value: 'Belum tersedia',
+                        ),
+                        _InfoRow(
+                          icon: Icons.school_rounded,
+                          label: 'Fakultas / Sekolah',
+                          value: 'Belum tersedia',
+                        ),
+                        _InfoRow(
+                          icon: Icons.my_location_rounded,
+                          label: 'Akses Lokasi GPS',
+                          value: 'Lihat izin perangkat',
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (services != null) ...[
+                    const SizedBox(height: 28),
+                    reveal(const AgamSectionHeader('Sesi')),
+                    reveal(
+                      AgamGroup(
+                        children: [
+                          StreamBuilder<SessionState>(
+                            stream: services.session.state,
+                            initialData: services.session.current,
+                            builder: (context, snapshot) {
+                              final active = snapshot.data!.isActive;
+                              return AgamListRow(
+                                icon: active
+                                    ? Icons.sensors_rounded
+                                    : Icons.sensors_off_rounded,
+                                iconBackground: active
+                                    ? AgamColors.successTint
+                                    : AgamColors.fill,
+                                iconForeground: active
+                                    ? AgamColors.success
+                                    : AgamColors.subtle,
+                                title: active
+                                    ? 'Sesi Explore aktif'
+                                    : 'Tidak ada sesi aktif',
+                                trailing: TextButton(
+                                  onPressed: active
+                                      ? () => services.session.end()
+                                      : null,
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: AgamColors.danger,
+                                    backgroundColor: active
+                                        ? AgamColors.dangerTint
+                                        : Colors.transparent,
+                                    minimumSize: const Size(64, 40),
+                                    shape: const StadiumBorder(),
+                                  ),
+                                  child: const Text(
+                                    'Akhiri',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 28),
+                    reveal(const AgamSectionHeader('Narasi')),
+                    reveal(
+                      AgamGroup(
+                        children: [
+                          StreamBuilder<AppSettings>(
+                            stream: services.settings.settings,
+                            initialData: services.settings.current,
+                            builder: (context, snapshot) => _SwitchRow(
+                              icon: Icons.headphones_rounded,
+                              title: 'Putar narasi otomatis',
+                              value: snapshot.data!.autoPlayNarration,
+                              onChanged: (value) async {
+                                try {
+                                  await services.settings.update(
+                                    services.settings.current.copyWith(
+                                      autoPlayNarration: value,
+                                    ),
+                                  );
+                                } catch (_) {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'Pengaturan belum dapat disimpan.',
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 28),
+                    reveal(const AgamSectionHeader('Perangkat')),
+                    reveal(
+                      AgamGroup(
+                        children: [
+                          AgamListRow(
+                            icon: Icons.notifications_rounded,
+                            title: 'Notifikasi & izin aplikasi',
+                            trailing: const _Chevron(),
+                            onTap: services.permissions.openAppSettings,
+                          ),
+                          AgamListRow(
+                            icon: Icons.battery_saver_rounded,
+                            title: 'Pengaturan baterai',
+                            trailing: const _Chevron(),
+                            onTap: services
+                                .permissions
+                                .openBatteryOptimizationSettings,
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (trial != null) ...[
+                      const SizedBox(height: 28),
+                      reveal(const AgamSectionHeader('Developer')),
+                      reveal(
+                        AgamGroup(
+                          children: [
+                            StreamBuilder<bool>(
+                              stream: trial.trialModeChanges,
+                              initialData: trial.trialModeEnabled,
+                              builder: (context, snapshot) => _SwitchRow(
+                                icon: Icons.science_rounded,
+                                iconBackground: AgamColors.warning.withValues(
+                                  alpha: .12,
+                                ),
+                                iconForeground: AgamColors.warning,
+                                title: 'Mode demo/trial',
+                                subtitle: 'Lewati cooldown 10 menit POI',
+                                value: snapshot.data ?? false,
+                                onChanged: trial.setTrialMode,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                  const SizedBox(height: 32),
+                  reveal(
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        AgamTonalButton(
+                          onPressed: null,
+                          icon: Icons.logout_rounded,
+                          height: 52,
+                          foreground: AgamColors.danger,
+                          background: AgamColors.dangerTint,
+                          label: 'Keluar akun',
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
-          const SizedBox(height: 14),
-          _identityCard(),
-          const SizedBox(height: 15),
-          _accountCard(),
-          if (services != null) ...[
-            const SizedBox(height: 15),
-            if (services!.session case final PoiTrialControl trial
-                when internalDemo && trial.trialModeAvailable)
-              StreamBuilder<bool>(
-                stream: trial.trialModeChanges,
-                initialData: trial.trialModeEnabled,
-                builder: (context, snapshot) => SwitchListTile(
-                  title: const Text('Mode demo/trial'),
-                  subtitle: const Text(
-                    'Reset cooldown otomatis untuk developer. Keluar lalu masuk '
-                    'POI kembali, tanpa menunggu 10 menit.',
-                  ),
-                  value: snapshot.data ?? false,
-                  onChanged: trial.setTrialMode,
-                ),
-              ),
-            ListTile(
-              title: const Text('Notifikasi & izin aplikasi'),
-              leading: const Icon(Icons.notifications_outlined),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: services!.permissions.openAppSettings,
-            ),
-            ListTile(
-              title: const Text('Pengaturan baterai'),
-              leading: const Icon(Icons.battery_saver_outlined),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: services!.permissions.openBatteryOptimizationSettings,
-            ),
-            StreamBuilder<AppSettings>(
-              stream: services!.settings.settings,
-              initialData: services!.settings.current,
-              builder: (context, snapshot) => SwitchListTile(
-                title: const Text('Putar narasi otomatis'),
-                subtitle: const Text(
-                  'Putar narasi saat tiba di POI pada sesi Explore.',
-                ),
-                value: snapshot.data!.autoPlayNarration,
-                onChanged: (value) async {
-                  try {
-                    await services!.settings.update(
-                      services!.settings.current.copyWith(
-                        autoPlayNarration: value,
-                      ),
-                    );
-                  } catch (_) {
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Pengaturan belum dapat disimpan.'),
-                        ),
-                      );
-                    }
-                  }
-                },
-              ),
-            ),
-            StreamBuilder<SessionState>(
-              stream: services!.session.state,
-              initialData: services!.session.current,
-              builder: (context, snapshot) => ListTile(
-                title: Text(
-                  snapshot.data!.isActive
-                      ? 'Sesi Explore aktif'
-                      : 'Tidak ada sesi aktif',
-                ),
-                trailing: TextButton(
-                  onPressed: snapshot.data!.isActive
-                      ? () => services!.session.end()
-                      : null,
-                  child: const Text('Akhiri'),
-                ),
-              ),
-            ),
-          ],
-          const SizedBox(height: 19),
-          SizedBox(
-            height: 44,
-            child: FilledButton.icon(
-              onPressed: null,
-              icon: const Icon(Icons.logout_rounded, size: 19),
-              label: const Text(
-                'Keluar akun',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-              ),
-              style: FilledButton.styleFrom(
-                foregroundColor: const Color(0xFFB50000),
-                backgroundColor: const Color(0xFFFFDAD7),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(11),
-                ),
-                elevation: 1,
-              ),
-            ),
+          // Fills a tall screen below short content with the sheet colour.
+          const SliverFillRemaining(
+            hasScrollBody: false,
+            child: ColoredBox(color: AgamColors.canvas),
           ),
         ],
       ),
-    ),
-  );
+    );
+  }
+}
 
-  Widget _identityCard() => Container(
-    padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(14),
-      boxShadow: const [
-        BoxShadow(
-          color: Color(0x100A1B39),
-          blurRadius: 3,
-          offset: Offset(0, 1),
-        ),
-      ],
-    ),
-    child: Column(
-      children: [
-        Semantics(
-          label: 'Foto profil',
-          child: const CircleAvatar(
-            radius: 40,
-            backgroundColor: Color(0xFFE8EBF3),
-            child: Icon(
-              Icons.person_rounded,
-              color: Color(0xFF747D8E),
-              size: 43,
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        const Text(
-          'Pengguna',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: _ink,
-            fontSize: 19,
-            fontWeight: FontWeight.w700,
-            letterSpacing: -0.35,
-          ),
-        ),
-        const SizedBox(height: 1),
-        const Text(
-          'Email belum tersedia',
-          textAlign: TextAlign.center,
-          style: TextStyle(color: _muted, fontSize: 12),
-        ),
-      ],
-    ),
-  );
+/// The account identity on the onboarding ground, closed at the bottom by
+/// the start of the canvas sheet.
+class _Identity extends StatelessWidget {
+  const _Identity();
 
-  Widget _accountCard() => Container(
-    padding: const EdgeInsets.fromLTRB(16, 15, 16, 16),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(14),
-      boxShadow: const [
-        BoxShadow(
-          color: Color(0x100A1B39),
-          blurRadius: 3,
-          offset: Offset(0, 1),
+  @override
+  Widget build(BuildContext context) => Stack(
+    fit: StackFit.expand,
+    children: [
+      AgamGround(
+        radius: 0,
+        padding: EdgeInsets.only(
+          top: MediaQuery.paddingOf(context).top + kToolbarHeight,
+          bottom: 28,
         ),
-      ],
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Detail Akun',
-          style: TextStyle(
-            color: _ink,
-            fontSize: 17,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: 10),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 8),
-          decoration: BoxDecoration(
-            color: _pale,
-            borderRadius: BorderRadius.circular(9),
-          ),
-          child: const Column(
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              _AccountRow(label: 'Peran Akun', value: 'Belum tersedia'),
-              SizedBox(height: 8),
-              _AccountRow(
-                label: 'Fakultas /\nSekolah',
-                value: 'Belum tersedia',
+              Semantics(
+                label: 'Foto profil',
+                child: Container(
+                  width: 92,
+                  height: 92,
+                  padding: const EdgeInsets.all(3),
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [AgamColors.cyan, AgamColors.mint],
+                    ),
+                  ),
+                  child: const CircleAvatar(
+                    backgroundColor: Colors.white,
+                    child: Icon(
+                      Icons.person_rounded,
+                      color: AgamColors.brand,
+                      size: 46,
+                    ),
+                  ),
+                ),
               ),
-              SizedBox(height: 8),
-              _AccountRow(
-                label: 'Akses Lokasi GPS',
-                value: 'Lihat izin perangkat',
+              const SizedBox(height: 14),
+              Text(
+                'Pengguna',
+                style: AgamText.title.copyWith(
+                  color: Colors.white,
+                  fontSize: 22,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Email belum tersedia',
+                style: AgamText.bodySmall.copyWith(
+                  color: Colors.white.withValues(alpha: .75),
+                ),
               ),
             ],
           ),
         ),
-      ],
-    ),
-  );
-}
-
-class _AccountRow extends StatelessWidget {
-  const _AccountRow({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) => Row(
-    crossAxisAlignment: CrossAxisAlignment.center,
-    children: [
-      Expanded(
-        flex: 5,
-        child: Text(
-          label,
-          style: const TextStyle(color: Color(0xFF535A6D), fontSize: 11),
-        ),
       ),
-      Expanded(
-        flex: 6,
-        child: Text(
-          value,
-          textAlign: TextAlign.right,
-          style: const TextStyle(
-            color: Color(0xFF182239),
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            height: 1.3,
+      const Positioned(
+        left: 0,
+        right: 0,
+        bottom: -1,
+        height: 29,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: AgamColors.canvas,
+            borderRadius: BorderRadius.vertical(
+              top: Radius.circular(AgamRadius.sheet),
+            ),
           ),
         ),
       ),
     ],
+  );
+}
+
+class _InfoRow extends StatelessWidget {
+  const _InfoRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) => AgamListRow(
+    icon: icon,
+    title: label,
+    trailing: Text(
+      value,
+      textAlign: TextAlign.right,
+      style: AgamText.caption.copyWith(fontWeight: FontWeight.w600),
+    ),
+  );
+}
+
+/// A settings row whose whole surface toggles the switch.
+class _SwitchRow extends StatelessWidget {
+  const _SwitchRow({
+    required this.icon,
+    required this.title,
+    this.subtitle,
+    required this.value,
+    required this.onChanged,
+    this.iconBackground = AgamColors.tint,
+    this.iconForeground = AgamColors.brand,
+  });
+
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+  final Color iconBackground;
+  final Color iconForeground;
+
+  @override
+  Widget build(BuildContext context) => SwitchListTile(
+    value: value,
+    onChanged: onChanged,
+    contentPadding: const EdgeInsets.fromLTRB(16, 6, 12, 6),
+    activeThumbColor: Colors.white,
+    activeTrackColor: AgamColors.brand,
+    inactiveThumbColor: Colors.white,
+    inactiveTrackColor: AgamColors.line,
+    trackOutlineColor: const WidgetStatePropertyAll(Colors.transparent),
+    secondary: AgamIconTile(
+      icon: icon,
+      size: 42,
+      background: iconBackground,
+      foreground: iconForeground,
+    ),
+    title: Text(title, style: AgamText.label.copyWith(fontSize: 15)),
+    subtitle: subtitle == null
+        ? null
+        : Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Text(subtitle!, style: AgamText.caption),
+          ),
+  );
+}
+
+class _Chevron extends StatelessWidget {
+  const _Chevron();
+
+  @override
+  Widget build(BuildContext context) => const Icon(
+    Icons.chevron_right_rounded,
+    size: 22,
+    color: AgamColors.subtle,
   );
 }

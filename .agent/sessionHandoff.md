@@ -1,5 +1,112 @@
 # Session Handoff — AGAM
 
+## Current — Redesign UI/UX menyeluruh (selain onboarding), 22 November 2026
+
+**Permintaan:** pengguna meminta perombakan total UI, animasi dan UX seluruh
+layar yang sudah ada, kecuali Onboarding & Izin, dengan identitas AGAM tetap
+dijaga dan gaya disamakan dengan onboarding. Tab Pengaturan dihapus dari
+navbar dan dipindah ke tombol akun di kanan atas. Layar yang belum ada (UI06
+penuh, UI07, UI10) sengaja tidak dibuat. Branch `feat/ui-ux-redesign` dari
+`dev` @ `5638f45` atas instruksi pengguna (pengecualian model branch track).
+
+**Sistem desain baru:** `lib/ui/widgets/agam_theme.dart` (token warna dari
+onboarding: navy/teal/forest/cyan/mint, kanvas `#F5F7FB` menggantikan tint
+lavender lama, skala teks 26/20/17/15/13/12, radius, bayangan, tema global)
+dan `agam_components.dart` (AgamGround = latar bergradien + glow onboarding,
+kartu, tile ikon, pill, tombol utama stadium bercahaya, tombol tonal, grup
+daftar, segmented control dengan thumb bergeser, tombol kembali bulat).
+`agam_motion.dart` menambah route shared-axis dan `AgamReveal` (masuk sekali,
+stagger 45 ms, menunggu tab pertama kali tampil, tanpa loop, reduced motion
+langsung tampil).
+
+**Per layar:**
+- Shell/navbar: 3 tab (Jelajah, Trail, Cari & Rute) dengan pill aktif yang
+  bergeser dan ikon outline→filled; haptic ringan saat ganti tab. Header
+  logo + wordmark + chip Mode uji; avatar membuka Profil & Pengaturan lewat
+  route shared-axis. Header lentur di 320 px.
+- Jelajah: peta penuh, status lokasi melayang, kapsul kontrol 48 px, kartu
+  sesi bawah yang berubah putih "Mulai" → navy "Explore aktif/Akhiri"
+  (redup saat sibuk, tanpa spinner tak berujung). Penanda POI baru (lencana
+  + label; label hanya saat zoom ≥18 atau terpilih agar tidak bertumpuk;
+  terpilih digambar paling atas), titik posisi dengan halo statis, atribusi
+  OSM satu baris di peta. Kartu UI03 meniru kartu prompt onboarding; POI yang
+  terpicu menampilkan prompt suara, POI yang diketuk menampilkan ringkasan.
+- Detail Lokasi: hero foto yang menyusut menjadi app bar berjudul, lembar
+  putih di atas foto, pemutar narasi di latar navy, seksi fungsi/fasilitas
+  (chip)/trivia/sumber, placeholder tanpa gambar gedung karangan.
+- Trail: hero hijau-teal dengan cincin progres, kartu lencana, segmented
+  filter, timeline bernomor bergaris; ilustrasi peta skematis dihapus dan
+  diganti catatan jujur "Graf rute belum tersedia".
+- Cari & Rute: hero navy dengan kolom cari (ring fokus cyan), pill filter
+  beranimasi, grup daftar tujuan, grid ikon 6 kategori fasilitas, kartu
+  tujuan/rute baru (painter rute palsu dihapus; peta asli bila titik ada).
+- Profil & Pengaturan: app bar navy ter-pin dengan identitas yang menyusut,
+  grup Detail Akun/Sesi/Narasi/Perangkat/Developer.
+
+**Bug yang ditemukan saat verifikasi visual dan diperbaiki:** konten Profil
+tidak bisa digulir sampai bawah (`SliverFillRemaining` mengukur intrinsics),
+tombol kembali Profil ikut tergulir hilang, header overflow di layar sempit.
+
+**Test:** asersi geometri FE lama di `demo_explore_test` ditulis ulang untuk
+tata letak baru dengan maksud yang sama (kontrol 48 px di dalam peta,
+atribusi satu baris tak tertutup kartu sesi, header di atas peta, target
+avatar 44 px, 320 px tanpa exception); akses Pengaturan lewat avatar; foto
+dicocokkan juga lewat `ResizeImage`; panel POI ditutup sebelum Akhiri sesi.
+`demo_frontend_test` menambah pump setelah ensureVisible. Test baru
+`test/ui/redesign_controls_test.dart` (3 tab + avatar, AgamReveal sekali
+jalan + reduced motion, segmented control).
+
+**Verifikasi:** format 0 perubahan, `fvm flutter analyze --no-pub` bersih,
+`fvm flutter test --no-pub` **376 lulus**, `git diff --check` bersih. Render
+diperiksa via golden sementara dengan dataset/tile asli di 390×844 dan
+320×640 (sudah dihapus). **Tidak** dijalankan di emulator/perangkat. Status
+PBI tidak berubah. Onboarding tidak disentuh. Belum commit/push.
+
+**Lanjutan (22 November 2026):**
+- Ligatur `liga` dimatikan di tema: Plus Jakarta Sans menggabungkan "fi"
+  tanpa titik pada "i" ("Profil", "Notifikasi").
+- Filter UI05 (keputusan pengguna, pilihan 1): chip/tombol filter jenis
+  gedung "Ruang Kuliah"/"Laboratorium" dihapus karena bertentangan dengan
+  PRD §9.1 (Labtek = gedung laboratorium **dan perkuliahan**; kesepuluh POI
+  punya Ruang Kelas) dan tidak ada di kontrak `SearchService`. Grid enam
+  kategori fasilitas kini satu-satunya "filter kategori" F05/UI05: memilih
+  kategori menyembunyikan daftar gedung dan meneruskan `facilityCategories`
+  ke pencarian; pill aktif muncul saat mengetik. Dataset fasilitas kosong →
+  "Data <kategori> belum tersedia.".
+- Ikon POI netral (satu ikon gedung) di peta, kartu, Trail, Cari, Detail.
+- Copywriting atas arahan pengguna ("hindari label/deskripsi sekunder,
+  biarkan tata letak menjelaskan"), termasuk onboarding (hanya teks): hapus
+  tagline header, subjudul kartu sesi, overline kategori, label "Pemandu
+  Suara", placeholder foto/fasilitas kosong, stat Jarak/Waktu kosong, pill
+  "Belum dikunjungi", catatan graf rute, subjudul baris pengaturan; judul
+  seksi detail dipendekkan (Narasi, Tentang gedung, Fungsi, Fasilitas,
+  Trivia, Sumber). Teks wajib PRD dipertahankan (penjelasan lokasi UI01/A01,
+  "Hanya saat aplikasi digunakan", panduan baterai, placeholder konten).
+- **Untuk tim konten:** Labtek I (P10) berkategori `laboratoryAndLecture`
+  tetapi `function` = "Gedung Kuliah" dan fasilitas tanpa "Laboratorium";
+  perlu dicek. Data tidak diubah.
+- Galeri screenshot untuk tinjauan dari HP: artifact privat
+  `https://claude.ai/artifact/JRZfRwoyqJCucgMS8GLEs4` (versi 3).
+- Pencarian pindah ke peta (persetujuan pengguna, pola Google Maps): tab
+  "Cari & Rute" dihapus, navbar tinggal Jelajah dan Trail. Search bar
+  melayang di atas peta membuka `SearchRouteScreen` sebagai halaman (fokus
+  otomatis); chip enam kategori fasilitas di bawahnya membuka halaman yang
+  sama dengan filter aktif (F05/UI05 tetap terpenuhi, hanya bentuknya
+  berubah dari tab menjadi overlay peta). "Tampilkan di peta" menutup
+  halaman dan memfokuskan peta.
+- Pill status lokasi dihapus (permintaan pengguna). Mengikuti Google Maps:
+  titik biru dengan lingkaran akurasi dalam meter, titik abu-abu saat
+  akurasi > `kTriggerMaxAccuracyM` (20 m, trigger tidak jalan), ikon tombol
+  pusatkan mengikuti keadaan GPS, dan banner hanya muncul saat GPS mati,
+  izin dicabut, atau di luar kampus. Atribusi OSM pindah ke tumpukan bawah
+  dan dapat membungkus baris.
+- Galeri HP versi 4 (17 layar, termasuk akurasi rendah).
+- Verifikasi: analyze bersih, **376 test lulus**. File sementara (belum
+  dihapus, jangan di-commit): `test/_preview/`, `tool/redesign_preview.dart`,
+  `web/`.
+
+---
+
 ## Current — PB10/PB11 Logic LB untuk push, 19 November 2026
 
 Perubahan disiapkan di atas `origin/LB` `9bc83cd`. Checkout lama `LB` pada
