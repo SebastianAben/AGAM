@@ -103,13 +103,16 @@
       "facilities": ["Ruang Kelas", "Laboratorium", "Toilet", "Mushalla"],
       "trivia": "Labtek VII atau Gedung Yusuf Panigoro dinamai berdasarkan nama ayah Arifin Panigoro, alumnus Teknik Elektro ITB yang dikenal atas kiprahnya di bidang energi.",
       "media": {
+        "photos": [
+          "assets/media/P03/foto-1.jpg"
+        ],
         "narrationAudio": "assets/media/P03/narasi.m4a",
         "promptAudio": "assets/media/P03/prompt.m4a",
         "arrivalAudio": "assets/media/P03/tiba.m4a"
       },
       "trailOrder": null,
       "metadata": {
-        "isPlaceholder": true,
+        "isPlaceholder": false,
         "sources": [
           "Institut Teknologi Bandung (itb.ac.id)",
           "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
@@ -119,11 +122,12 @@
         "owner": "Noeriza Aqila Wibawa",
         "verifiedAt": "2026-11-14",
         "assetAttribution": [
+          "assets/media/P03/foto-1.jpg — Foto: Noeriza Aqila Wibawa",
           "assets/media/P03/narasi.m4a — Pengisi suara: Naura",
           "assets/media/P03/prompt.m4a — Pengisi suara: Naura",
           "assets/media/P03/tiba.m4a — Pengisi suara: Naura"
         ],
-        "approved": false
+        "approved": true
       }
     },
     {
@@ -140,13 +144,16 @@
       "facilities": ["Ruang Kelas", "Laboratorium", "Toilet", "Mushalla", "Apotek"],
       "trivia": "Nama Gedung Achmad Bakrie diambil dari nama ayah Aburizal Bakrie, salah satu alumnus ITB yang dikenal di dunia bisnis.",
       "media": {
+        "photos": [
+          "assets/media/P04/foto-1.jpg"
+        ],
         "narrationAudio": "assets/media/P04/narasi.m4a",
         "promptAudio": "assets/media/P04/prompt.m4a",
         "arrivalAudio": "assets/media/P04/tiba.m4a"
       },
       "trailOrder": null,
       "metadata": {
-        "isPlaceholder": true,
+        "isPlaceholder": false,
         "sources": [
           "Institut Teknologi Bandung (itb.ac.id)",
           "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
@@ -156,11 +163,12 @@
         "owner": "Noeriza Aqila Wibawa",
         "verifiedAt": "2026-11-14",
         "assetAttribution": [
+          "assets/media/P04/foto-1.jpg — Foto: Noeriza Aqila Wibawa",
           "assets/media/P04/narasi.m4a — Pengisi suara: Naura",
           "assets/media/P04/prompt.m4a — Pengisi suara: Naura",
           "assets/media/P04/tiba.m4a — Pengisi suara: Naura"
         ],
-        "approved": false
+        "approved": true
       }
     },
     {
@@ -177,13 +185,16 @@
       "facilities": ["Ruang Kelas", "Laboratorium", "Toilet", "Kantin"],
       "trivia": "Tangga utama Labtek XI dirancang melingkar menyerupai struktur heliks ganda DNA sebagai representasi ilmu hayati.",
       "media": {
+        "photos": [
+          "assets/media/P05/foto-1.jpg"
+        ],
         "narrationAudio": "assets/media/P05/narasi.m4a",
         "promptAudio": "assets/media/P05/prompt.m4a",
         "arrivalAudio": "assets/media/P05/tiba.m4a"
       },
       "trailOrder": null,
       "metadata": {
-        "isPlaceholder": true,
+        "isPlaceholder": false,
         "sources": [
           "Institut Teknologi Bandung (itb.ac.id)",
           "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
@@ -193,11 +204,12 @@
         "owner": "Noeriza Aqila Wibawa",
         "verifiedAt": "2026-11-14",
         "assetAttribution": [
+          "assets/media/P05/foto-1.jpg — Foto: Institut Teknologi Bandung (itb.ac.id)",
           "assets/media/P05/narasi.m4a — Pengisi suara: Naura",
           "assets/media/P05/prompt.m4a — Pengisi suara: Naura",
           "assets/media/P05/tiba.m4a — Pengisi suara: Naura"
         ],
-        "approved": false
+        "approved": true
       }
     },
     {

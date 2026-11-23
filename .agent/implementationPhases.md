@@ -478,7 +478,8 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
 - **Bagian LA (10 November 2026):** format aset dan aturan validasi untuk tim konten di [PB09-LA-01](../task-implementation/backend/PB09-LA-01-content-format.md); pemeriksaan otomatis `test/logic/data/content_assets_test.dart`.
 - **Done:** konten 10 POI lengkap, sumber tercatat, hak penggunaan media aman, disetujui tim.
 - **Audit source (16 November 2026):** 10 POI; 30 file audio; enam foto pada P01/P02/P06 (dua per POI); field video seluruh POI kosong. JSON menandai P01/P02 approved/non-placeholder dan P03–P10 placeholder/unapproved. Ini inventaris source, bukan persetujuan baru dari agent. P02 belum disebut pada catatan approval PRD sebelumnya; pemilik konten/PM perlu merekonsiliasi sebelum klaim final. Konten/metadata tidak diubah.
-- **Status:** `in_progress` — format/validasi serta sebagian konten/aset tim tersedia; kelengkapan F03, hak/approval A02 dan video GKUB/GKUT masih tertunda
+- **Pembaruan 23 November 2026 (pemilik konten):** foto P03 (Labtek VII) dan P04 (Labtek VIII) oleh Noeriza Aqila Wibawa; foto P05 (Labtek X & XI) dari situs resmi ITB, dicantumkan "Foto: Institut Teknologi Bandung (itb.ac.id)"; pemilik konten menyatakan penggunaan foto publik situs ITB diperbolehkan untuk proyek ini (belum ada keputusan PM tertulis). Foto dikonversi ke JPG tanpa data GPS. P03–P05 disetujui pemilik konten dan ditandai approved/non-placeholder. Sisa: foto P07 GKUT, P08 Oktagon, P09 TVST, P10 Labtek I; video GKUB/GKUT; nama GKUT tidak konsisten ("Paragon Innovation" di deskripsi, "Paragon Foundation" di trivia).
+- **Status:** `in_progress` — P01–P05 approved; P06–P10 menunggu foto/video; hak/approval A02 dan video GKUB/GKUT masih tertunda
 
 ## 7. Sprint 3 — Pencarian, Navigasi, dan Akun
 

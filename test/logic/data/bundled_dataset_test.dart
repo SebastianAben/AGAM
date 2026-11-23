@@ -147,10 +147,11 @@ void main() {
   });
 
   group('hal yang masih tertunda (PRD §22)', () {
-    // Disetujui tim 14 November 2026 setelah teks, foto, dan audio lengkap.
+    // P01–P02 disetujui 14 November 2026, P03–P05 23 November 2026, setelah
+    // teks, foto, dan audio lengkap.
     // Isi minimum POI yang disetujui diperiksa content_assets_test.dart.
-    test('hanya Labtek V dan VI yang siap rilis', () {
-      const approved = {'P01', 'P02'};
+    test('hanya Labtek V, VI, VII, VIII, dan X & XI yang siap rilis', () {
+      const approved = {'P01', 'P02', 'P03', 'P04', 'P05'};
       for (final poi in result.pois) {
         final ready = approved.contains(poi.id);
         expect(poi.metadata.approved, ready, reason: poi.id);
