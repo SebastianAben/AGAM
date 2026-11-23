@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import '../contracts/app_services.dart';
 import '../contracts/models/content.dart';
+import '../contracts/models/account.dart';
 import '../logic/session/trigger_notifier.dart';
 import 'widgets/agam_motion.dart';
 import 'explore_map_screen.dart';
@@ -12,6 +13,8 @@ import 'onboarding_screen.dart';
 import 'orientation_trail_screen.dart';
 import 'profile_preview_screen.dart';
 import 'search_route_screen.dart';
+import 'auth_screen.dart';
+import 'splash_screen.dart';
 import 'device_app_services.dart';
 import 'widgets/agam_bottom_navigation.dart';
 import 'widgets/agam_scroll_behavior.dart';
@@ -61,22 +64,48 @@ class _AgamAppState extends State<AgamApp> {
       debugShowCheckedModeBanner: false,
       scrollBehavior: const AgamScrollBehavior(),
       theme: agamTheme(),
-      home: Builder(
-        builder: (context) => OnboardingScreen(
-          permissions: _appServices.permissions,
-          onAccessGranted: () {
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute<void>(
-                builder: (_) => AgamMainShell(
-                  services: _appServices,
-                  poiViewRequests: widget.poiViewRequests,
-                  internalDemo: widget.internalDemo,
-                  onPoiAction: widget.onPoiAction,
+      home: SplashScreen(
+        child: widget.internalDemo
+            ? Builder(
+                builder: (context) => OnboardingScreen(
+                  permissions: _appServices.permissions,
+                  onAccessGranted: () => Navigator.of(context).pushReplacement(
+                    MaterialPageRoute<void>(
+                      builder: (_) => AgamMainShell(
+                        services: _appServices,
+                        poiViewRequests: widget.poiViewRequests,
+                        internalDemo: widget.internalDemo,
+                        onPoiAction: widget.onPoiAction,
+                      ),
+                    ),
+                  ),
                 ),
+              )
+            : StreamBuilder<AuthState>(
+                stream: _appServices.auth.state,
+                initialData: _appServices.auth.current,
+                builder: (context, snapshot) {
+                  if (!snapshot.data!.isSignedIn) {
+                    return AuthScreen(auth: _appServices.auth);
+                  }
+                  return Builder(
+                    builder: (context) => OnboardingScreen(
+                      permissions: _appServices.permissions,
+                      onAccessGranted: () =>
+                          Navigator.of(context).pushReplacement(
+                            MaterialPageRoute<void>(
+                              builder: (_) => AgamMainShell(
+                                services: _appServices,
+                                poiViewRequests: widget.poiViewRequests,
+                                internalDemo: false,
+                                onPoiAction: widget.onPoiAction,
+                              ),
+                            ),
+                          ),
+                    ),
+                  );
+                },
               ),
-            );
-          },
-        ),
       ),
     );
   }

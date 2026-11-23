@@ -22,6 +22,7 @@ class ProfilePreviewScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final services = this.services;
     final canPop = Navigator.canPop(context);
+    final authAccount = services?.auth.current.account;
     final trial = switch (services?.session) {
       final PoiTrialControl control
           when internalDemo && control.trialModeAvailable =>
@@ -63,7 +64,9 @@ class ProfilePreviewScreen extends StatelessWidget {
                 fontWeight: FontWeight.w700,
               ),
             ),
-            flexibleSpace: const FlexibleSpaceBar(background: _Identity()),
+            flexibleSpace: FlexibleSpaceBar(
+              background: _Identity(account: authAccount),
+            ),
           ),
           // A box adapter measures the real height; SliverFillRemaining would
           // size from intrinsics, which underestimate these rows.
@@ -81,12 +84,16 @@ class ProfilePreviewScreen extends StatelessWidget {
                 children: [
                   reveal(const AgamSectionHeader('Detail Akun')),
                   reveal(
-                    const AgamGroup(
+                    AgamGroup(
                       children: [
                         _InfoRow(
                           icon: Icons.badge_rounded,
                           label: 'Peran Akun',
-                          value: 'Belum tersedia',
+                          value: switch (authAccount?.role) {
+                            UserRole.mahasiswaItb => 'Mahasiswa ITB',
+                            UserRole.pengunjung => 'Pengunjung',
+                            null => 'Belum tersedia',
+                          },
                         ),
                         _InfoRow(
                           icon: Icons.school_rounded,
@@ -98,6 +105,12 @@ class ProfilePreviewScreen extends StatelessWidget {
                           label: 'Akses Lokasi GPS',
                           value: 'Lihat izin perangkat',
                         ),
+                        if (authAccount != null)
+                          _InfoRow(
+                            icon: Icons.alternate_email_rounded,
+                            label: 'Email',
+                            value: authAccount.email,
+                          ),
                       ],
                     ),
                   ),
@@ -240,7 +253,9 @@ class ProfilePreviewScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         AgamTonalButton(
-                          onPressed: null,
+                          onPressed: services?.auth.current.isSignedIn == true
+                              ? () => _confirmLogout(context, services!.auth)
+                              : null,
                           icon: Icons.logout_rounded,
                           height: 52,
                           foreground: AgamColors.danger,
@@ -265,10 +280,47 @@ class ProfilePreviewScreen extends StatelessWidget {
   }
 }
 
+Future<void> _confirmLogout(BuildContext context, AuthService auth) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: const Text('Keluar akun?'),
+      content: const Text(
+        'Sesi aktif akan berakhir. Progres akun tetap tersimpan di perangkat.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(false),
+          child: const Text('Batal'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(dialogContext).pop(true),
+          style: FilledButton.styleFrom(backgroundColor: AgamColors.danger),
+          child: const Text('Keluar'),
+        ),
+      ],
+    ),
+  );
+  if (confirmed != true || !context.mounted) return;
+  try {
+    await auth.logout();
+    if (context.mounted) {
+      Navigator.of(context).popUntil((route) => route.isFirst);
+    }
+  } on AuthException {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Akun belum dapat keluar.')));
+  }
+}
+
 /// The account identity on the onboarding ground, closed at the bottom by
 /// the start of the canvas sheet.
 class _Identity extends StatelessWidget {
-  const _Identity();
+  const _Identity({this.account});
+
+  final UserAccount? account;
 
   @override
   Widget build(BuildContext context) => Stack(
@@ -310,7 +362,7 @@ class _Identity extends StatelessWidget {
               ),
               const SizedBox(height: 14),
               Text(
-                'Pengguna',
+                account == null ? 'Pengguna' : 'Akun AGAM',
                 style: AgamText.title.copyWith(
                   color: Colors.white,
                   fontSize: 22,
@@ -318,7 +370,7 @@ class _Identity extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                'Email belum tersedia',
+                account?.email ?? 'Email belum tersedia',
                 style: AgamText.bodySmall.copyWith(
                   color: Colors.white.withValues(alpha: .75),
                 ),

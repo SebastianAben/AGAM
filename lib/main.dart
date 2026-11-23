@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 import 'contracts/contracts.dart';
 import 'contracts/fakes/fake_la_services.dart';
@@ -8,23 +9,18 @@ import 'logic/map/agam_map_config.dart';
 import 'logic/search/poi_search_service.dart';
 import 'ui/app.dart';
 import 'logic/session/trigger_notifier.dart';
+import 'firebase_options.dart';
+import 'logic/account/account_bootstrap.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   const demo = bool.fromEnvironment('AGAM_INTERNAL_DEMO');
   if (!demo) {
-    runApp(
-      const MaterialApp(
-        home: Scaffold(
-          body: Center(
-            child: Text(
-              'Login wajib belum tersedia.\n'
-              'Build demo internal harus diaktifkan secara eksplisit.',
-            ),
-          ),
-        ),
-      ),
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
     );
+    final services = await _createProductionAppServices();
+    runApp(AgamApp(services: services));
     return;
   }
   final (services, views, actions) = await _createAppServices();
@@ -35,6 +31,43 @@ Future<void> main() async {
       onPoiAction: actions,
       internalDemo: true,
     ),
+  );
+}
+
+Future<AppServices> _createProductionAppServices() async {
+  final map = AgamMapConfig.pendingServiceArea();
+  final routing = FakeRoutingService();
+  final la = await createLaServices(
+    bundledOnly: false,
+    developerTrialAvailable: false,
+    map: map,
+    navigation: (location) =>
+        FakeNavigationController(location: location, routing: routing),
+  );
+  final account = await createLaAccountServices(la);
+  final trail = FakeTrailService(session: la.session);
+  final facilities = FakeFacilityService();
+
+  return AppServices(
+    permissions: la.permissions,
+    location: la.location,
+    pois: la.pois,
+    session: la.session,
+    audio: la.audio,
+    voice: la.voice,
+    settings: la.settings,
+    auth: account.auth,
+    activity: account.activity,
+    map: map,
+    routing: routing,
+    navigation: la.navigation,
+    search: PoiSearchService(pois: la.pois),
+    recommendations: FakeRecommendationService(
+      trail: trail,
+      facilities: facilities,
+    ),
+    trail: trail,
+    facilities: facilities,
   );
 }
 

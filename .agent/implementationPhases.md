@@ -7,7 +7,7 @@
 | Kontrak produk | `.agent/PRD.md`; aturan kerja di `.agent/rules.md` |
 | Model kerja | 5 sprint × 1 minggu (Week 10–14), deliverable final Week 15 |
 | Pembagian kerja | Tiga track paralel: 1 developer frontend, 2 developer logic aplikasi (lihat §2) |
-| Desain layar | UI01–UI09 sudah selesai; frontend tinggal mengimplementasikan. UI10 Daftar & Login (ditambahkan 14 November 2026) belum didesain |
+| Desain layar | UI01–UI09 sudah selesai; UI10 Daftar & Login (ditambahkan 14 November 2026) tersedia sebagai implementasi awal dan menunggu teks privasi serta verifikasi PM |
 | Backlog | PB01–PB20 dari PRD resmi, ditambah PB21–PB22 (akun, keputusan PM 6 dan 14 November 2026); ID tidak boleh diubah atau dinomori ulang |
 | Current focus | 16 November 2026: verifikasi pemetaan demo Sprint 1–2 dan penyelarasan progres total. APK interaktif terbaru 9675dcf6…5cf6c9e terpasang di OPPO dan cold start command sukses; hash APK perangkat cocok. Smoke visual/playback terbaru belum terkonfirmasi, uji fisik Labtek V tidak tersedia. Empat tab FE tersedia; fitur dengan dependency yang belum nyata tetap dibatasi tanpa note sistem tambahan. |
 
@@ -647,7 +647,7 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
 | Dependency | Dibutuhkan oleh | Status |
 | --- | --- | --- |
 | Project Firebase (Firestore + Authentication Email/Password) | PB03, PB21, PB22 (LA) | Dibuat 15 November 2026 (`agam-9e704`) |
-| Desain UI10 Daftar & Login dan teks pemberitahuan privasi | PB21 (FE) | Belum ada; teks wajib disetujui PM |
+| Desain UI10 Daftar & Login dan teks pemberitahuan privasi | PB21 (FE) | Implementasi awal tersedia; teks pemberitahuan privasi wajib disetujui PM |
 | Success metric | PB22 (finalisasi daftar event) | Belum ditetapkan |
 | Konten P01–P10 (teks, foto, audio, video, metadata) | PB07, PB08, PB09 | Sebagian tersedia; P01/P02 approved pada JSON, P03–P10 placeholder/unapproved; video belum ada. Approval P02 perlu rekonsiliasi pemilik konten/PM; kelengkapan dan hak seluruh konten belum diterima |
 | Koordinat pintu masuk | PB11, PB12 (LB) | Menunggu survei |

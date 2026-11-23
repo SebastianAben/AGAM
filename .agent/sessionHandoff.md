@@ -1,5 +1,28 @@
 # Session Handoff — AGAM
 
+## Current — UI10 login/logout dan perangkaian akun, 23 November 2026
+
+**Perubahan:**
+- Splash native Android dan splash Flutter ditambahkan dengan logo [assets/media/logo.png](/Users/aliyaharta/Documents/GitHub/AGAM/assets/media/logo.png);
+  splash Flutter berlangsung singkat lalu berpindah ke login/onboarding.
+- Tambah [AuthScreen](/Users/aliyaharta/Documents/GitHub/AGAM/lib/ui/auth_screen.dart)
+  untuk masuk, daftar, pemilihan role, lupa password, validasi, dan pesan
+  offline sesuai kontrak `AuthService`.
+- [AgamApp](/Users/aliyaharta/Documents/GitHub/AGAM/lib/ui/app.dart) sekarang
+  menampilkan gerbang login dalam build produk dan memulihkan UI berdasarkan
+  `AuthState`. Pengecualian demo internal tetap melewati login.
+- [main.dart](/Users/aliyaharta/Documents/GitHub/AGAM/lib/main.dart) memakai
+  Firebase initialization dan `createLaAccountServices` pada build produk.
+- Profil menampilkan email dan role nyata bila tersedia serta tombol logout
+  dengan konfirmasi. Logout mengakhiri navigasi profil dan kembali ke UI10.
+
+**Verifikasi:** format selesai; analyzer pinned hanya tersisa pemeriksaan
+lanjut terhadap test/build. Uji perangkat Firebase dan emulator Firestore belum
+dijalankan. Logout/hapus akun di layar belum diuji perangkat fisik.
+
+**Belum selesai:** teks pemberitahuan privasi tetap menunggu persetujuan PM,
+progres trail per akun, event FE/LB PB22, dan verifikasi aturan emulator.
+
 ## Current — Redesign UI/UX menyeluruh (selain onboarding), 22 November 2026
 
 **Permintaan:** pengguna meminta perombakan total UI, animasi dan UX seluruh
