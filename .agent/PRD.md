@@ -120,7 +120,7 @@ Semua berprioritas **Must**.
 | --- | --- | --- | --- |
 | F01 | Location Awareness | Membaca posisi melalui Fused Location Provider (GPS + Wi-Fi/seluler) setiap ±3 detik atau 5 m perpindahan dan menampilkannya di peta kampus | Posisi tampil ≤10 detik setelah izin diberikan dan diperbarui saat berjalan; akurasi yang dilaporkan ≤20 m di area terbuka kampus pada perangkat uji |
 | F02 | Location-Based Trigger | Area kontak trigger **radius 5 m** dengan jarak pendekatan POI **15 m [CL]** dihitung in-app dengan haversine; trigger saat masuk area dan bertahan ≥5 detik; cooldown 10 menit per POI; berjalan di foreground dan background **selama sesi** | Kartu saat foreground atau notifikasi saat background, disertai prompt suara POI yang benar, muncul ≤10 detik setelah masuk area pendekatan; tidak terpicu ulang selama pengguna tetap di area; berhasil pada ≥8 dari 10 POI saat field test |
-| F03 | Multimodal Exploration | Kartu POI memuat foto, deskripsi fungsi gedung, fasilitas di dalam gedung, trivia/sejarah singkat, dan narasi audio 45–90 detik; video narasi untuk GKUB dan GKUT | Seluruh 10 POI memiliki minimal 1 foto, teks, dan narasi audio yang dapat diputar, dijeda, dan diulang **[CL: termasuk P01–P05]**; video GKUB/GKUT dapat diputar di kartu; sumber konten dicantumkan pada setiap kartu |
+| F03 | Multimodal Exploration | Kartu POI memuat foto, deskripsi fungsi gedung, fasilitas di dalam gedung, trivia/sejarah singkat, dan narasi audio 45–90 detik; video narasi untuk GKUB dan GKUT bila tersedia **[CL: keputusan PM 23 November 2026 — video opsional]** | Seluruh 10 POI memiliki minimal 1 foto, teks, dan narasi audio yang dapat diputar, dijeda, dan diulang **[CL: termasuk P01–P05]**; video GKUB/GKUT, bila tersedia, dapat diputar di kartu; sumber konten dicantumkan pada setiap kartu |
 | F04 | Eyes-Free Interaction | Prompt suara dan getar saat trigger; tombol aksi besar (Dengarkan/Lewati); opsi auto-play narasi; arahan navigasi suara; kontrol dari notifikasi saat layar terkunci | Pengguna dapat menerima trigger, memutar narasi, dan mengikuti navigasi sampai tujuan tanpa membaca teks layar (diuji ≥3 penguji) |
 | F05 | Search & Destination | Pencarian gedung, fasilitas, dan ruang/unit penting dengan alias (angka Arab/Romawi, singkatan seperti "GKUT", "Labtek Biru") dan filter kategori | "labtek 5", "Labtek V", atau "lab 5" menampilkan Labtek V di urutan teratas; seluruh 10 POI dan kategori fasilitas dapat ditemukan; respons ≤1 detik |
 | F06 | Navigation | Rute jalan kaki dari posisi pengguna ke **pintu masuk** gedung/fasilitas tujuan: garis rute, jarak, ETA, arahan belokan visual + suara; rerouting bila menyimpang >25 m; deteksi tiba pada radius 15 m | Penguji mencapai ≥4 dari 5 tujuan acak hanya dengan panduan aplikasi; pengumuman tiba muncul saat pengguna ≤15 m dari titik tujuan |
@@ -148,8 +148,8 @@ Koordinat dalam derajat desimal (lintang selatan bernilai negatif). Koordinat ad
 | P03 | Labtek VII | labtek 7, lab 7 | Gedung laboratorium dan perkuliahan | -6.8901169 | 107.6105714 | 15 m | foto, teks, audio |
 | P04 | Labtek VIII | labtek 8, lab 8 | Gedung laboratorium dan perkuliahan | -6.8905954 | 107.6105760 | 15 m | foto, teks, audio |
 | P05 | Labtek X & XI | Labtek Biru, labtek 10, labtek 11 | Gedung laboratorium dan perkuliahan | -6.8889940 | 107.6095767 | 15 m | foto, teks, audio |
-| P06 | Gedung Kuliah Umum Barat | GKUB | Gedung perkuliahan | -6.89053 | 107.60890 | 15 m | foto, teks, audio, video |
-| P07 | Gedung Kuliah Umum Timur | GKUT | Gedung perkuliahan | -6.8903881 | 107.6119990 | 15 m | foto, teks, audio, video |
+| P06 | Gedung Kuliah Umum Barat | GKUB | Gedung perkuliahan | -6.89053 | 107.60890 | 15 m | foto, teks, audio, video (opsional) |
+| P07 | Gedung Kuliah Umum Timur | GKUT | Gedung perkuliahan | -6.8903881 | 107.6119990 | 15 m | foto, teks, audio, video (opsional) |
 | P08 | Oktagon | — | Gedung perkuliahan | -6.8890603 | 107.6100470 | 15 m | foto, teks, audio |
 | P09 | TVST | — | Gedung perkuliahan | -6.8895043 | 107.6100594 | 15 m | foto, teks, audio |
 | P10 | Labtek I | Mektan, labtek 1 | Gedung laboratorium dan perkuliahan | -6.8892078 | 107.6111876 | 15 m | foto, teks, audio |
@@ -489,6 +489,7 @@ Perubahan berikut wajib dicatat PM pada Change Log PRD resmi.
 | Peta | OSM (tanpa rincian) | Tile vektor buatan sendiri, dibundel | Offline penuh (A03), tanpa request ke server tile, sesuai kebijakan tile OSM |
 | Routing | Tidak dirinci | Di perangkat dengan graf jalur kampus | Server routing menerima lokasi pengguna (A01, NG04) |
 | Media | Firestore + JSON lokal (tidak dirinci) | Media dibundel di APK; Firestore hanya data teks | Offline dan bebas ketergantungan penyimpanan cloud |
+| F03 / tabel POI — video GKUB & GKUT | Video narasi wajib untuk GKUB dan GKUT | Video opsional; konten GKUB/GKUT boleh disetujui tanpa video dan video ditampilkan bila tersedia | Keputusan PM 23 November 2026 (disampaikan pemilik konten) |
 | Sumber suara | `flutter_tts` untuk narasi, prompt, arahan | Narasi & prompt = file audio; TTS hanya arahan navigasi | Konsistensi suara dan kemandirian dari data TTS perangkat |
 | Mode aplikasi | Tidak dirinci | Empat mode (§6) dan auto-end 30 menit | Memperjelas kapan lokasi dibaca dan trigger aktif |
 | PB17 | Cache konten & tile peta saat offline | Tile sudah dibundel sejak S1; PB17 menjadi verifikasi offline konten | Keputusan tile |
