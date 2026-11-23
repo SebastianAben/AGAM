@@ -1,4 +1,5 @@
 import 'package:agam/contracts/contracts.dart';
+import 'package:agam/logic/map/agam_map_config.dart';
 import 'package:agam/ui/app.dart';
 import 'package:agam/ui/widgets/agam_components.dart';
 import 'package:agam/ui/widgets/agam_motion.dart';
@@ -51,6 +52,89 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Profil Pengguna'), findsNothing);
     expect(find.text('Jelajah'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('Rute sits on the map, search card and detail; demo explains', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(430, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final fake = AppServices.fake(tick: const Duration(hours: 1));
+    // The fake map points at placeholder tiles; markers need the real ones.
+    final services = AppServices(
+      permissions: fake.permissions,
+      location: fake.location,
+      pois: fake.pois,
+      session: fake.session,
+      audio: fake.audio,
+      voice: fake.voice,
+      settings: fake.settings,
+      auth: fake.auth,
+      activity: fake.activity,
+      map: AgamMapConfig.internalDemo(),
+      routing: fake.routing,
+      navigation: fake.navigation,
+      search: fake.search,
+      recommendations: fake.recommendations,
+      trail: fake.trail,
+      facilities: fake.facilities,
+    );
+    await tester.pumpWidget(
+      MaterialApp(home: AgamMainShell(services: services, internalDemo: true)),
+    );
+    // Real tiles decode off the test clock; wait for the map to appear.
+    for (
+      var frame = 0;
+      frame < 200 &&
+          find.byType(CircularProgressIndicator).evaluate().isNotEmpty;
+      frame++
+    ) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 25)),
+      );
+      await tester.pump();
+    }
+    await tester.pumpAndSettle();
+    Future<void> expectExplained() async {
+      await tester.pump();
+      expect(find.text('Rute belum tersedia.'), findsWidgets);
+      expect(services.session.current.mode, SessionMode.none);
+      ScaffoldMessenger.of(tester.element(find.byType(Scaffold).last))
+          .hideCurrentSnackBar();
+      await tester.pumpAndSettle();
+    }
+
+    // Map: the POI card.
+    await tester.tap(
+      find.byWidgetPredicate(
+        (w) => w is Semantics && w.properties.label == 'Buka Labtek V',
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Rute'));
+    await expectExplained();
+    await tester.tap(find.byTooltip('Tutup informasi'));
+    await tester.pumpAndSettle();
+    // Search: the destination card.
+    await tester.tap(find.text('Cari gedung atau fasilitas'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'labtek 5');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Labtek V').last);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Rute'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Rute'));
+    await expectExplained();
+    // Detail: the bottom action.
+    await tester.ensureVisible(find.text('Lihat Detail POI'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Lihat Detail POI'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Rute'));
+    await expectExplained();
     await tester.pumpWidget(const SizedBox.shrink());
   });
 

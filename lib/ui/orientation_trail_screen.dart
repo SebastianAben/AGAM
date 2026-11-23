@@ -679,12 +679,12 @@ class _TrailStep extends StatelessWidget {
                                     height: 44,
                                     icon: routing
                                         ? Icons.navigation_rounded
-                                        : Icons.directions_walk_rounded,
+                                        : Icons.directions_rounded,
                                     label: routing
                                         ? 'Sedang menuju'
                                         : isActive
                                         ? 'Lanjutkan rute'
-                                        : 'Pilih rute',
+                                        : 'Rute',
                                   ),
                                 ),
                                 const SizedBox(width: 8),

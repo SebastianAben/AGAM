@@ -34,6 +34,7 @@ class ExploreMapScreen extends StatefulWidget {
     this.onPoiAction,
     this.onAutomaticPoi,
     this.onOpenSearch,
+    this.onRoute,
   });
 
   final VoidCallback? onAutomaticPoi;
@@ -41,6 +42,10 @@ class ExploreMapScreen extends StatefulWidget {
   /// Opens the search page, optionally filtered to one facility category.
   /// Without it the map shows no search bar.
   final ValueChanged<FacilityCategory?>? onOpenSearch;
+
+  /// Starts the route flow to a POI. Without it, or in the internal demo
+  /// where the campus graph is missing, "Rute" explains it is unavailable.
+  final ValueChanged<Poi>? onRoute;
   final AppServices services;
   final bool embedded;
   final bool isActive;
@@ -512,6 +517,10 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
                                           _poiAction(poi, TriggerAction.view),
                                       onListen: () =>
                                           _poiAction(poi, TriggerAction.listen),
+                                      routeAvailable:
+                                          !widget.internalDemo &&
+                                          widget.onRoute != null,
+                                      onRoute: () => widget.onRoute?.call(poi),
                                       audio: widget.services.audio,
                                     ),
                           )
@@ -963,6 +972,8 @@ class _PoiSheet extends StatelessWidget {
     required this.onSkip,
     required this.onView,
     required this.onListen,
+    required this.routeAvailable,
+    required this.onRoute,
   });
 
   final Poi poi;
@@ -977,6 +988,8 @@ class _PoiSheet extends StatelessWidget {
   final VoidCallback onSkip;
   final VoidCallback onView;
   final VoidCallback onListen;
+  final bool routeAvailable;
+  final VoidCallback onRoute;
 
   bool get _contentReady =>
       poi.metadata.approved && !poi.metadata.isPlaceholder;
@@ -1118,18 +1131,28 @@ class _PoiSheet extends StatelessWidget {
                     Row(
                       children: [
                         Expanded(
+                          child: AgamRouteButton(
+                            available: routeAvailable,
+                            onPressed: onRoute,
+                            padding: 8,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
                           child: AgamTonalButton(
                             onPressed: onView,
                             icon: Icons.info_outline_rounded,
+                            padding: 8,
                             label: 'Lihat',
                           ),
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: 8),
                         Expanded(
                           child: AgamTonalButton(
                             onPressed: onSkip,
                             icon: Icons.skip_next_rounded,
                             foreground: AgamColors.muted,
+                            padding: 8,
                             label: 'Lewati',
                           ),
                         ),

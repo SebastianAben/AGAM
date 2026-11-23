@@ -741,15 +741,11 @@ class _PoiDetailScreenState extends State<PoiDetailScreen> {
         child: Row(
           children: [
             Expanded(
-              child: AgamPrimaryButton(
-                onPressed: _navigating || !widget.navigationAvailable
-                    ? null
-                    : _navigate,
+              child: AgamRouteButton(
+                available: widget.navigationAvailable,
+                primary: true,
+                onPressed: _navigating ? null : _navigate,
                 busy: _navigating,
-                icon: Icons.directions_walk_rounded,
-                label: widget.navigationAvailable
-                    ? 'Navigasi Jalan Kaki'
-                    : 'Navigasi belum tersedia',
               ),
             ),
             const SizedBox(width: 10),

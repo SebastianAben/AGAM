@@ -101,6 +101,16 @@ PBI tidak berubah. Onboarding tidak disentuh. Belum commit/push.
   izin dicabut, atau di luar kampus. Atribusi OSM pindah ke tumpukan bawah
   dan dapat membungkus baris.
 - Galeri HP versi 4 (17 layar, termasuk akurasi rendah).
+- Tombol "Rute" (F06) disiapkan di layar yang sudah ada, atas permintaan
+  pengguna: kartu POI di peta (Rute · Lihat · Lewati), kartu tujuan di
+  pencarian (aksi utama), baris fasilitas (ikon rute), Detail Lokasi
+  (tombol bawah), dan Trail ("Pilih rute" → "Rute"). Satu komponen
+  `AgamRouteButton`; di build demo (tanpa graf rute) tombol redup dan
+  mengetuknya menampilkan "Rute belum tersedia." tanpa memulai sesi. Di
+  build produk, Rute dari peta membuka halaman pencarian dengan gedung
+  terpilih (kartu rute UI06 yang ada). UI07 (Tiba & Rekomendasi) dan UI06
+  penuh belum dibuat. Test baru menelusuri ketiga titik masuk; **377 test
+  lulus**. Galeri versi 5.
 - Verifikasi: analyze bersih, **376 test lulus**. File sementara (belum
   dihapus, jangan di-commit): `test/_preview/`, `tool/redesign_preview.dart`,
   `web/`.

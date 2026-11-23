@@ -265,6 +265,7 @@ class AgamTonalButton extends StatelessWidget {
     this.height = 48,
     this.foreground = AgamColors.brand,
     this.background = AgamColors.fill,
+    this.padding = 14,
   });
 
   final String label;
@@ -273,6 +274,9 @@ class AgamTonalButton extends StatelessWidget {
   final double height;
   final Color foreground;
   final Color background;
+
+  /// Horizontal inner padding; rows of three buttons use a tighter value.
+  final double padding;
 
   @override
   Widget build(BuildContext context) => AgamPressFeedback(
@@ -284,7 +288,7 @@ class AgamTonalButton extends StatelessWidget {
         disabledBackgroundColor: AgamColors.fill,
         disabledForegroundColor: AgamColors.subtle,
         minimumSize: Size.fromHeight(height),
-        padding: const EdgeInsets.symmetric(horizontal: 14),
+        padding: EdgeInsets.symmetric(horizontal: padding),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AgamRadius.control),
         ),
@@ -293,7 +297,10 @@ class AgamTonalButton extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          if (icon != null) ...[Icon(icon, size: 18), const SizedBox(width: 8)],
+          if (icon != null) ...[
+            Icon(icon, size: 18),
+            SizedBox(width: padding < 14 ? 6 : 8),
+          ],
           Flexible(
             child: Text(
               label,
@@ -306,6 +313,59 @@ class AgamTonalButton extends StatelessWidget {
       ),
     ),
   );
+}
+
+/// The one "Rute" action used wherever a building or facility can be a
+/// destination (F06). Until routing is available it stays tappable but
+/// quiet and explains itself, so its place can be reviewed today.
+class AgamRouteButton extends StatelessWidget {
+  const AgamRouteButton({
+    super.key,
+    required this.available,
+    required this.onPressed,
+    this.primary = false,
+    this.height,
+    this.label = 'Rute',
+    this.busy = false,
+    this.padding,
+  });
+
+  final bool available;
+  final VoidCallback? onPressed;
+  final bool primary;
+  final double? height;
+  final String label;
+  final bool busy;
+
+  /// Inner padding for the tonal form, for rows of three buttons.
+  final double? padding;
+
+  static const unavailableMessage = 'Rute belum tersedia.';
+
+  void _explain(BuildContext context) => ScaffoldMessenger.of(context)
+    ..hideCurrentSnackBar()
+    ..showSnackBar(const SnackBar(content: Text(unavailableMessage)));
+
+  @override
+  Widget build(BuildContext context) {
+    if (available && primary) {
+      return AgamPrimaryButton(
+        onPressed: onPressed,
+        busy: busy,
+        height: height ?? 54,
+        icon: Icons.directions_rounded,
+        label: label,
+      );
+    }
+    return AgamTonalButton(
+      onPressed: available ? onPressed : () => _explain(context),
+      height: height ?? (primary ? 54 : 48),
+      icon: Icons.directions_rounded,
+      foreground: available ? AgamColors.brand : AgamColors.subtle,
+      padding: padding ?? 14,
+      label: label,
+    );
+  }
 }
 
 /// Section heading on the canvas, with an optional trailing note.

@@ -24,6 +24,7 @@ class SearchRouteScreen extends StatefulWidget {
     this.isActive = true,
     this.initialFacility,
     this.autofocus = false,
+    this.initialDestination,
     this.onTabSelected,
     this.internalDemo = false,
     this.onShowPoiOnMap,
@@ -40,6 +41,9 @@ class SearchRouteScreen extends StatefulWidget {
 
   /// Opens with the keyboard up, from the map's search bar.
   final bool autofocus;
+
+  /// Opens with this building already chosen, from "Rute" on the map.
+  final Poi? initialDestination;
   final ValueChanged<int>? onTabSelected;
   final bool internalDemo;
 
@@ -84,6 +88,14 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
       });
     }
     _facilityFilter = widget.initialFacility;
+    if (widget.initialDestination case final poi?) {
+      _destination = SearchResult(
+        kind: SearchResultKind.poi,
+        id: poi.id,
+        name: poi.name,
+        score: 1,
+      );
+    }
     _query.addListener(_runSearch);
     _focus.addListener(() => setState(() {}));
   }
@@ -417,7 +429,14 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
                                     AgamListRow(
                                       icon: facilityIcon(facility.category),
                                       title: facility.name,
-                                      trailing: const _Chevron(),
+                                      trailing: _routeIcon(
+                                        SearchResult(
+                                          kind: SearchResultKind.facility,
+                                          id: facility.id,
+                                          name: facility.name,
+                                          score: 1,
+                                        ),
+                                      ),
                                       onTap: _routing
                                           ? null
                                           : () => _selectDestination(
@@ -684,7 +703,14 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
               children: [
                 Text(poi.name, style: AgamText.title),
                 const SizedBox(height: 16),
-                AgamPrimaryButton(
+                // The demo has no campus graph, so "Rute" explains itself.
+                const AgamRouteButton(
+                  available: false,
+                  onPressed: null,
+                  primary: true,
+                ),
+                const SizedBox(height: 10),
+                AgamTonalButton(
                   icon: Icons.map_rounded,
                   label: 'Tampilkan di peta',
                   onPressed: () {
@@ -865,15 +891,14 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
             child: Row(
               children: [
                 Expanded(
-                  child: AgamPrimaryButton(
+                  child: AgamRouteButton(
+                    available: true,
+                    primary: true,
                     onPressed: _routing || activeRoute
                         ? null
                         : () => _startRoute(destination),
                     busy: _routing,
-                    icon: Icons.directions_walk_rounded,
-                    label: activeRoute
-                        ? 'Navigasi sedang berjalan'
-                        : 'Mulai Navigasi Belokan Suara',
+                    label: activeRoute ? 'Navigasi sedang berjalan' : 'Rute',
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -918,6 +943,22 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
               score: 1,
             ),
           ),
+  );
+
+  /// Compact "Rute" for list rows; the row itself still opens the card.
+  Widget _routeIcon(SearchResult result) => IconButton(
+    tooltip: 'Rute',
+    icon: const Icon(Icons.directions_rounded),
+    color: widget.internalDemo ? AgamColors.subtle : AgamColors.brand,
+    style: IconButton.styleFrom(
+      backgroundColor: AgamColors.fill,
+      fixedSize: const Size(44, 44),
+    ),
+    onPressed: _routing
+        ? null
+        : widget.internalDemo
+        ? () => _showMessage(AgamRouteButton.unavailableMessage)
+        : () => _startRoute(result),
   );
 
   Widget _emptyCard(
