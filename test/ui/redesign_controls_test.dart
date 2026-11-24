@@ -1,0 +1,197 @@
+import 'package:agam/contracts/contracts.dart';
+import 'package:agam/logic/map/agam_map_config.dart';
+import 'package:agam/ui/app.dart';
+import 'package:agam/ui/widgets/agam_components.dart';
+import 'package:agam/ui/widgets/agam_motion.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+double _opacityOf(WidgetTester tester, Finder child) => tester
+    .widget<Opacity>(find.ancestor(of: child, matching: find.byType(Opacity)))
+    .opacity;
+
+void main() {
+  testWidgets('two tabs; search on the map; settings behind the account', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(430, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: AgamMainShell(
+          services: AppServices.fake(tick: const Duration(hours: 1)),
+          internalDemo: true,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Jelajah'), findsOneWidget);
+    expect(find.text('Trail'), findsOneWidget);
+    expect(find.text('Cari & Rute'), findsNothing);
+    expect(find.text('Pengaturan'), findsNothing);
+    // The search bar on the map opens the search page with the field ready.
+    await tester.tap(find.text('Cari gedung atau fasilitas'));
+    await tester.pumpAndSettle();
+    expect(find.byType(TextField), findsOneWidget);
+    expect(tester.widget<TextField>(find.byType(TextField)).autofocus, isTrue);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(find.byType(TextField), findsNothing);
+    // A facility chip opens the same page with that category filtering.
+    await tester.tap(find.text('Musala'));
+    await tester.pumpAndSettle();
+    expect(find.text('Data musala belum tersedia.'), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Profil & pengaturan'));
+    await tester.pumpAndSettle();
+    expect(find.text('Profil Pengguna'), findsOneWidget);
+    expect(find.text('Notifikasi & izin aplikasi'), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(find.text('Profil Pengguna'), findsNothing);
+    expect(find.text('Jelajah'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('Rute sits on the map, search card and detail; demo explains', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(430, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final fake = AppServices.fake(tick: const Duration(hours: 1));
+    // The fake map points at placeholder tiles; markers need the real ones.
+    final services = AppServices(
+      permissions: fake.permissions,
+      location: fake.location,
+      pois: fake.pois,
+      session: fake.session,
+      audio: fake.audio,
+      voice: fake.voice,
+      settings: fake.settings,
+      auth: fake.auth,
+      activity: fake.activity,
+      map: AgamMapConfig.internalDemo(),
+      routing: fake.routing,
+      navigation: fake.navigation,
+      search: fake.search,
+      recommendations: fake.recommendations,
+      trail: fake.trail,
+      facilities: fake.facilities,
+    );
+    await tester.pumpWidget(
+      MaterialApp(home: AgamMainShell(services: services, internalDemo: true)),
+    );
+    // Real tiles decode off the test clock; wait for the map to appear.
+    for (
+      var frame = 0;
+      frame < 200 &&
+          find.byType(CircularProgressIndicator).evaluate().isNotEmpty;
+      frame++
+    ) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 25)),
+      );
+      await tester.pump();
+    }
+    await tester.pumpAndSettle();
+    Future<void> expectExplained() async {
+      await tester.pump();
+      expect(find.text('Rute belum tersedia.'), findsWidgets);
+      expect(services.session.current.mode, SessionMode.none);
+      ScaffoldMessenger.of(tester.element(find.byType(Scaffold).last))
+          .hideCurrentSnackBar();
+      await tester.pumpAndSettle();
+    }
+
+    // Map: the POI card.
+    await tester.tap(
+      find.byWidgetPredicate(
+        (w) => w is Semantics && w.properties.label == 'Buka Labtek V',
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Rute'));
+    await expectExplained();
+    await tester.tap(find.byTooltip('Tutup informasi'));
+    await tester.pumpAndSettle();
+    // Search: the destination card.
+    await tester.tap(find.text('Cari gedung atau fasilitas'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'labtek 5');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Labtek V').last);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Rute'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Rute'));
+    await expectExplained();
+    // Detail: the bottom action.
+    await tester.ensureVisible(find.text('Lihat Detail POI'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Lihat Detail POI'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Rute'));
+    await expectExplained();
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets(
+    'reveal waits for play, plays once, and rests on reduced motion',
+    (tester) async {
+      Widget reveal({required bool play, bool reduced = false}) => MaterialApp(
+        home: MediaQuery(
+          data: MediaQueryData(disableAnimations: reduced),
+          child: AgamReveal(play: play, child: const Text('Isi')),
+        ),
+      );
+      await tester.pumpWidget(reveal(play: false));
+      await tester.pump(const Duration(seconds: 1));
+      expect(_opacityOf(tester, find.text('Isi')), 0);
+      await tester.pumpWidget(reveal(play: true));
+      await tester.pump(const Duration(milliseconds: 60));
+      final midway = _opacityOf(tester, find.text('Isi'));
+      expect(midway, inExclusiveRange(0, 1));
+      await tester.pumpAndSettle();
+      expect(_opacityOf(tester, find.text('Isi')), 1);
+      // Leaving and re-entering the tab must not replay the entrance.
+      await tester.pumpWidget(reveal(play: false));
+      await tester.pumpWidget(reveal(play: true));
+      await tester.pump(const Duration(milliseconds: 16));
+      expect(_opacityOf(tester, find.text('Isi')), 1);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpWidget(reveal(play: true, reduced: true));
+      await tester.pump();
+      expect(_opacityOf(tester, find.text('Isi')), 1);
+    },
+  );
+
+  testWidgets('segmented control reports the tapped segment', (tester) async {
+    var selected = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: StatefulBuilder(
+            builder: (context, setState) => AgamSegmented(
+              labels: const ['Semua', 'Belum', 'Selesai'],
+              selected: selected,
+              onChanged: (value) => setState(() => selected = value),
+            ),
+          ),
+        ),
+      ),
+    );
+    final thumb = find.byType(AnimatedPositioned);
+    final start = tester.getRect(thumb).left;
+    await tester.tap(find.text('Selesai'));
+    await tester.pumpAndSettle();
+    expect(selected, 2);
+    expect(tester.getRect(thumb).left, greaterThan(start));
+    expect(
+      tester.getRect(thumb).center.dx,
+      closeTo(tester.getCenter(find.text('Selesai')).dx, 1),
+    );
+  });
+}

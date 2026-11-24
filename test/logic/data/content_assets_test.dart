@@ -87,10 +87,8 @@ void main() {
           reason: '$id.$field',
         );
       }
-      // F03: video narasi hanya untuk GKUB (P06) dan GKUT (P07).
-      if (id == 'P06' || id == 'P07') {
-        expect(media['video'], isA<String>(), reason: '$id');
-      }
+      // F03: video GKUB/GKUT opsional (keputusan PM 23 November 2026);
+      // bila ada, format dan keberadaan file diperiksa test aset di atas.
       // Atribusi aset wajib bila ada media.
       expect(
         (metadata['assetAttribution'] as List?) ?? [],

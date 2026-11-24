@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../contracts/contracts.dart';
+
 /// Stores POI IDs only, scoped to the UID captured when the trigger occurred.
 /// Reads, additions, and deletion are serialized to avoid losing check-ins
 /// and to let account deletion wait for earlier writes.
@@ -69,4 +71,28 @@ class AccountVisitStore {
     _pending = next.then<void>((_) {}, onError: (Object _) {});
     return next;
   }
+}
+
+/// Trail is unavailable until it is wired in bootstrap. `main.dart` still
+/// uses this until `DeviceTrailService` (LB) is connected by LA; restored
+/// when merging `dev` into `LB` so both builds keep compiling.
+class UnavailableTrailService implements TrailService {
+  const UnavailableTrailService();
+
+  @override
+  TrailProgress get current =>
+      const TrailProgress(order: [], visited: {}, active: false);
+
+  @override
+  Stream<TrailProgress> get progress => const Stream.empty();
+
+  @override
+  Future<void> start() =>
+      Future.error(StateError('Orientation Trail belum tersedia.'));
+
+  @override
+  Future<void> stop() async {}
+
+  @override
+  Future<void> reset() async {}
 }

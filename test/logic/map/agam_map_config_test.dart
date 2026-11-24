@@ -126,4 +126,25 @@ void main() {
     expect(source.attribution, contains('OpenStreetMap'));
     expect(source.attribution, contains('OpenMapTiles'));
   });
+
+  test('batas produk memuat seluruh POI dan berlabel sumber produk', () {
+    final dataset = jsonDecode(
+      File('assets/data/pois.json').readAsStringSync(),
+    );
+    final pois = dataset['pois'] as List;
+    final p08 = pois.singleWhere((poi) => poi['id'] == 'P08');
+    final campus = AgamMapConfig.campus();
+    expect(campus.hasServiceArea, isTrue);
+    expect(campus.serviceAreaSource, startsWith('PRODUK'));
+    expect(
+      campus.campusArea.polygon,
+      AgamMapConfig.internalDemo().campusArea.polygon,
+    );
+    expect(campus.initialCenter, GeoPoint(p08['lat'], p08['lng']));
+    for (final poi in pois) {
+      expect(campus.isInsideCampus(GeoPoint(poi['lat'], poi['lng'])), isTrue);
+    }
+    // Di luar bounds selatan (> 200 m dari envelope kampus).
+    expect(campus.isInsideCampus(const GeoPoint(-6.8990, 107.6100)), isFalse);
+  });
 }

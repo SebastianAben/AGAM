@@ -120,7 +120,7 @@ Semua berprioritas **Must**.
 | --- | --- | --- | --- |
 | F01 | Location Awareness | Membaca posisi melalui Fused Location Provider (GPS + Wi-Fi/seluler) setiap ±3 detik atau 5 m perpindahan dan menampilkannya di peta kampus | Posisi tampil ≤10 detik setelah izin diberikan dan diperbarui saat berjalan; akurasi yang dilaporkan ≤20 m di area terbuka kampus pada perangkat uji |
 | F02 | Location-Based Trigger | Area kontak trigger **radius 5 m** dengan jarak pendekatan POI **15 m [CL]** dihitung in-app dengan haversine; trigger saat masuk area dan bertahan ≥5 detik; cooldown 10 menit per POI; berjalan di foreground dan background **selama sesi** | Kartu saat foreground atau notifikasi saat background, disertai prompt suara POI yang benar, muncul ≤10 detik setelah masuk area pendekatan; tidak terpicu ulang selama pengguna tetap di area; berhasil pada ≥8 dari 10 POI saat field test |
-| F03 | Multimodal Exploration | Kartu POI memuat foto, deskripsi fungsi gedung, fasilitas di dalam gedung, trivia/sejarah singkat, dan narasi audio 45–90 detik; video narasi untuk GKUB dan GKUT | Seluruh 10 POI memiliki minimal 1 foto, teks, dan narasi audio yang dapat diputar, dijeda, dan diulang **[CL: termasuk P01–P05]**; video GKUB/GKUT dapat diputar di kartu; sumber konten dicantumkan pada setiap kartu |
+| F03 | Multimodal Exploration | Kartu POI memuat foto, deskripsi fungsi gedung, fasilitas di dalam gedung, trivia/sejarah singkat, dan narasi audio 45–90 detik; video narasi untuk GKUB dan GKUT bila tersedia **[CL: keputusan PM 23 November 2026 — video opsional]** | Seluruh 10 POI memiliki minimal 1 foto, teks, dan narasi audio yang dapat diputar, dijeda, dan diulang **[CL: termasuk P01–P05]**; video GKUB/GKUT, bila tersedia, dapat diputar di kartu; sumber konten dicantumkan pada setiap kartu |
 | F04 | Eyes-Free Interaction | Prompt suara dan getar saat trigger; tombol aksi besar (Dengarkan/Lewati); opsi auto-play narasi; arahan navigasi suara; kontrol dari notifikasi saat layar terkunci | Pengguna dapat menerima trigger, memutar narasi, dan mengikuti navigasi sampai tujuan tanpa membaca teks layar (diuji ≥3 penguji) |
 | F05 | Search & Destination | Pencarian gedung, fasilitas, dan ruang/unit penting dengan alias (angka Arab/Romawi, singkatan seperti "GKUT", "Labtek Biru") dan filter kategori | "labtek 5", "Labtek V", atau "lab 5" menampilkan Labtek V di urutan teratas; seluruh 10 POI dan kategori fasilitas dapat ditemukan; respons ≤1 detik |
 | F06 | Navigation | Rute jalan kaki dari posisi pengguna ke **pintu masuk** gedung/fasilitas tujuan: garis rute, jarak, ETA, arahan belokan visual + suara; rerouting bila menyimpang >25 m; deteksi tiba pada radius 15 m | Penguji mencapai ≥4 dari 5 tujuan acak hanya dengan panduan aplikasi; pengumuman tiba muncul saat pengguna ≤15 m dari titik tujuan |
@@ -148,8 +148,8 @@ Koordinat dalam derajat desimal (lintang selatan bernilai negatif). Koordinat ad
 | P03 | Labtek VII | labtek 7, lab 7 | Gedung laboratorium dan perkuliahan | -6.8901169 | 107.6105714 | 15 m | foto, teks, audio |
 | P04 | Labtek VIII | labtek 8, lab 8 | Gedung laboratorium dan perkuliahan | -6.8905954 | 107.6105760 | 15 m | foto, teks, audio |
 | P05 | Labtek X & XI | Labtek Biru, labtek 10, labtek 11 | Gedung laboratorium dan perkuliahan | -6.8889940 | 107.6095767 | 15 m | foto, teks, audio |
-| P06 | Gedung Kuliah Umum Barat | GKUB | Gedung perkuliahan | -6.89053 | 107.60890 | 15 m | foto, teks, audio, video |
-| P07 | Gedung Kuliah Umum Timur | GKUT | Gedung perkuliahan | -6.8903881 | 107.6119990 | 15 m | foto, teks, audio, video |
+| P06 | Gedung Kuliah Umum Barat | GKUB | Gedung perkuliahan | -6.89053 | 107.60890 | 15 m | foto, teks, audio, video (opsional) |
+| P07 | Gedung Kuliah Umum Timur | GKUT | Gedung perkuliahan | -6.8903881 | 107.6119990 | 15 m | foto, teks, audio, video (opsional) |
 | P08 | Oktagon | — | Gedung perkuliahan | -6.8890603 | 107.6100470 | 15 m | foto, teks, audio |
 | P09 | TVST | — | Gedung perkuliahan | -6.8895043 | 107.6100594 | 15 m | foto, teks, audio |
 | P10 | Labtek I | Mektan, labtek 1 | Gedung laboratorium dan perkuliahan | -6.8892078 | 107.6111876 | 15 m | foto, teks, audio |
@@ -219,6 +219,14 @@ demo, bukan penetapan batas layanan produk. `pendingServiceArea()` tetap
 menolak semua titik selama batas produk TBD; tidak ada koordinat baru yang
 dikira sebagai hasil survei. Radius, dwell, cooldown, dan filter akurasi §9.2
 tidak berubah.
+
+**Batas layanan produk (24 November 2026):** atas keputusan tim, build produk
+memakai empat sudut bounds engineering yang sama sebagai batas layanan resmi
+(`AgamMapConfig.campus()`), sesuai rumusan "Kampus Ganesha + ±200 m" di atas.
+Batas ini berasal dari coverage OSM, belum diverifikasi lapangan, dan sedikit
+lebih longgar dari kampus pada sisi jalan sekitar. Trigger tetap hanya dalam
+radius POI §9.2, sehingga kelonggaran batas tidak memicu POI di luar kampus.
+Bila survei batas tersedia, poligon diganti dan dicatat ulang di sini.
 
 
 ## 10. Konten dan Media
@@ -471,7 +479,7 @@ Item berikut **belum diputuskan atau belum tersedia**. Agent dilarang mengisinya
 | Konten teks, foto, audio, video P01–P10 | Audit source 16 November: JSON menandai P01/P02 approved/non-placeholder, P03–P10 placeholder/unapproved; 30 file audio, foto P01/P02/P06, tanpa video. P01 foto/kartu terverifikasi di emulator terdahulu. P02 perlu rekonsiliasi pemilik konten/PM sebelum klaim konten final; catatan ini mencatat metadata source tanpa memberi approval baru. Kelengkapan F03, hak aset, durasi dan playback tetap perlu audit/uji | Tim konten / PM |
 | Daftar perangkat uji | Belum ditetapkan | QA |
 | Margin histeresis, kalibrasi radius per POI, dan parameter interval adaptif | Default engineering margin 5 m dan jeda sampel maksimum 10 detik (PB05-LA-01) serta parameter interval adaptif [§9.2](#92-logika-trigger) diterapkan; kalibrasi lapangan tetap tertunda | Developer / QA |
-| Batas area kampus (poligon/bounding box) | Snapshot OSM/coverage tile dan area engineering khusus demo tercatat di §9.3; batas layanan produk dan verifikasi lapangan tetap tertunda | Developer |
+| Batas area kampus (poligon/bounding box) | Diputuskan 24 November 2026: batas produk = bounds engineering OSM + 200 m (§9.3). Verifikasi lapangan dan poligon presisi tetap tertunda | Developer |
 | Success metric | Belum ditetapkan. Log §15.5 disusun agar dapat dipakai metrik umum (pengguna aktif, pemakaian mode dan fitur, trail selesai); event yang tidak dipakai metrik mana pun dihapus setelah metrik ditetapkan | PM |
 | Tanggal penghapusan log aktivitas | Paling lambat setelah penilaian akhir mata kuliah; tanggal pasti belum ditetapkan | PM |
 | Teks pemberitahuan privasi layar daftar (UI10) | Disusun FE, wajib disetujui PM | FE / PM |
@@ -489,6 +497,7 @@ Perubahan berikut wajib dicatat PM pada Change Log PRD resmi.
 | Peta | OSM (tanpa rincian) | Tile vektor buatan sendiri, dibundel | Offline penuh (A03), tanpa request ke server tile, sesuai kebijakan tile OSM |
 | Routing | Tidak dirinci | Di perangkat dengan graf jalur kampus | Server routing menerima lokasi pengguna (A01, NG04) |
 | Media | Firestore + JSON lokal (tidak dirinci) | Media dibundel di APK; Firestore hanya data teks | Offline dan bebas ketergantungan penyimpanan cloud |
+| F03 / tabel POI — video GKUB & GKUT | Video narasi wajib untuk GKUB dan GKUT | Video opsional; konten GKUB/GKUT boleh disetujui tanpa video dan video ditampilkan bila tersedia | Keputusan PM 23 November 2026 (disampaikan pemilik konten) |
 | Sumber suara | `flutter_tts` untuk narasi, prompt, arahan | Narasi & prompt = file audio; TTS hanya arahan navigasi | Konsistensi suara dan kemandirian dari data TTS perangkat |
 | Mode aplikasi | Tidak dirinci | Empat mode (§6) dan auto-end 30 menit | Memperjelas kapan lokasi dibaca dan trigger aktif |
 | PB17 | Cache konten & tile peta saat offline | Tile sudah dibundel sejak S1; PB17 menjadi verifikasi offline konten | Keputusan tile |
@@ -497,6 +506,7 @@ Perubahan berikut wajib dicatat PM pada Change Log PRD resmi.
 | Area kontak dan visual trigger | Tidak dirinci | Titik POI menjadi area kontak radius 5 m; radius pendekatan dataset tetap 15 m (efektif masuk 20 m, keluar >25 m). Explore/Trail menampilkan kartu terdekat + audio saat resumed, notifikasi + audio di latar belakang | Instruksi PM 16 November 2026 untuk memperluas kontak dan memperjelas respons di layar |
 | Uji developer trigger | Tidak dirinci | Sakelar Mode demo/trial di Pengaturan build internal mereset/melewati cooldown; pengunci saat tetap di POI dan validasi lokasi/dwell dipertahankan | Instruksi PM 16 November 2026 agar pengujian ulang tidak menunggu 10 menit; default mati, hanya memori |
 | Log aktivitas | Tidak disebut | Daftar event tertutup tanpa data lokasi (§15.5) | Success metric; tetap mematuhi NG04/A01 |
+| Batas area layanan produk | Kampus Ganesha + ±200 m, poligon ditetapkan saat PB04 | Bounds engineering OSM way/177629384 v19 + 200 m dipakai sebagai batas produk (§9.3); belum diverifikasi lapangan | Keputusan tim 24 November 2026 agar trigger dan navigasi aktif di build produk |
 | Backlog | PB01–PB20 | Ditambah PB21 (akun dan login wajib) dan PB22 (log aktivitas) pada Sprint 3; nomor PB01–PB20 tidak berubah | Fitur akun sebelum Feature Freeze |
 | Layar | UI01–UI09 | Ditambah UI10 Daftar & Login; UI09 memuat akun, logout, dan hapus akun | Akun |
 | Offline (A03) | Informasi tersedia tanpa jaringan | Tetap, tetapi login pertama memerlukan internet | Konsekuensi login wajib; A03 berprioritas Should |

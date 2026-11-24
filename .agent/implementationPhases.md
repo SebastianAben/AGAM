@@ -7,7 +7,7 @@
 | Kontrak produk | `.agent/PRD.md`; aturan kerja di `.agent/rules.md` |
 | Model kerja | 5 sprint × 1 minggu (Week 10–14), deliverable final Week 15 |
 | Pembagian kerja | Tiga track paralel: 1 developer frontend, 2 developer logic aplikasi (lihat §2) |
-| Desain layar | UI01–UI09 sudah selesai; frontend tinggal mengimplementasikan. UI10 Daftar & Login (ditambahkan 14 November 2026) belum didesain |
+| Desain layar | UI01–UI09 sudah selesai; UI10 Daftar & Login (ditambahkan 14 November 2026) tersedia sebagai implementasi awal dan menunggu teks privasi serta verifikasi PM |
 | Backlog | PB01–PB20 dari PRD resmi, ditambah PB21–PB22 (akun, keputusan PM 6 dan 14 November 2026); ID tidak boleh diubah atau dinomori ulang |
 | Current focus | 16 November 2026: verifikasi pemetaan demo Sprint 1–2 dan penyelarasan progres total. APK interaktif terbaru 9675dcf6…5cf6c9e terpasang di OPPO dan cold start command sukses; hash APK perangkat cocok. Smoke visual/playback terbaru belum terkonfirmasi, uji fisik Labtek V tidak tersedia. Empat tab FE tersedia; fitur dengan dependency yang belum nyata tetap dibatasi tanpa note sistem tambahan. |
 
@@ -361,11 +361,11 @@ Progres trail, POI dikunjungi, dan pengaturan disimpan per akun (PRD §15.1). Im
 - **Brief:** [PB04-LB-01 — pipeline OSM ke PMTiles](../task-implementation/backend/PB04-LB-01-tile-pipeline.md).
 - **Ada di source (4 November 2026):** pipeline PowerShell/Python di `tools/tiles/`, generator Planetiler v0.10.2 terverifikasi SHA-256, snapshot batas OSM `way/177629384`, coverage kampus + 200 m, validator arsip dan manifest. Tidak mengubah kontrak, UI, atau dependency Flutter.
 - **Verifikasi lokal:** 18 test tooling lulus; dua build data nyata/cache menghasilkan PMTiles identik (1.035.927 bytes, 13 tile zoom 12–16); validator penuh dan CLI resmi `pmtiles verify` lulus. Manifest di `assets/map/ganesha.manifest.json`; command, checksum, peringatan sumber, dan batas evidence di handoff.
-- **Sisa terkini:** smoke peta APK terbaru, pergerakan GPS fisik di atas tile, batas layanan produk dan field acceptance. Style, konfigurasi engineering demo, aset dan renderer sudah terintegrasi; batas coverage tile bukan batas layanan produk (PRD §9.3).
+- **Sisa terkini:** smoke peta APK terbaru, pergerakan GPS fisik di atas tile dan field acceptance. Style, konfigurasi engineering demo, aset dan renderer sudah terintegrasi. Batas layanan produk ditetapkan 24 November 2026: `AgamMapConfig.campus()` = bounds engineering OSM + 200 m (PRD §9.3), belum diverifikasi lapangan.
 - **UI02 FE (14 November 2026):** kerangka Explore Map dengan penanda POI dan posisi; peta masih ilustrasi skematis berlabel, belum merender PMTiles.
 - **Done:** peta tampil offline setelah login pertama; 10 POI dan posisi pengguna yang bergerak terlihat; script tile dapat dijalankan ulang; ukuran tile tercatat.
 - **Integrasi demo lokal (14 November 2026):** WIP `AgamMapConfig`, style, test, dan audit LB disalin ke checkout integrasi tanpa mengubah worktree LB. Pipeline kini melakukan clustering deterministik; PMTiles 1.022.885 byte, SHA-256 `6af43dfb1be0f854480ab45caa5dadc672e865134d50cddf43a316fc97934792`, seluruh 13 payload/metadata tetap sama dengan arsip awal. `OfflineMapTiles` + `OfflineCampusMap` merender vektor ke memori dengan `flutter_map 7.0.2`, `vector_tile_renderer 5.2.0`, `pmtiles 1.3.0`; tidak memakai layer/cache disk `vector_map_tiles`. Aset terdaftar, atribusi bertautan, marker repository, pan dan overzoom 19 lulus widget. 233 test Flutter, 21 test pipeline, analyze, audit aset tanpa APK, dan CLI verify lulus. Batas layanan produk tetap TBD; demo eksplisit memakai coverage engineering bersumber sesuai PRD §9.3.
-- **Status:** `in_progress` — build/install/peta offline Android diuji; pergerakan GPS di atas tile lokal, batas layanan produk dan field test belum terbukti
+- **Status:** `in_progress` — build/install/peta offline Android diuji; batas layanan produk ditetapkan (24 November 2026); pergerakan GPS di atas tile lokal dan field test belum terbukti
 
 
 ## 6. Sprint 2 — Geofence, Sesi, Trigger, Kartu POI, dan Audio
@@ -482,7 +482,11 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
 - **Bagian LA (10 November 2026):** format aset dan aturan validasi untuk tim konten di [PB09-LA-01](../task-implementation/backend/PB09-LA-01-content-format.md); pemeriksaan otomatis `test/logic/data/content_assets_test.dart`.
 - **Done:** konten 10 POI lengkap, sumber tercatat, hak penggunaan media aman, disetujui tim.
 - **Audit source (16 November 2026):** 10 POI; 30 file audio; enam foto pada P01/P02/P06 (dua per POI); field video seluruh POI kosong. JSON menandai P01/P02 approved/non-placeholder dan P03–P10 placeholder/unapproved. Ini inventaris source, bukan persetujuan baru dari agent. P02 belum disebut pada catatan approval PRD sebelumnya; pemilik konten/PM perlu merekonsiliasi sebelum klaim final. Konten/metadata tidak diubah.
-- **Status:** `in_progress` — format/validasi serta sebagian konten/aset tim tersedia; kelengkapan F03, hak/approval A02 dan video GKUB/GKUT masih tertunda
+- **Pembaruan 23 November 2026 (pemilik konten):** foto P03 (Labtek VII) dan P04 (Labtek VIII) oleh Noeriza Aqila Wibawa; foto P05 (Labtek X & XI) dari situs resmi ITB, dicantumkan "Foto: Institut Teknologi Bandung (itb.ac.id)"; pemilik konten menyatakan penggunaan foto publik situs ITB diperbolehkan untuk proyek ini (belum ada keputusan PM tertulis). Foto dikonversi ke JPG tanpa data GPS. P03–P05 disetujui pemilik konten dan ditandai approved/non-placeholder. Sisa: foto P07 GKUT, P08 Oktagon, P09 TVST, P10 Labtek I; video GKUB/GKUT; nama GKUT tidak konsisten ("Paragon Innovation" di deskripsi, "Paragon Foundation" di trivia).
+- **Keputusan PM 23 November 2026 (disampaikan pemilik konten):** video GKUB/GKUT opsional; konten boleh disetujui tanpa video (PRD F03, §9.1, §23). P06 GKUB disetujui pemilik konten.
+- **Media tambahan 23 November 2026 (pemilik konten):** foto P08 Oktagon, P09 TVST, P10 Labtek I dari Google Maps dan video P06 GKUB dari TikTok; pemilik konten memutuskan memakainya dengan kredit eksplisit ("Foto: Google Maps", "Video: TikTok"). Foto GKUT (screenshot Street View) dan video GKUT tidak dipakai. Foto P10 memperlihatkan papan "SPITM"; pemilik konten memastikan itu Labtek I dari sisi lain. P08–P10 disetujui pemilik konten.
+- **GKUT (23 November 2026):** foto P07 dari Google Maps Street View ("Foto: Google Maps (Street View)"), papan gedung bertuliskan "Gedung Kuliah Umum Timur Paragon Innovation"; atas persetujuan pemilik konten, trivia P07 dikoreksi dari "Paragon Foundation" menjadi "Paragon Innovation". P07 disetujui pemilik konten; 10/10 POI approved.
+- **Status:** `in_progress` — 10/10 POI approved di JSON; tersisa uji tampilan/playback di perangkat, seed Firestore setelah merge ke `dev`, dan pencatatan keputusan PM soal video di Change Log PRD resmi
 
 ## 7. Sprint 3 — Pencarian, Navigasi, dan Akun
 
@@ -516,7 +520,7 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
 - **Track:** LB (graf, `RoutingService`, `NavigationController`), FE (UI06), LA (sesi Navigasi) · **Requirement:** F06, A01
 - **Dependency eksternal:** koordinat pintu masuk (survei).
 - **Done:** rute tampil ke pintu masuk tujuan; rerouting berjalan; tidak ada request routing ke server.
-- **Status:** `in_progress` — `CampusRoutingService` dan `DeviceNavigationController` asli tersedia. Dijkstra, langkah, ETA, reroute >25 m, tiba ≤15 m, serta pembatalan perhitungan tertunda lulus test fixture sintetis. Integrasi UI/LA dan verifikasi lapangan belum selesai. Aktivasi rute produk menunggu graf jalan bersumber, batas layanan yang ditetapkan tim, dan koordinat pintu masuk hasil survei.
+- **Status:** `in_progress` — `CampusRoutingService` dan `DeviceNavigationController` asli tersedia. Dijkstra, langkah, ETA, reroute >25 m, tiba ≤15 m, serta pembatalan perhitungan tertunda lulus test fixture sintetis. Integrasi UI/LA dan verifikasi lapangan belum selesai. Aktivasi rute produk menunggu graf jalan bersumber dan koordinat pintu masuk hasil survei; batas layanan produk ditetapkan 24 November 2026 (PRD §9.3).
 
 ### PB12 — Arahan suara navigasi dan deteksi tiba
 
@@ -655,7 +659,7 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
 | Dependency | Dibutuhkan oleh | Status |
 | --- | --- | --- |
 | Project Firebase (Firestore + Authentication Email/Password) | PB03, PB21, PB22 (LA) | Dibuat 15 November 2026 (`agam-9e704`) |
-| Desain UI10 Daftar & Login dan teks pemberitahuan privasi | PB21 (FE) | Belum ada; teks wajib disetujui PM |
+| Desain UI10 Daftar & Login dan teks pemberitahuan privasi | PB21 (FE) | Implementasi awal tersedia; teks pemberitahuan privasi wajib disetujui PM |
 | Success metric | PB22 (finalisasi daftar event) | Belum ditetapkan |
 | Konten P01–P10 (teks, foto, audio, video, metadata) | PB07, PB08, PB09 | Sebagian tersedia; P01/P02 approved pada JSON, P03–P10 placeholder/unapproved; video belum ada. Approval P02 perlu rekonsiliasi pemilik konten/PM; kelengkapan dan hak seluruh konten belum diterima |
 | Koordinat pintu masuk | PB11, PB12 (LB) | Menunggu survei |
