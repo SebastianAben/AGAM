@@ -8,8 +8,9 @@ import 'agam_motion.dart';
 import 'agam_theme.dart';
 
 /// Membuat controller untuk satu path aset video. Dapat diganti di test.
-typedef AgamVideoControllerFactory =
-    VideoPlayerController Function(String assetPath);
+typedef AgamVideoControllerFactory = VideoPlayerController Function(
+  String assetPath,
+);
 
 VideoPlayerController _assetController(String assetPath) =>
     VideoPlayerController.asset(assetPath);
@@ -125,10 +126,8 @@ class _AgamVideoPlayerState extends State<AgamVideoPlayer> {
     setState(() => _fullscreen = true);
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => _FullscreenVideo(
-          controller: controller,
-          onToggle: _toggle,
-        ),
+        builder: (_) =>
+            _FullscreenVideo(controller: controller, onToggle: _toggle),
       ),
     );
     if (mounted) setState(() => _fullscreen = false);
@@ -208,10 +207,7 @@ class _AgamVideoPlayerState extends State<AgamVideoPlayer> {
     if (_loading) {
       content = const SizedBox.square(
         dimension: 32,
-        child: CircularProgressIndicator(
-          strokeWidth: 3,
-          color: Colors.white,
-        ),
+        child: CircularProgressIndicator(strokeWidth: 3, color: Colors.white),
       );
     } else if (_failed) {
       content = Padding(
@@ -324,56 +320,59 @@ class _VideoControls extends StatelessWidget {
   final VoidCallback? onFullscreen;
 
   @override
-  Widget build(BuildContext context) => ValueListenableBuilder<VideoPlayerValue>(
-    valueListenable: controller,
-    builder: (context, value, _) => Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Semantics(
-          label: 'Progres video',
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(2),
-            child: VideoProgressIndicator(
-              controller,
-              allowScrubbing: true,
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              colors: VideoProgressColors(
-                playedColor: Colors.white,
-                bufferedColor: Colors.white.withValues(alpha: .35),
-                backgroundColor: Colors.white.withValues(alpha: .18),
-              ),
-            ),
-          ),
-        ),
-        Row(
+  Widget build(BuildContext context) =>
+      ValueListenableBuilder<VideoPlayerValue>(
+        valueListenable: controller,
+        builder: (context, value, _) => Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _iconButton(
-              value.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-              tooltip: value.isPlaying ? 'Jeda video' : 'Putar video',
-              onPressed: onToggle,
-            ),
-            const SizedBox(width: 10),
-            Text(
-              '${_format(value.position)} / ${_format(value.duration)}',
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: .75),
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                fontFeatures: const [FontFeature.tabularFigures()],
+            Semantics(
+              label: 'Progres video',
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(2),
+                child: VideoProgressIndicator(
+                  controller,
+                  allowScrubbing: true,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  colors: VideoProgressColors(
+                    playedColor: Colors.white,
+                    bufferedColor: Colors.white.withValues(alpha: .35),
+                    backgroundColor: Colors.white.withValues(alpha: .18),
+                  ),
+                ),
               ),
             ),
-            const Spacer(),
-            if (onFullscreen != null)
-              _iconButton(
-                Icons.fullscreen_rounded,
-                tooltip: 'Layar penuh',
-                onPressed: onFullscreen!,
-              ),
+            Row(
+              children: [
+                _iconButton(
+                  value.isPlaying
+                      ? Icons.pause_rounded
+                      : Icons.play_arrow_rounded,
+                  tooltip: value.isPlaying ? 'Jeda video' : 'Putar video',
+                  onPressed: onToggle,
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  '${_format(value.position)} / ${_format(value.duration)}',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: .75),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                ),
+                const Spacer(),
+                if (onFullscreen != null)
+                  _iconButton(
+                    Icons.fullscreen_rounded,
+                    tooltip: 'Layar penuh',
+                    onPressed: onFullscreen!,
+                  ),
+              ],
+            ),
           ],
         ),
-      ],
-    ),
-  );
+      );
 }
 
 Widget _iconButton(
