@@ -1,5 +1,31 @@
 # Session Handoff — AGAM
 
+## Current — Animasi tombol narasi, gelombang audio, ikon fasilitas, 24 November 2026
+
+- Branch `feat/narration-card-motion` dari `dev` @ `cd5753d`, worktree
+  `.claude/worktrees/narration-card-motion`. Sudah di-commit, belum di-push.
+- Tombol "Dengarkan Cerita" ↔ "Jeda cerita" tersendat karena di
+  `AgamPrimaryButton` ikon berganti seketika, sedangkan label lama tetap
+  menentukan lebar sampai fade selesai lalu lebar meloncat (baris rata
+  tengah, jadi ikon ikut meloncat). Kini ikon berada di slot tetap 20 px
+  dengan transisi `AgamMotion.iconSwap` (fade + skala 0,7→1 + blur 2 px,
+  200 ms), dan lebar label mengikuti label baru lewat `AnimatedSize` 240 ms
+  ease-out. Berlaku untuk semua tombol utama.
+- Kartu Narasi (UI04): ikon headphone berganti menjadi bar gelombang yang
+  mengikuti kerasnya audio. Data dari `narasi.wave.json` (5 pita frekuensi,
+  20 frame/detik) di samping tiap `narasi.m4a`, dibangkitkan oleh
+  `tool/build_narration_waves.py` (ffmpeg + numpy). **Jalankan ulang script
+  setiap kali file narasi berubah.** Tanpa file envelope atau dengan reduced
+  motion, kartu menampilkan ikon `graphic_eq` statis. Ticker hanya berjalan
+  saat narasi diputar dan berhenti bila posisi tidak diperbarui 400 ms.
+- Fasilitas di UI04 memakai ikon sesuai nama (Toilet, Mushalla, Kantin,
+  Apotek, Laboratorium, Ruang Kelas, dst.), dengan penanda netral untuk nama
+  lain. Pil "Fasilitas sekitar" di kartu peta tidak diubah (sedang dikerjakan
+  di worktree dataset fasilitas).
+- Verifikasi: analyze bersih, 396 test lulus (3 test baru di
+  `test/ui/narration_wave_test.dart`); tampilan dicek lewat golden sementara
+  (sudah dihapus). Belum dicoba di perangkat.
+
 ## Current — Merge `dev` ke `LB` untuk PR LB → dev, 24 November 2026
 
 - Konflik PR LB → `dev` hanya di catatan sesi ini; kedua catatan dipertahankan.

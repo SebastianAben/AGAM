@@ -224,33 +224,66 @@ class AgamPrimaryButton extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              if (busy)
+              if (busy || icon != null) ...[
+                // The glyph morphs in place inside a fixed slot, so a new
+                // icon never shifts the label.
                 SizedBox.square(
-                  dimension: 18,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: foreground,
+                  dimension: 20,
+                  child: AnimatedSwitcher(
+                    duration: AgamMotion.duration(context, 200),
+                    transitionBuilder: AgamMotion.iconSwap,
+                    child: busy
+                        ? Padding(
+                            key: const ValueKey('busy'),
+                            padding: const EdgeInsets.all(1),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: foreground,
+                            ),
+                          )
+                        : Icon(icon, key: ValueKey(icon), size: 20),
                   ),
-                )
-              else if (icon != null)
-                Icon(icon, size: 20),
-              if (busy || icon != null) const SizedBox(width: 10),
+                ),
+                const SizedBox(width: 10),
+              ],
               Flexible(
-                // A changed label fades through: the old word is gone
-                // before the new one appears, so the two never overlap.
-                child: AnimatedSwitcher(
+                // The row is centred, so the label's width decides where
+                // the icon sits. Size only to the incoming label and glide
+                // the width, so the icon slides instead of snapping when
+                // the outgoing label is removed.
+                child: AnimatedSize(
                   duration: AgamMotion.duration(context, 240),
-                  switchInCurve: const Interval(.5, 1, curve: Curves.easeOut),
-                  switchOutCurve: const Interval(.5, 1, curve: Curves.easeIn),
-                  child: Text(
-                    label,
-                    key: ValueKey(label),
-                    maxLines: labelMaxLines,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
+                  curve: AgamMotion.easeOut,
+                  child: AnimatedSwitcher(
+                    duration: AgamMotion.duration(context, 240),
+                    // A changed label fades through: the old word is gone
+                    // before the new one appears, so the two never overlap.
+                    switchInCurve: const Interval(.5, 1, curve: Curves.easeOut),
+                    switchOutCurve: const Interval(.5, 1, curve: Curves.easeIn),
+                    layoutBuilder: (current, previous) => Stack(
+                      alignment: Alignment.center,
+                      clipBehavior: Clip.none,
+                      children: [
+                        for (final child in previous)
+                          Positioned.fill(
+                            child: OverflowBox(
+                              maxWidth: double.infinity,
+                              child: child,
+                            ),
+                          ),
+                        ?current,
+                      ],
+                    ),
+                    child: Text(
+                      label,
+                      key: ValueKey(label),
+                      maxLines: labelMaxLines,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ),

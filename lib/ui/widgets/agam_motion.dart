@@ -1,3 +1,5 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:animations/animations.dart';
 import 'package:flutter/material.dart';
 
@@ -21,6 +23,34 @@ abstract final class AgamMotion {
           child: child,
         ),
       );
+
+  /// Transition for an [AnimatedSwitcher] that swaps one icon for another in
+  /// the same slot: the new glyph grows from 70 % while fading in and a 2 px
+  /// blur that clears as it lands, so the two glyphs read as one shape
+  /// morphing instead of two icons overlapping.
+  static Widget iconSwap(Widget child, Animation<double> animation) {
+    final curved = CurvedAnimation(parent: animation, curve: easeOut);
+    return AnimatedBuilder(
+      animation: curved,
+      child: child,
+      builder: (context, child) {
+        final t = curved.value;
+        final sigma = (1 - t) * 2;
+        return Opacity(
+          opacity: t.clamp(0.0, 1.0),
+          child: Transform.scale(
+            scale: .7 + .3 * t,
+            child: sigma < .01
+                ? child
+                : ImageFiltered(
+                    imageFilter: ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
+                    child: child,
+                  ),
+          ),
+        );
+      },
+    );
+  }
 
   /// Pushed pages slide along the horizontal axis they were opened on;
   /// reduced motion swaps the slide for an instant change.
