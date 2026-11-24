@@ -1,5 +1,41 @@
 # Session Handoff — AGAM
 
+## Current — Uji alur Playwright `dev` setelah PR #12 (LB), 24 November 2026
+
+- Basis `dev` @ `cd5753d`: analyze bersih, 393 test lulus. Branch kerja
+  `chore/dev-flow-check`; belum di-commit.
+- Uji alur di browser (pratinjau web sementara, sudah dihapus): layanan
+  perangkat (izin, lokasi, sesi, audio, akun) fake; selebihnya sama dengan
+  wiring demo `main.dart` (repository + search asli, `AgamMapConfig.campus()`,
+  `DeviceNavigationController` + `UnavailableCampusRouting`,
+  `RepositoryFacilityService`, trail/rekomendasi unavailable). Alur yang
+  lulus: splash → masuk gagal → daftar (persetujuan wajib, peran) →
+  onboarding → peta tile HD → panel POI Labtek V → Cari & Rute → cari
+  "labtek 5" → chip Toilet ("Data toilet belum tersedia.") → Trail →
+  Explore mulai/akhiri → profil → keluar → masuk ulang. Tanpa error console.
+- Bug yang ditemukan dan diperbaiki:
+  1. Logout di build produk kembali ke peta, bukan UI10: onboarding memakai
+     `pushReplacement` sehingga gerbang login hilang. Kini `_SignedInFlow`
+     (onboarding → shell, crossfade) berada di dalam gerbang `app.dart`.
+     Test `test/ui/auth_gate_test.dart` (gagal pada kode lama).
+  2. Rute tanpa graf menampilkan "Rute pratinjau ..." seolah berhasil:
+     `DeviceNavigationController` melapor status error tanpa throw. Kini
+     `search_route_screen.dart` memeriksa status dan menampilkan "Rute belum
+     tersedia untuk tujuan ini." Test `test/ui/route_unavailable_test.dart`
+     (gagal pada kode lama).
+  3. Galat kolom masuk/daftar tetap merah setelah diperbaiki: form kini
+     memvalidasi ulang saat mengetik setelah submit pertama
+     (`auth_screen.dart`, test baru di `auth_screen_test.dart`).
+  4. Trail kosong berkata "Belum ada gedung di daftar ini." — kini
+     "Urutan Orientation Trail belum tersedia." bila urutan kosong.
+  5. Laten: tombol "Detail" langkah trail berikutnya (`AgamTonalButton` di
+     `Row` tanpa `Expanded`) crash layout saat trail punya urutan; kini
+     Expanded (Rute 2 : Detail 1). Akan muncul begitu `DeviceTrailService`
+     disambungkan.
+- Verifikasi: analyze bersih, 396 test lulus.
+- Masih terbuka: `DeviceTrailService` dan graf draf LB belum disambungkan;
+  build APK belum (tanpa Android SDK di Mac ini); tombol hapus akun belum ada.
+
 ## Current — Merge `dev` ke `LB` untuk PR LB → dev, 24 November 2026
 
 - Konflik PR LB → `dev` hanya di catatan sesi ini; kedua catatan dipertahankan.

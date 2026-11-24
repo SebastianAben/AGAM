@@ -261,7 +261,11 @@ class _OrientationTrailScreenState extends State<OrientationTrailScreen> {
                             play: play,
                             child: AgamCard(
                               child: Text(
-                                _filter == 2
+                                // An empty order means the official trail
+                                // is not set yet, not an empty filter.
+                                _progress.order.isEmpty
+                                    ? 'Urutan Orientation Trail belum tersedia.'
+                                    : _filter == 2
                                     ? 'Belum ada gedung yang selesai.'
                                     : 'Belum ada gedung di daftar ini.',
                                 style: AgamText.bodySmall,
@@ -674,6 +678,7 @@ class _TrailStep extends StatelessWidget {
                             Row(
                               children: [
                                 Expanded(
+                                  flex: 2,
                                   child: AgamPrimaryButton(
                                     onPressed: onRoute,
                                     height: 44,
@@ -688,10 +693,15 @@ class _TrailStep extends StatelessWidget {
                                   ),
                                 ),
                                 const SizedBox(width: 8),
-                                AgamTonalButton(
-                                  onPressed: onDetails,
-                                  height: 44,
-                                  label: 'Detail',
+                                // AgamTonalButton has no intrinsic width
+                                // (its minimum width is infinite), so it
+                                // needs a flex share inside a Row.
+                                Expanded(
+                                  child: AgamTonalButton(
+                                    onPressed: onDetails,
+                                    height: 44,
+                                    label: 'Detail',
+                                  ),
                                 ),
                               ],
                             ),

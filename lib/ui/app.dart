@@ -85,30 +85,70 @@ class _AgamAppState extends State<AgamApp> {
                 stream: _appServices.auth.state,
                 initialData: _appServices.auth.current,
                 builder: (context, snapshot) {
-                  if (!snapshot.data!.isSignedIn) {
+                  final state = snapshot.data!;
+                  if (!state.isSignedIn) {
                     return AuthScreen(auth: _appServices.auth);
                   }
-                  return Builder(
-                    builder: (context) => OnboardingScreen(
-                      permissions: _appServices.permissions,
-                      onAccessGranted: () =>
-                          Navigator.of(context).pushReplacement(
-                            MaterialPageRoute<void>(
-                              builder: (_) => AgamMainShell(
-                                services: _appServices,
-                                poiViewRequests: widget.poiViewRequests,
-                                internalDemo: false,
-                                onPoiAction: widget.onPoiAction,
-                              ),
-                            ),
-                          ),
-                    ),
+                  // Kept inside the gate (not pushed as a replacement
+                  // route) so signing out always returns to UI10. Keyed by
+                  // account so a new sign-in starts from onboarding.
+                  return _SignedInFlow(
+                    key: ValueKey(state.account?.uid),
+                    services: _appServices,
+                    poiViewRequests: widget.poiViewRequests,
+                    onPoiAction: widget.onPoiAction,
                   );
                 },
               ),
       ),
     );
   }
+}
+
+/// Onboarding, then the main shell, for a signed-in account. Both live in
+/// the auth gate's place in the tree instead of replacing its route.
+class _SignedInFlow extends StatefulWidget {
+  const _SignedInFlow({
+    super.key,
+    required this.services,
+    required this.poiViewRequests,
+    required this.onPoiAction,
+  });
+
+  final AppServices services;
+  final Stream<String> poiViewRequests;
+  final Future<void> Function(String, TriggerAction)? onPoiAction;
+
+  @override
+  State<_SignedInFlow> createState() => _SignedInFlowState();
+}
+
+class _SignedInFlowState extends State<_SignedInFlow> {
+  bool _ready = false;
+
+  @override
+  Widget build(BuildContext context) => AnimatedSwitcher(
+    duration: AgamMotion.duration(context, 320),
+    switchInCurve: AgamMotion.easeOut,
+    switchOutCurve: AgamMotion.easeOut,
+    // Full-screen pages: keep tight constraints during the crossfade, as
+    // a route would.
+    layoutBuilder: (current, previous) =>
+        Stack(fit: StackFit.expand, children: [...previous, ?current]),
+    child: _ready
+        ? AgamMainShell(
+            key: const ValueKey('shell'),
+            services: widget.services,
+            poiViewRequests: widget.poiViewRequests,
+            internalDemo: false,
+            onPoiAction: widget.onPoiAction,
+          )
+        : OnboardingScreen(
+            key: const ValueKey('onboarding'),
+            permissions: widget.services.permissions,
+            onAccessGranted: () => setState(() => _ready = true),
+          ),
+  );
 }
 
 class AgamMainShell extends StatefulWidget {

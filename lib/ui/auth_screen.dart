@@ -55,6 +55,10 @@ class _AuthScreenState extends State<AuthScreen> {
   bool _consentMissing = false;
   bool _busy = false;
   bool _submitting = false;
+  // After the first submit, fields re-check as the user types, so an error
+  // clears as soon as the input is fixed instead of lingering until the
+  // next tap.
+  bool _attempted = false;
   UserRole _role = UserRole.mahasiswaItb;
   _Notice? _notice;
 
@@ -77,6 +81,7 @@ class _AuthScreenState extends State<AuthScreen> {
     if (_scroll.hasClients) _scroll.jumpTo(0);
     setState(() {
       _register = register;
+      _attempted = false;
       _obscure = true;
       _notice = null;
       if (register) {
@@ -99,6 +104,7 @@ class _AuthScreenState extends State<AuthScreen> {
     final valid = form.currentState?.validate() ?? false;
     final consentMissing = _register && !_acceptedPrivacy;
     setState(() {
+      _attempted = true;
       _consentMissing = consentMissing;
       _notice = null;
     });
@@ -223,8 +229,13 @@ class _AuthScreenState extends State<AuthScreen> {
           ),
   );
 
+  AutovalidateMode get _autovalidate => _attempted
+      ? AutovalidateMode.onUserInteraction
+      : AutovalidateMode.disabled;
+
   Widget _buildLogin() => Form(
     key: _loginForm,
+    autovalidateMode: _autovalidate,
     child: AutofillGroup(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -259,6 +270,7 @@ class _AuthScreenState extends State<AuthScreen> {
 
   Widget _buildRegister() => Form(
     key: _registerForm,
+    autovalidateMode: _autovalidate,
     child: AutofillGroup(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
