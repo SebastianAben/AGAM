@@ -5,9 +5,14 @@ import 'package:flutter/material.dart';
 import '../contracts/app_services.dart';
 import '../contracts/models/content.dart';
 import '../contracts/models/discovery.dart';
+import '../contracts/models/geo.dart';
 import '../contracts/models/navigation.dart';
 import '../contracts/models/session.dart';
 import 'poi_detail_screen.dart';
+import 'widgets/agam_components.dart';
+import 'widgets/agam_motion.dart';
+import 'widgets/agam_theme.dart';
+import 'widgets/facility_labels.dart';
 import 'widgets/offline_campus_map.dart';
 
 /// UI05 Search & Destination plus the active UI06 navigation summary.
@@ -16,6 +21,10 @@ class SearchRouteScreen extends StatefulWidget {
   const SearchRouteScreen({
     super.key,
     required this.services,
+    this.isActive = true,
+    this.initialFacility,
+    this.autofocus = false,
+    this.initialDestination,
     this.onTabSelected,
     this.internalDemo = false,
     this.onShowPoiOnMap,
@@ -23,6 +32,18 @@ class SearchRouteScreen extends StatefulWidget {
 
   final ValueChanged<String>? onShowPoiOnMap;
   final AppServices services;
+
+  /// Entrance motion waits until the tab is first shown.
+  final bool isActive;
+
+  /// Opens with this facility category already filtering, from a map chip.
+  final FacilityCategory? initialFacility;
+
+  /// Opens with the keyboard up, from the map's search bar.
+  final bool autofocus;
+
+  /// Opens with this building already chosen, from "Rute" on the map.
+  final Poi? initialDestination;
   final ValueChanged<int>? onTabSelected;
   final bool internalDemo;
 
@@ -31,18 +52,14 @@ class SearchRouteScreen extends StatefulWidget {
 }
 
 class _SearchRouteScreenState extends State<SearchRouteScreen> {
-  static const _navy = Color(0xFF073B82);
-  static const _blue = Color(0xFF1553A6);
-  static const _pale = Color(0xFFE9EDFF);
-
   final _query = TextEditingController();
+  final _focus = FocusNode();
   List<Poi> _pois = const [];
   List<Facility> _facilities = const [];
   List<SearchResult> _results = const [];
   SearchResult? _destination;
   NavigationState _navigation = const NavigationState.idle();
   FacilityCategory? _facilityFilter;
-  int _poiFilter = 0;
   int _searchRequest = 0;
   bool _searching = false;
   bool _routing = false;
@@ -70,7 +87,17 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
         if (mounted) setState(() => _navigation = value);
       });
     }
+    _facilityFilter = widget.initialFacility;
+    if (widget.initialDestination case final poi?) {
+      _destination = SearchResult(
+        kind: SearchResultKind.poi,
+        id: poi.id,
+        name: poi.name,
+        score: 1,
+      );
+    }
     _query.addListener(_runSearch);
+    _focus.addListener(() => setState(() {}));
   }
 
   @override
@@ -78,6 +105,7 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
     _query
       ..removeListener(_runSearch)
       ..dispose();
+    _focus.dispose();
     _poiSubscription?.cancel();
     _facilitySubscription?.cancel();
     _navigationSubscription?.cancel();
@@ -86,7 +114,6 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
 
   Future<void> _runSearch() async {
     final request = ++_searchRequest;
-    final filter = _poiFilter;
     final text = _query.text.trim();
     if (text.isEmpty) {
       if (mounted) {
@@ -108,22 +135,8 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
         includePois: _facilityFilter == null,
         facilityCategories: _facilityFilter == null ? null : {_facilityFilter!},
       );
-      final currentPois = filter != 0
-          ? await widget.services.pois.watchPois().first
-          : null;
       if (mounted && request == _searchRequest) {
-        setState(() {
-          if (currentPois != null) _pois = currentPois;
-          _results = filter != 0
-              ? result.where((entry) {
-                  final poi = _poiFor(entry);
-                  return poi != null &&
-                      (filter == 1
-                          ? poi.category == PoiCategory.lecture
-                          : poi.category == PoiCategory.laboratoryAndLecture);
-                }).toList()
-              : result;
-        });
+        setState(() => _results = result);
       }
     } catch (_) {
       if (mounted && request == _searchRequest) {
@@ -136,47 +149,9 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
     }
   }
 
-  Future<void> _showFilters() async {
-    final selected = await showModalBottomSheet<int>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) => SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            for (final entry in const [
-              (0, 'Semua'),
-              (1, 'Ruang Kuliah'),
-              (2, 'Laboratorium'),
-            ])
-              ListTile(
-                title: Text(entry.$2),
-                selected: _facilityFilter == null && _poiFilter == entry.$1,
-                trailing: _facilityFilter == null && _poiFilter == entry.$1
-                    ? const Icon(Icons.check)
-                    : null,
-                onTap: () => Navigator.of(context).pop(entry.$1),
-              ),
-          ],
-        ),
-      ),
-    );
-    if (mounted && selected != null) _setPoiFilter(selected);
-  }
-
-  void _setPoiFilter(int index) {
-    setState(() {
-      _poiFilter = index;
-      _facilityFilter = null;
-    });
-    _runSearch();
-  }
-
   void _setFacilityFilter(FacilityCategory category) {
     setState(() {
       _facilityFilter = _facilityFilter == category ? null : category;
-      _poiFilter = 0;
     });
     _runSearch();
   }
@@ -215,8 +190,8 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
 
   Future<void> _openPoiDetail(Poi poi) async {
     await Navigator.of(context).push<void>(
-      MaterialPageRoute<void>(
-        builder: (_) => PoiDetailScreen(
+      AgamMotion.route(
+        (_) => PoiDetailScreen(
           poi: poi,
           audio: widget.services.audio,
           settings: widget.services.settings,
@@ -335,108 +310,151 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
                 name: currentTarget.name,
                 score: 1,
               ));
-    final pois = _pois.where((poi) {
-      if (_facilityFilter != null) return false;
-      if (_poiFilter == 1) return poi.category == PoiCategory.lecture;
-      if (_poiFilter == 2) {
-        return poi.category == PoiCategory.laboratoryAndLecture;
-      }
-      return true;
-    }).toList();
+    final approvedFacilities = _facilities
+        .where(
+          (f) =>
+              f.category == _facilityFilter &&
+              f.metadata.approved &&
+              !f.metadata.isPlaceholder,
+        )
+        .toList();
+    final play = widget.isActive;
+    final searching = _query.text.trim().isNotEmpty;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFAF8FF),
+      backgroundColor: AgamColors.canvas,
       body: SafeArea(
         bottom: false,
-        child: CustomScrollView(
-          physics: const ClampingScrollPhysics(),
-          slivers: [
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
-              sliver: SliverList.list(
-                children: [
-                  _searchBox(),
-                  const SizedBox(height: 18),
-                  _filters(),
-                  const SizedBox(height: 18),
-                  if (selected != null) ...[
-                    _routeCard(selected, activeRoute: activeRoute),
-                    const SizedBox(height: 18),
-                  ],
-                  if (_error != null) _errorCard(_error!),
-                  if (_query.text.trim().isNotEmpty) ...[
-                    _sectionTitle('Hasil Pencarian'),
-                    const SizedBox(height: 8),
-                    if (_searching)
-                      const Center(
-                        child: Padding(
-                          padding: EdgeInsets.all(24),
-                          child: CircularProgressIndicator(),
+        child: Column(
+          children: [
+            _searchHeader(),
+            Expanded(
+              child: CustomScrollView(
+                physics: const ClampingScrollPhysics(),
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
+                slivers: [
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+                    sliver: SliverList.list(
+                      children: [
+                        AnimatedSize(
+                          duration: AgamMotion.duration(context, 280),
+                          curve: AgamMotion.easeOut,
+                          alignment: Alignment.topCenter,
+                          child: selected == null
+                              ? const SizedBox(width: double.infinity)
+                              : Padding(
+                                  padding: const EdgeInsets.only(bottom: 24),
+                                  child: _routeCard(
+                                    selected,
+                                    activeRoute: activeRoute,
+                                  ),
+                                ),
                         ),
-                      )
-                    else if (_results.isEmpty)
-                      _emptyCard(
-                        widget.internalDemo && _facilityFilter != null
-                            ? 'Tidak ada fasilitas tersedia.'
-                            : 'Tidak ada hasil yang cocok.',
-                      )
-                    else
-                      ..._results.map(_resultCard),
-                    const SizedBox(height: 20),
-                  ] else ...[
-                    _sectionTitle('Tujuan Kampus'),
-                    const SizedBox(height: 4),
-                    Text(
-                      widget.internalDemo
-                          ? 'Temukan gedung di peta kampus dan buka informasinya.'
-                          : 'Pilih gedung tujuan.',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF62697A),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    ...pois.map(_poiCard),
-                    ...[
-                      const SizedBox(height: 18),
-                      _sectionTitle('Fasilitas'),
-                      const SizedBox(height: 8),
-                      ..._facilityChips(),
-                    ],
-                    if (!widget.internalDemo &&
-                        _facilityFilter != null &&
-                        _facilities.any(
-                          (f) =>
-                              f.category == _facilityFilter &&
-                              f.metadata.approved &&
-                              !f.metadata.isPlaceholder,
-                        ))
-                      ..._facilities
-                          .where(
-                            (f) =>
-                                f.category == _facilityFilter &&
-                                f.metadata.approved &&
-                                !f.metadata.isPlaceholder,
-                          )
-                          .map(
-                            (facility) => _destinationTile(
-                              facility.name,
-                              Icons.place_outlined,
-                              () => _selectDestination(
-                                SearchResult(
-                                  kind: SearchResultKind.facility,
-                                  id: facility.id,
-                                  name: facility.name,
-                                  score: 1,
+                        if (_error != null) _errorCard(_error!),
+                        if (searching) ...[
+                          const AgamSectionHeader('Hasil Pencarian'),
+                          if (_facilityFilter case final category?) ...[
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: _activeFilter(category),
+                            ),
+                            const SizedBox(height: 12),
+                          ],
+                          if (_searching)
+                            const Padding(
+                              padding: EdgeInsets.all(24),
+                              child: Center(
+                                child: SizedBox.square(
+                                  dimension: 26,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.5,
+                                    color: AgamColors.brand,
+                                  ),
                                 ),
                               ),
-                              subtitle: facility.description,
+                            )
+                          else if (_results.isEmpty)
+                            _emptyCard(
+                              _facilityFilter != null &&
+                                      approvedFacilities.isEmpty
+                                  ? _missingData(_facilityFilter!)
+                                  : 'Tidak ada hasil yang cocok.',
+                              icon: Icons.search_off_rounded,
+                            )
+                          else
+                            AgamGroup(
+                              children: _results.map(_resultRow).toList(),
                             ),
+                        ] else ...[
+                          // A chosen facility category is the filter: the building
+                          // list steps aside for that category's places.
+                          if (_facilityFilter == null) ...[
+                            AgamReveal(
+                              order: 1,
+                              play: play,
+                              child: const AgamSectionHeader('Gedung'),
+                            ),
+                            AgamReveal(
+                              order: 2,
+                              play: play,
+                              child: AgamGroup(
+                                children: _pois.map(_poiRow).toList(),
+                              ),
+                            ),
+                            const SizedBox(height: 28),
+                          ],
+                          AgamReveal(
+                            order: 3,
+                            play: play,
+                            child: const AgamSectionHeader('Fasilitas'),
                           ),
-                    if ((widget.internalDemo ||
-                        _facilities.every((f) => f.metadata.isPlaceholder)))
-                      _emptyCard('Tidak ada fasilitas tersedia.'),
-                  ],
+                          AgamReveal(
+                            order: 4,
+                            play: play,
+                            child: _facilityGrid(),
+                          ),
+                          if (_facilityFilter case final category?) ...[
+                            const SizedBox(height: 14),
+                            if (approvedFacilities.isEmpty)
+                              _emptyCard(
+                                _missingData(category),
+                                icon: Icons.inventory_2_outlined,
+                              )
+                            else
+                              AgamGroup(
+                                children: [
+                                  for (final facility in approvedFacilities)
+                                    AgamListRow(
+                                      icon: facilityIcon(facility.category),
+                                      title: facility.name,
+                                      trailing: _routeIcon(
+                                        SearchResult(
+                                          kind: SearchResultKind.facility,
+                                          id: facility.id,
+                                          name: facility.name,
+                                          score: 1,
+                                        ),
+                                      ),
+                                      onTap: _routing
+                                          ? null
+                                          : () => _selectDestination(
+                                              SearchResult(
+                                                kind: SearchResultKind.facility,
+                                                id: facility.id,
+                                                name: facility.name,
+                                                score: 1,
+                                              ),
+                                            ),
+                                    ),
+                                ],
+                              ),
+                          ],
+                        ],
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -446,111 +464,228 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
     );
   }
 
-  Widget _searchBox() => Container(
-    height: 56,
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(28),
-      boxShadow: const [
-        BoxShadow(
-          color: Color(0x14073B82),
-          blurRadius: 16,
-          offset: Offset(0, 5),
-        ),
-      ],
-    ),
+  /// Search field with a back arrow, pinned above the results the way
+  /// Material's search view and Google Maps present it.
+  Widget _searchHeader() => Padding(
+    padding: const EdgeInsets.fromLTRB(8, 8, 16, 8),
     child: Row(
       children: [
-        const SizedBox(width: 16),
-        const Icon(Icons.search, color: _navy, size: 23),
-        const SizedBox(width: 8),
+        if (Navigator.canPop(context))
+          const AgamBackButton()
+        else
+          const SizedBox(width: 8),
+        const SizedBox(width: 4),
         Expanded(
-          child: TextField(
-            controller: _query,
-            decoration: InputDecoration(
-              hintText: widget.internalDemo
-                  ? 'Cari gedung atau alias, mis. labtek 5...'
-                  : 'Cari gedung, ruang, atau fasilitas...',
-              hintStyle: TextStyle(color: Color(0xFF747B8C), fontSize: 13),
-              border: InputBorder.none,
-              isDense: true,
+          child: AnimatedContainer(
+            duration: AgamMotion.duration(context, 200),
+            curve: AgamMotion.easeOut,
+            height: 52,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(26),
+              boxShadow: [
+                BoxShadow(
+                  color: (_focus.hasFocus ? AgamColors.cyan : Colors.black)
+                      .withValues(alpha: _focus.hasFocus ? .55 : .12),
+                  blurRadius: _focus.hasFocus ? 0 : 12,
+                  spreadRadius: _focus.hasFocus ? 3 : 0,
+                  offset: _focus.hasFocus ? Offset.zero : const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                const SizedBox(width: 16),
+                const Icon(
+                  Icons.search_rounded,
+                  color: AgamColors.brand,
+                  size: 22,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: TextField(
+                    controller: _query,
+                    focusNode: _focus,
+                    autofocus: widget.autofocus,
+                    textInputAction: TextInputAction.search,
+                    style: AgamText.label.copyWith(fontSize: 15),
+                    cursorColor: AgamColors.brand,
+                    decoration: InputDecoration(
+                      hintText: 'Cari gedung atau fasilitas',
+                      hintStyle: const TextStyle(
+                        color: AgamColors.subtle,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w400,
+                      ),
+                      border: InputBorder.none,
+                      isDense: true,
+                    ),
+                  ),
+                ),
+                AnimatedSwitcher(
+                  duration: AgamMotion.duration(context, 160),
+                  transitionBuilder: (child, animation) => FadeTransition(
+                    opacity: animation,
+                    child: ScaleTransition(
+                      scale: Tween(begin: .8, end: 1.0).animate(animation),
+                      child: child,
+                    ),
+                  ),
+                  child: _query.text.isEmpty
+                      ? const SizedBox(key: ValueKey('empty'), width: 4)
+                      : IconButton(
+                          key: const ValueKey('clear'),
+                          tooltip: 'Hapus pencarian',
+                          color: AgamColors.muted,
+                          icon: const Icon(Icons.close_rounded),
+                          onPressed: () {
+                            setState(() => _destination = null);
+                            _query.clear();
+                          },
+                        ),
+                ),
+                const SizedBox(width: 6),
+              ],
             ),
           ),
         ),
-        if (_query.text.isNotEmpty)
-          IconButton(
-            tooltip: 'Hapus pencarian',
-            icon: const Icon(Icons.close_rounded),
-            onPressed: () {
-              setState(() => _destination = null);
-              _query.clear();
-            },
-          ),
-        IconButton(
-          tooltip: 'Filter kategori',
-          onPressed: _showFilters,
-          icon: const Icon(Icons.tune_rounded, color: _navy),
-          style: IconButton.styleFrom(backgroundColor: _pale),
-        ),
-        const SizedBox(width: 8),
       ],
     ),
   );
 
-  Widget _filters() => SingleChildScrollView(
-    scrollDirection: Axis.horizontal,
-    physics: const ClampingScrollPhysics(),
-    child: Row(
-      children: [
-        _filterChip(
-          'Semua',
-          _poiFilter == 0 && _facilityFilter == null,
-          () => _setPoiFilter(0),
-        ),
-        const SizedBox(width: 7),
-        _filterChip('Ruang Kuliah', _poiFilter == 1, () => _setPoiFilter(1)),
-        const SizedBox(width: 7),
-        _filterChip('Laboratorium', _poiFilter == 2, () => _setPoiFilter(2)),
-        ...[
-          const SizedBox(width: 7),
-          _filterChip(
-            'Fasilitas',
-            _facilityFilter != null,
-            () => _setFacilityFilter(FacilityCategory.toilet),
+  /// Shown above results while a facility category filters the search.
+  Widget _activeFilter(FacilityCategory category) => Semantics(
+    button: true,
+    label: 'Hapus filter ${facilityName(category)}',
+    child: AgamPressFeedback(
+      child: GestureDetector(
+        onTap: () => _setFacilityFilter(category),
+        child: Container(
+          height: 36,
+          padding: const EdgeInsets.fromLTRB(12, 0, 8, 0),
+          decoration: BoxDecoration(
+            color: AgamColors.brand,
+            borderRadius: BorderRadius.circular(18),
           ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(facilityIcon(category), size: 16, color: Colors.white),
+              const SizedBox(width: 6),
+              ExcludeSemantics(
+                child: Text(
+                  facilityName(category),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
+              const Icon(Icons.close_rounded, size: 16, color: Colors.white),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+
+  String _missingData(FacilityCategory category) =>
+      'Data ${facilityName(category).toLowerCase()} belum tersedia.';
+
+  Widget _facilityGrid() => LayoutBuilder(
+    builder: (context, constraints) {
+      const gap = 10.0;
+      final width = (constraints.maxWidth - gap * 2) / 3;
+      return Wrap(
+        spacing: gap,
+        runSpacing: gap,
+        children: [
+          for (final category in facilityCategories)
+            SizedBox(
+              width: width,
+              child: _facilityTile(category, _facilityFilter == category),
+            ),
         ],
-      ],
-    ),
+      );
+    },
   );
 
-  Widget _filterChip(String label, bool selected, VoidCallback onTap) =>
-      ActionChip(
-        onPressed: onTap,
-        label: Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            color: selected ? Colors.white : const Color(0xFF202A40),
-            fontWeight: FontWeight.w600,
+  Widget _facilityTile(FacilityCategory category, bool selected) => Semantics(
+    button: true,
+    selected: selected,
+    child: AgamPressFeedback(
+      child: GestureDetector(
+        onTap: () => _setFacilityFilter(category),
+        child: AnimatedContainer(
+          duration: AgamMotion.duration(context, 220),
+          curve: AgamMotion.easeOut,
+          height: 100,
+          decoration: BoxDecoration(
+            color: selected ? AgamColors.brand : Colors.white,
+            borderRadius: BorderRadius.circular(AgamRadius.tile),
+            boxShadow: selected
+                ? AgamShadows.glow(AgamColors.brand)
+                : AgamShadows.card,
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              AnimatedContainer(
+                duration: AgamMotion.duration(context, 220),
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: selected
+                      ? Colors.white.withValues(alpha: .16)
+                      : AgamColors.tint,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  facilityIcon(category),
+                  size: 20,
+                  color: selected ? Colors.white : AgamColors.brand,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                child: Text(
+                  facilityName(category),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 12,
+                    height: 1.2,
+                    fontWeight: FontWeight.w600,
+                    color: selected ? Colors.white : AgamColors.ink,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
-        backgroundColor: selected ? _navy : const Color(0xFFF1F2FF),
-        side: BorderSide.none,
-        shape: const StadiumBorder(),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      );
+      ),
+    ),
+  );
 
   Widget _demoPoiCard(SearchResult destination) {
     final poi = _poiFor(destination);
     if (poi == null) return _emptyCard('Informasi gedung belum tersedia.');
-    return Card(
-      margin: EdgeInsets.zero,
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(AgamRadius.card),
+        boxShadow: AgamShadows.card,
+      ),
       clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           SizedBox(
-            height: 200,
+            height: 188,
             child: OfflineCampusMap(
               key: ValueKey(poi.id),
               config: widget.services.map,
@@ -558,37 +693,39 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
               pois: [poi],
               selectedPoiId: poi.id,
               onSelectPoi: _openPoiDetail,
+              attributionPadding: const EdgeInsets.all(8),
             ),
           ),
           Padding(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
-                  poi.name,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: _navy,
-                  ),
+                Text(poi.name, style: AgamText.title),
+                const SizedBox(height: 16),
+                // The demo has no campus graph, so "Rute" explains itself.
+                const AgamRouteButton(
+                  available: false,
+                  onPressed: null,
+                  primary: true,
                 ),
-                const SizedBox(height: 4),
-                const Text(
-                  'Lokasi gedung',
-                  style: TextStyle(fontSize: 10, color: Color(0xFF62697A)),
-                ),
-                const SizedBox(height: 12),
-                FilledButton.icon(
+                const SizedBox(height: 10),
+                AgamTonalButton(
+                  icon: Icons.map_rounded,
+                  label: 'Tampilkan di peta',
                   onPressed: () {
                     final showOnMap = widget.onShowPoiOnMap;
                     if (showOnMap != null) {
                       showOnMap(poi.id);
                     } else {
                       Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => Scaffold(
-                            appBar: AppBar(title: Text(poi.name)),
+                        AgamMotion.route<void>(
+                          (_) => Scaffold(
+                            appBar: AppBar(
+                              title: Text(poi.name, style: AgamText.headline),
+                              backgroundColor: Colors.white,
+                              surfaceTintColor: Colors.transparent,
+                            ),
                             body: OfflineCampusMap(
                               config: widget.services.map,
                               initialFocus: poi.position,
@@ -601,17 +738,24 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
                       );
                     }
                   },
-                  icon: const Icon(Icons.map_outlined),
-                  label: const Text('Tampilkan di peta'),
                 ),
-                TextButton.icon(
+                const SizedBox(height: 10),
+                AgamTonalButton(
+                  icon: Icons.info_outline_rounded,
+                  label: 'Lihat Detail POI',
                   onPressed: () => _openDemoPoi(poi.id),
-                  icon: const Icon(Icons.info_outline),
-                  label: const Text('Lihat Detail POI'),
                 ),
+                const SizedBox(height: 4),
                 TextButton(
                   onPressed: _stopRoute,
-                  child: const Text('Tutup pilihan'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AgamColors.muted,
+                    minimumSize: const Size.fromHeight(44),
+                  ),
+                  child: const Text(
+                    'Tutup pilihan',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
                 ),
               ],
             ),
@@ -621,83 +765,77 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
     );
   }
 
+  GeoPoint? _pointFor(SearchResult result) =>
+      _navigation.target?.id == result.id
+      ? _navigation.target!.point
+      : _poiFor(result)?.position ?? _facilityFor(result)?.position;
+
   Widget _routeCard(SearchResult destination, {required bool activeRoute}) {
     if (widget.internalDemo) return _demoPoiCard(destination);
-    final route = widget.internalDemo ? null : _navigation.route;
-    final step = widget.internalDemo ? null : _navigation.currentStep;
-    final eta = widget.internalDemo
-        ? null
-        : _navigation.remainingEta ?? route?.eta;
-    final distance = widget.internalDemo
-        ? null
-        : _navigation.remainingDistanceM ?? route?.distanceM;
-    final name = destination.name;
+    final route = _navigation.route;
+    final step = _navigation.currentStep;
+    final eta = _navigation.remainingEta ?? route?.eta;
+    final distance = _navigation.remainingDistanceM ?? route?.distanceM;
+    final point = _pointFor(destination);
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x14073B82),
-            blurRadius: 12,
-            offset: Offset(0, 4),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(AgamRadius.card),
+        boxShadow: AgamShadows.card,
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Container(
-            height: 170,
-            color: const Color(0xFFE9ECFF),
-            child: Stack(
-              children: [
-                Center(
-                  child: Icon(
-                    Icons.route_rounded,
-                    size: 90,
-                    color: _blue.withValues(alpha: .18),
-                  ),
-                ),
-                Positioned.fill(
-                  child: CustomPaint(painter: _RoutePreviewPainter()),
-                ),
-                const Positioned(left: 14, bottom: 12, child: _RouteBadge()),
-                Positioned(
-                  right: 14,
-                  bottom: 12,
-                  child: Text(
-                    distance == null ? '— m' : '${distance.round()} m',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
-                      shadows: [Shadow(color: Colors.black54, blurRadius: 4)],
-                    ),
-                  ),
-                ),
-              ],
+          if (point != null)
+            SizedBox(
+              height: 168,
+              child: OfflineCampusMap(
+                key: ValueKey('route-${destination.id}'),
+                config: widget.services.map,
+                initialFocus: point,
+                pois: [?_poiFor(destination)],
+                selectedPoiId: destination.id,
+                onSelectPoi: _openPoiDetail,
+                attributionPadding: const EdgeInsets.all(8),
+              ),
             ),
-          ),
-          Container(
-            color: _blue,
-            padding: const EdgeInsets.fromLTRB(16, 13, 16, 14),
+          AgamGround(
+            radius: 0,
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
             child: Row(
               children: [
-                const CircleAvatar(
-                  backgroundColor: Color(0xFFDDE5FF),
-                  child: Icon(Icons.navigation_rounded, color: _navy),
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: .14),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.navigation_rounded,
+                    color: AgamColors.cyan,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Text(
-                    name,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      height: 1.2,
-                      fontWeight: FontWeight.w700,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        destination.name,
+                        style: AgamText.headline.copyWith(color: Colors.white),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        distance == null ? '— m' : '${distance.round()} m',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: .75),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 Column(
@@ -706,13 +844,19 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
                       eta == null ? '—' : '${eta.inMinutes}',
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 23,
-                        fontWeight: FontWeight.w800,
+                        fontSize: 26,
+                        height: 1,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.6,
                       ),
                     ),
-                    const Text(
+                    const SizedBox(height: 2),
+                    Text(
                       'menit',
-                      style: TextStyle(color: Colors.white, fontSize: 10),
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: .75),
+                        fontSize: 12,
+                      ),
                     ),
                   ],
                 ),
@@ -721,29 +865,20 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
           ),
           if (step != null)
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.turn_left_rounded, color: _blue),
+                  const AgamIconTile(icon: Icons.turn_left_rounded, size: 40),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          step.instruction,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
+                        Text(step.instruction, style: AgamText.label),
+                        const SizedBox(height: 2),
                         Text(
                           'Arahan • ${step.distanceM.round()} m',
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: Color(0xFF686F80),
-                          ),
+                          style: AgamText.caption,
                         ),
                       ],
                     ),
@@ -752,32 +887,30 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
               ),
             ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
             child: Row(
               children: [
                 Expanded(
-                  child: FilledButton.icon(
+                  child: AgamRouteButton(
+                    available: true,
+                    primary: true,
                     onPressed: _routing || activeRoute
                         ? null
                         : () => _startRoute(destination),
-                    icon: const Icon(Icons.directions_walk_rounded),
-                    label: Text(
-                      activeRoute
-                          ? 'Navigasi sedang berjalan'
-                          : 'Mulai Navigasi Belokan Suara',
-                    ),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: _navy,
-                      minimumSize: const Size.fromHeight(46),
-                    ),
+                    busy: _routing,
+                    label: activeRoute ? 'Navigasi sedang berjalan' : 'Rute',
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 10),
                 IconButton(
                   onPressed: _stopRoute,
-                  icon: const Icon(Icons.close),
+                  icon: const Icon(Icons.close_rounded),
                   tooltip: 'Akhiri rute',
-                  style: IconButton.styleFrom(backgroundColor: _pale),
+                  style: IconButton.styleFrom(
+                    backgroundColor: AgamColors.fill,
+                    foregroundColor: AgamColors.ink,
+                    fixedSize: const Size(54, 54),
+                  ),
                 ),
               ],
             ),
@@ -787,218 +920,99 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
     );
   }
 
-  Widget _resultCard(SearchResult result) => Padding(
-    padding: const EdgeInsets.only(bottom: 8),
-    child: _destinationTile(
-      result.name,
-      result.kind == SearchResultKind.poi
-          ? Icons.apartment_rounded
-          : Icons.place_outlined,
-      () => _selectDestination(result),
-      subtitle: result.kind == SearchResultKind.poi
-          ? 'Gedung kampus'
-          : 'Fasilitas',
-    ),
+  Widget _resultRow(SearchResult result) => AgamListRow(
+    icon: result.kind == SearchResultKind.poi
+        ? Icons.apartment_rounded
+        : Icons.place_rounded,
+    title: result.name,
+    trailing: const _Chevron(),
+    onTap: _routing ? null : () => _selectDestination(result),
   );
 
-  Widget _poiCard(Poi poi) => Padding(
-    padding: const EdgeInsets.only(bottom: 8),
-    child: _destinationTile(
-      poi.name,
-      poi.category == PoiCategory.lecture
-          ? Icons.school_outlined
-          : Icons.apartment_rounded,
-      () => _selectDestination(
-        SearchResult(
-          kind: SearchResultKind.poi,
-          id: poi.id,
-          name: poi.name,
-          score: 1,
-        ),
-      ),
-      subtitle: widget.internalDemo
-          ? 'Buka kartu POI'
-          : poi.hasSurveyedEntrance
-          ? 'Pintu masuk tersedia'
-          : 'Gedung kampus',
-    ),
-  );
-
-  Widget _destinationTile(
-    String title,
-    IconData icon,
-    VoidCallback onTap, {
-    required String subtitle,
-  }) => Material(
-    color: Colors.white,
-    borderRadius: BorderRadius.circular(14),
-    child: InkWell(
-      onTap: _routing ? null : onTap,
-      borderRadius: BorderRadius.circular(14),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: _pale,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(icon, color: _navy),
+  Widget _poiRow(Poi poi) => AgamListRow(
+    icon: Icons.apartment_rounded,
+    title: poi.name,
+    trailing: const _Chevron(),
+    onTap: _routing
+        ? null
+        : () => _selectDestination(
+            SearchResult(
+              kind: SearchResultKind.poi,
+              id: poi.id,
+              name: poi.name,
+              score: 1,
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(
-                      fontSize: 10,
-                      color: Color(0xFF687082),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(
-              Icons.arrow_forward_ios_rounded,
-              size: 15,
-              color: Color(0xFF737B8E),
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
-
-  List<Widget> _facilityChips() {
-    const categories = [
-      FacilityCategory.toilet,
-      FacilityCategory.musala,
-      FacilityCategory.kantin,
-      FacilityCategory.atm,
-      FacilityCategory.perpustakaan,
-      FacilityCategory.layananAkademik,
-    ];
-    return [
-      for (final category in categories)
-        Padding(
-          padding: const EdgeInsets.only(bottom: 7),
-          child: _filterChip(
-            _categoryName(category),
-            _facilityFilter == category,
-            () => _setFacilityFilter(category),
           ),
-        ),
-    ];
-  }
-
-  String _categoryName(FacilityCategory category) => switch (category) {
-    FacilityCategory.toilet => 'Toilet',
-    FacilityCategory.musala => 'Musala',
-    FacilityCategory.kantin => 'Kantin',
-    FacilityCategory.atm => 'ATM',
-    FacilityCategory.perpustakaan => 'Perpustakaan',
-    FacilityCategory.layananAkademik => 'Layanan akademik',
-  };
-
-  Widget _sectionTitle(String text) => Padding(
-    padding: const EdgeInsets.only(left: 4, top: 2),
-    child: Text(
-      text,
-      style: const TextStyle(
-        fontSize: 17,
-        fontWeight: FontWeight.w700,
-        color: Color(0xFF202A40),
-      ),
-    ),
   );
 
-  Widget _emptyCard(String text) => Container(
-    margin: const EdgeInsets.only(top: 4),
-    padding: const EdgeInsets.all(14),
+  /// Compact "Rute" for list rows; the row itself still opens the card.
+  Widget _routeIcon(SearchResult result) => IconButton(
+    tooltip: 'Rute',
+    icon: const Icon(Icons.directions_rounded),
+    color: widget.internalDemo ? AgamColors.subtle : AgamColors.brand,
+    style: IconButton.styleFrom(
+      backgroundColor: AgamColors.fill,
+      fixedSize: const Size(44, 44),
+    ),
+    onPressed: _routing
+        ? null
+        : widget.internalDemo
+        ? () => _showMessage(AgamRouteButton.unavailableMessage)
+        : () => _startRoute(result),
+  );
+
+  Widget _emptyCard(
+    String text, {
+    IconData icon = Icons.info_outline_rounded,
+  }) => Container(
+    padding: const EdgeInsets.all(16),
     decoration: BoxDecoration(
       color: Colors.white,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(AgamRadius.tile),
+      border: Border.all(color: AgamColors.line),
     ),
-    child: Text(
-      text,
-      style: const TextStyle(fontSize: 12, color: Color(0xFF62697A)),
+    child: Row(
+      children: [
+        Icon(icon, size: 20, color: AgamColors.subtle),
+        const SizedBox(width: 12),
+        Expanded(child: Text(text, style: AgamText.bodySmall)),
+      ],
     ),
   );
 
   Widget _errorCard(String text) => Container(
-    margin: const EdgeInsets.only(bottom: 14),
-    padding: const EdgeInsets.all(12),
+    margin: const EdgeInsets.only(bottom: 20),
+    padding: const EdgeInsets.all(16),
     decoration: BoxDecoration(
-      color: const Color(0xFFFFEEEE),
-      borderRadius: BorderRadius.circular(12),
+      color: AgamColors.dangerTint,
+      borderRadius: BorderRadius.circular(AgamRadius.tile),
     ),
-    child: Text(
-      text,
-      style: const TextStyle(color: Color(0xFF8A2430), fontSize: 12),
-    ),
-  );
-}
-
-class _RouteBadge extends StatelessWidget {
-  const _RouteBadge();
-
-  @override
-  Widget build(BuildContext context) => DecoratedBox(
-    decoration: BoxDecoration(
-      color: Colors.white.withValues(alpha: .9),
-      borderRadius: BorderRadius.circular(5),
-    ),
-    child: const Padding(
-      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      child: Text(
-        'Peta kampus',
-        style: TextStyle(
-          color: Color(0xFF073B82),
-          fontSize: 10,
-          fontWeight: FontWeight.w600,
+    child: Row(
+      children: [
+        const Icon(
+          Icons.error_outline_rounded,
+          size: 20,
+          color: AgamColors.danger,
         ),
-      ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            text,
+            style: AgamText.bodySmall.copyWith(color: AgamColors.danger),
+          ),
+        ),
+      ],
     ),
   );
 }
 
-class _RoutePreviewPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final routePaint = Paint()
-      ..color = const Color(0xFF1553A6)
-      ..strokeWidth = 5
-      ..strokeCap = StrokeCap.round
-      ..style = PaintingStyle.stroke;
-    final path = Path()
-      ..moveTo(size.width * .12, size.height * .78)
-      ..lineTo(size.width * .39, size.height * .78)
-      ..lineTo(size.width * .39, size.height * .48)
-      ..lineTo(size.width * .76, size.height * .48)
-      ..lineTo(size.width * .76, size.height * .22);
-    canvas.drawPath(path, routePaint);
-    final dot = Paint()..color = const Color(0xFF004D3B);
-    canvas.drawCircle(Offset(size.width * .12, size.height * .78), 7, dot);
-    canvas.drawCircle(
-      Offset(size.width * .76, size.height * .22),
-      8,
-      Paint()..color = const Color(0xFF0A4A98),
-    );
-  }
+class _Chevron extends StatelessWidget {
+  const _Chevron();
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  Widget build(BuildContext context) => const Icon(
+    Icons.chevron_right_rounded,
+    size: 22,
+    color: AgamColors.subtle,
+  );
 }

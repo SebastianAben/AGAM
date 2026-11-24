@@ -41,7 +41,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(find.text('Fungsi & Gambaran Gedung'), 250);
+    await tester.scrollUntilVisible(find.text('Fungsi'), 250);
     await tester.pumpAndSettle();
     expect(find.textContaining('Informasi belum tersedia'), findsWidgets);
     expect(find.byType(Image), findsNothing);
@@ -163,55 +163,43 @@ void main() {
       expect(find.text('Lihat'), findsNothing);
       expect(find.byType(MaterialBanner), findsNothing);
       expect(find.text('Mode uji'), findsOneWidget);
-      // FE 5db4dd4: top/right 12, 39 px controls, 7 px gaps,
-      // centered above the 42 px session button. Demo label lives below the map.
+      // Redesign: the map fills the area under the 64 px header. A 48 px
+      // control capsule sits 16 px from the right edge, below the floating
+      // status; the session card is pinned 16 px above the bottom navigation.
       final mapRect = tester.getRect(find.byType(OfflineCampusMap));
-      final controlIcons = [
-        Icons.explore_outlined,
-        Icons.my_location_rounded,
-        Icons.layers_outlined,
+      expect(mapRect.top, 64);
+      const controlTooltips = [
+        'Arahkan peta ke utara',
+        'Pusatkan lokasi saya',
+        'Sembunyikan penanda POI',
       ];
-      for (var index = 0; index < controlIcons.length; index++) {
-        final button = find.byWidgetPredicate(
-          (widget) =>
-              widget is SizedBox &&
-              widget.width == 39 &&
-              widget.height == 39 &&
-              widget.child is Icon &&
-              (widget.child! as Icon).icon == controlIcons[index],
-        );
-        final rect = tester.getRect(button);
-        expect(rect.size, const Size(39, 39));
-        expect(rect.center.dx, mapRect.right - 33);
-        expect(rect.top, mapRect.top + 32 + index * 46);
-        final icon = tester.widget<Icon>(
-          find.byIcon(controlIcons[index]).first,
-        );
-        expect(icon.color, const Color(0xFF174F9E));
-        expect(icon.size, 20);
+      for (var index = 0; index < controlTooltips.length; index++) {
+        final rect = tester.getRect(find.byTooltip(controlTooltips[index]));
+        expect(rect.size, const Size(48, 48)); // Touch target, not icon size.
+        expect(rect.right, mapRect.right - 16);
+        // Below the search bar (52) and facility chips (40) with gaps.
+        expect(rect.top, mapRect.top + 126 + index * 49); // 1 px dividers.
       }
-      expect(
-        tester.getSize(find.byTooltip('Mulai Explore')),
-        const Size(42, 42),
-      );
-      expect(
-        tester.getRect(find.byTooltip('Mulai Explore')).top,
-        mapRect.top + 170,
-      );
-      expect(mapRect.top, 94); // 54 px FE header + 40 px location status.
+      final sessionButton = tester.getRect(find.byTooltip('Mulai Explore'));
+      expect(sessionButton.height, 44);
+      expect(sessionButton.right, mapRect.right - 28); // Card inset + padding.
+      expect(sessionButton.bottom, lessThanOrEqualTo(mapRect.bottom - 16));
       final osmRect = tester.getRect(find.textContaining('OpenStreetMap'));
       final omtRect = tester.getRect(find.text('© OpenMapTiles'));
       expect(osmRect.top, omtRect.top); // Compact attribution stays one line.
       expect(osmRect.overlaps(omtRect), isFalse);
-      final canvasRect = tester.getRect(find.byType(FlutterMap));
-      expect(osmRect.bottom, lessThanOrEqualTo(canvasRect.top));
+      // Credits stay on the map and are never covered by the session card.
+      expect(mapRect.contains(osmRect.topLeft), isTrue);
+      expect(omtRect.right, lessThanOrEqualTo(mapRect.right));
+      expect(osmRect.bottom, lessThanOrEqualTo(sessionButton.top));
       expect(
         tester.getRect(find.text('Mode uji')).bottom,
         lessThanOrEqualTo(mapRect.top),
       );
       expect(find.text('Pusatkan'), findsNothing);
       expect(find.textContaining('engineering'), findsNothing);
-      // Small phone: credits stay readable and controls keep the FE right inset.
+      // Small phone: credits stay on one line, controls keep their inset and
+      // the account button keeps a 44 px target.
       tester.view.physicalSize = const Size(320, 740);
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
@@ -219,10 +207,14 @@ void main() {
         tester.getRect(find.textContaining('OpenStreetMap')).top,
         tester.getRect(find.text('© OpenMapTiles')).top,
       );
-      expect(tester.getRect(find.byTooltip('Mulai Explore')).right, 308);
       expect(
-        tester.getSize(find.byType(CircleAvatar).first),
-        const Size(32, 32),
+        tester.getRect(find.text('© OpenMapTiles')).right,
+        lessThanOrEqualTo(320),
+      );
+      expect(tester.getRect(find.byTooltip('Mulai Explore')).right, 292);
+      expect(
+        tester.getSize(find.byTooltip('Profil & pengaturan')),
+        const Size(44, 44),
       );
       tester.view.physicalSize = const Size(430, 900);
       await tester.pumpAndSettle();
@@ -232,10 +224,18 @@ void main() {
       expect(find.textContaining('PRATINJAU'), findsNothing);
       expect(find.widgetWithText(FilledButton, 'Mulai Trail'), findsOneWidget);
       expect(session.current.isActive, isFalse);
-      await tester.tap(find.byType(CircleAvatar).first);
+      // Settings moved from a tab to the account button in the header.
+      expect(find.text('Pengaturan'), findsNothing);
+      await tester.tap(find.byTooltip('Profil & pengaturan'));
       await tester.pumpAndSettle();
       expect(find.text('Profil Pengguna'), findsOneWidget);
-      await tester.tap(find.text('Cari & Rute'));
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      // Search opens from the bar on the map instead of a tab.
+      expect(find.text('Cari & Rute'), findsNothing);
+      await tester.tap(find.text('Jelajah'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Cari gedung atau fasilitas'));
       await tester.pumpAndSettle();
       expect(find.byType(TextField), findsOneWidget);
       await tester.enterText(find.byType(TextField), 'labtek 6');
@@ -250,6 +250,7 @@ void main() {
         await tester.pump();
         if (find.byType(CircularProgressIndicator).evaluate().isEmpty) break;
       }
+      await tester.pumpAndSettle(); // The destination card animates in.
       await tester.ensureVisible(find.text('Tampilkan di peta'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Tampilkan di peta'));
@@ -333,7 +334,7 @@ void main() {
       await tester.runAsync(() => pumpEventQueue(times: 5));
       await tester.pump();
       expect(find.text('Lihat'), findsNothing); // <5 seconds dwell.
-      await tester.tap(find.text('Cari & Rute'));
+      await tester.tap(find.text('Trail')); // Any tab other than Jelajah.
       await tester.pumpAndSettle();
       emit(13);
       await tester.runAsync(() => pumpEventQueue(times: 5));
@@ -406,13 +407,16 @@ void main() {
       await tester.runAsync(() => pumpEventQueue(times: 5));
       await tester.pumpAndSettle();
       expect(find.text('Lihat'), findsOneWidget);
-      await tester.tap(find.text('Pengaturan'));
+      await tester.tap(find.byTooltip('Profil & pengaturan'));
       await tester.pumpAndSettle();
       await tester.ensureVisible(find.text('Mode demo/trial'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Mode demo/trial'));
       await tester.pumpAndSettle();
       expect(session.trialModeEnabled, isTrue);
       expect(session.current.mode, SessionMode.explore);
+      await tester.pageBack();
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Jelajah'));
       await tester.pumpAndSettle();
       leave(620);
@@ -425,12 +429,15 @@ void main() {
       await tester.runAsync(() => pumpEventQueue(times: 5));
       await tester.pumpAndSettle();
       expect(find.text('Lihat'), findsOneWidget); // Trial skips cooldown.
-      await tester.tap(find.text('Pengaturan'));
+      await tester.tap(find.byTooltip('Profil & pengaturan'));
       await tester.pumpAndSettle();
       await tester.ensureVisible(find.text('Mode demo/trial'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Mode demo/trial'));
       await tester.pumpAndSettle();
       expect(session.trialModeEnabled, isFalse);
+      await tester.pageBack();
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Jelajah'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Lewati'));
@@ -473,9 +480,13 @@ void main() {
           find.byWidgetPredicate(
             (widget) =>
                 widget is Image &&
-                widget.image is AssetImage &&
-                (widget.image as AssetImage).assetName ==
-                    poi.media.photos.first,
+                switch (widget.image) {
+                  // Photos are decoded at display size to save memory.
+                  ResizeImage(imageProvider: final AssetImage asset) ||
+                  final AssetImage asset =>
+                    asset.assetName == poi.media.photos.first,
+                  _ => false,
+                },
           ),
           findsOneWidget,
         );
@@ -494,6 +505,9 @@ void main() {
         'P02',
       );
       await tester.pageBack();
+      await tester.pumpAndSettle();
+      // The session card sits under an open POI panel; close the panel first.
+      await tester.tap(find.byTooltip('Tutup informasi'));
       await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Akhiri sesi'));
       await tester.runAsync(() => pumpEventQueue(times: 5));

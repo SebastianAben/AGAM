@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 
 import 'agam_motion.dart';
+import 'agam_theme.dart';
 
-/// Shared bottom navigation used by the Jelajah and Trail pages.
+/// Two destinations. Search lives on the map and settings behind the
+/// account button in the header.
+/// A tinted pill slides between tabs, so a switch reads as one movement.
 class AgamBottomNavigation extends StatelessWidget {
   const AgamBottomNavigation({
     required this.selectedIndex,
@@ -15,62 +18,143 @@ class AgamBottomNavigation extends StatelessWidget {
   final ValueChanged<int> onSelect;
   final bool internalDemo;
 
-  @override
-  Widget build(BuildContext context) {
-    const items = [
-      (0, Icons.explore_outlined, 'Jelajah'),
-      (1, Icons.emoji_events_outlined, 'Trail'),
-      (2, Icons.directions_walk_rounded, 'Cari & Rute'),
-      (3, Icons.settings_outlined, 'Pengaturan'),
-    ];
+  static const _items = [
+    (Icons.explore_outlined, Icons.explore_rounded, 'Jelajah'),
+    (Icons.flag_outlined, Icons.flag_rounded, 'Trail'),
+  ];
 
-    return Container(
-      height: 57,
-      decoration: const BoxDecoration(
-        color: Color(0xFFFBFAFF),
-        border: Border(top: BorderSide(color: Color(0xFFE9E8F0))),
-      ),
-      child: Row(
-        children: [
-          for (final item in items)
-            Expanded(
-              child: AgamPressFeedback(
-                child: InkWell(
-                  onTap: () => onSelect(item.$1),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        item.$2,
-                        size: 18,
-                        color: item.$1 == selectedIndex
-                            ? const Color(0xFF073B82)
-                            : const Color(0xFF454A57),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        item.$3,
-                        style: TextStyle(
-                          fontSize: 9,
-                          color: item.$1 == selectedIndex
-                              ? const Color(0xFF073B82)
-                              : const Color(0xFF454A57),
-                          fontWeight: item.$1 == selectedIndex
-                              ? FontWeight.w700
-                              : FontWeight.w500,
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+    decoration: const BoxDecoration(
+      color: Colors.white,
+      boxShadow: [
+        BoxShadow(
+          color: Color(0x0F0B1F44),
+          blurRadius: 16,
+          offset: Offset(0, -4),
+        ),
+      ],
+    ),
+    child: SafeArea(
+      top: false,
+      child: SizedBox(
+        height: 72,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final width = constraints.maxWidth / _items.length;
+              return Stack(
+                children: [
+                  AnimatedPositioned(
+                    duration: AgamMotion.duration(context, 340),
+                    curve: AgamMotion.drawer,
+                    left: width * selectedIndex.clamp(0, _items.length - 1),
+                    top: 0,
+                    bottom: 0,
+                    width: width,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: AgamColors.tint,
+                          borderRadius: BorderRadius.circular(18),
                         ),
                       ),
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      for (var index = 0; index < _items.length; index++)
+                        Expanded(
+                          child: _NavItem(
+                            icon: _items[index].$1,
+                            selectedIcon: _items[index].$2,
+                            label: _items[index].$3,
+                            selected: index == selectedIndex,
+                            onTap: () => onSelect(index),
+                          ),
+                        ),
                     ],
                   ),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+class _NavItem extends StatelessWidget {
+  const _NavItem({
+    required this.icon,
+    required this.selectedIcon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final IconData selectedIcon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = selected ? AgamColors.brand : AgamColors.muted;
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: AgamPressFeedback(
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(18),
+          splashColor: Colors.transparent,
+          highlightColor: Colors.transparent,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              AnimatedSwitcher(
+                duration: AgamMotion.duration(context, 180),
+                switchInCurve: AgamMotion.easeOut,
+                transitionBuilder: (child, animation) => FadeTransition(
+                  opacity: animation,
+                  child: ScaleTransition(
+                    scale: Tween(begin: .85, end: 1.0).animate(animation),
+                    child: child,
+                  ),
+                ),
+                child: Icon(
+                  selected ? selectedIcon : icon,
+                  key: ValueKey(selected),
+                  size: 23,
+                  color: color,
                 ),
               ),
-            ),
-        ],
+              const SizedBox(height: 3),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: color,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 }
 
+/// App bar shared by the three tabs: the AGAM logo and wordmark on the
+/// left, the account button on the right that opens profile and settings.
 class AgamAppHeader extends AppBar {
   AgamAppHeader({
     super.key,
@@ -78,10 +162,11 @@ class AgamAppHeader extends AppBar {
     bool showProfile = true,
     Widget? status,
   }) : super(
-         toolbarHeight: 54,
+         toolbarHeight: 64,
          backgroundColor: Colors.white,
          surfaceTintColor: Colors.transparent,
          elevation: 0,
+         scrolledUnderElevation: 0,
          automaticallyImplyLeading: false,
          titleSpacing: 16,
          title: _AgamHeaderContents(
@@ -100,7 +185,6 @@ class _AgamHeaderContents extends StatelessWidget {
   });
 
   final Widget? status;
-
   final VoidCallback? onProfile;
   final bool showProfile;
 
@@ -108,27 +192,77 @@ class _AgamHeaderContents extends StatelessWidget {
   Widget build(BuildContext context) => Row(
     children: [
       ClipRRect(
-        borderRadius: BorderRadius.circular(7),
+        borderRadius: BorderRadius.circular(10),
         child: Image.asset(
           'assets/media/logo.png',
-          width: 32,
-          height: 32,
+          width: 36,
+          height: 36,
           fit: BoxFit.cover,
+          cacheWidth: 108,
         ),
       ),
-      if (status != null) ...[const SizedBox(width: 12), status!],
-      const Spacer(),
+      const SizedBox(width: 10),
+      // Only the wordmark shrinks; the logo, status and account button keep
+      // their size on narrow phones.
+      Expanded(
+        child: Row(
+          children: [
+            const Flexible(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'AGAM',
+                    maxLines: 1,
+                    style: TextStyle(
+                      color: AgamColors.ink,
+                      fontSize: 17,
+                      height: 1.1,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (status != null) ...[const SizedBox(width: 8), status!],
+          ],
+        ),
+      ),
+      const SizedBox(width: 8),
       if (showProfile)
-        InkWell(
-          onTap: onProfile,
-          customBorder: const CircleBorder(),
-          child: const CircleAvatar(
-            radius: 16,
-            backgroundColor: Color(0xFFE7E9F2),
-            child: Icon(
-              Icons.person_rounded,
-              color: Color(0xFF50576A),
-              size: 20,
+        Tooltip(
+          message: 'Profil & pengaturan',
+          child: Semantics(
+            button: true,
+            label: 'Buka profil dan pengaturan',
+            child: AgamPressFeedback(
+              child: InkWell(
+                onTap: onProfile,
+                customBorder: const CircleBorder(),
+                child: Container(
+                  width: 44,
+                  height: 44,
+                  padding: const EdgeInsets.all(2),
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [AgamColors.cyan, AgamColors.brand],
+                    ),
+                  ),
+                  child: const CircleAvatar(
+                    backgroundColor: Colors.white,
+                    child: Icon(
+                      Icons.person_rounded,
+                      color: AgamColors.brand,
+                      size: 22,
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
         ),

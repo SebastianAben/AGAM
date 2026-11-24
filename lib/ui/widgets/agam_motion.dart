@@ -21,6 +21,103 @@ abstract final class AgamMotion {
           child: child,
         ),
       );
+
+  /// Pushed pages slide along the horizontal axis they were opened on;
+  /// reduced motion swaps the slide for an instant change.
+  static Route<T> route<T>(WidgetBuilder builder) => PageRouteBuilder<T>(
+    transitionDuration: const Duration(milliseconds: 320),
+    reverseTransitionDuration: const Duration(milliseconds: 260),
+    pageBuilder: (context, _, _) => builder(context),
+    transitionsBuilder: (context, animation, secondary, child) =>
+        MediaQuery.disableAnimationsOf(context)
+        ? child
+        : SharedAxisTransition(
+            animation: animation,
+            secondaryAnimation: secondary,
+            transitionType: SharedAxisTransitionType.horizontal,
+            fillColor: Colors.transparent,
+            child: child,
+          ),
+  );
+}
+
+/// One-shot entrance for list content: fades in and rises 10 px, staggered
+/// by [order]. It plays the first time [play] is true and never repeats, so
+/// switching tabs back and forth does not replay it.
+class AgamReveal extends StatefulWidget {
+  const AgamReveal({
+    super.key,
+    required this.child,
+    this.order = 0,
+    this.play = true,
+  });
+
+  final Widget child;
+  final int order;
+  final bool play;
+
+  @override
+  State<AgamReveal> createState() => _AgamRevealState();
+}
+
+class _AgamRevealState extends State<AgamReveal>
+    with SingleTickerProviderStateMixin {
+  static const _step = 45;
+  static const _length = 340;
+
+  late final _controller = AnimationController(vsync: this);
+  late final Animation<double> _curve;
+
+  @override
+  void initState() {
+    super.initState();
+    final delay = widget.order.clamp(0, 8) * _step;
+    _controller.duration = Duration(milliseconds: _length + delay);
+    _curve = CurvedAnimation(
+      parent: _controller,
+      curve: Interval(delay / (_length + delay), 1, curve: AgamMotion.easeOut),
+    );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _maybePlay();
+  }
+
+  @override
+  void didUpdateWidget(covariant AgamReveal oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _maybePlay();
+  }
+
+  void _maybePlay() {
+    if (!widget.play || !_controller.isDismissed) return;
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _controller.value = 1;
+    } else {
+      _controller.forward();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: _curve,
+    builder: (context, child) => Opacity(
+      opacity: _curve.value,
+      child: Transform.translate(
+        offset: Offset(0, (1 - _curve.value) * 10),
+        child: child,
+      ),
+    ),
+    child: widget.child,
+  );
 }
 
 /// Preserves each tab's state/subscriptions while animating the newly active tab.

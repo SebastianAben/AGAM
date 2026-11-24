@@ -1,5 +1,221 @@
 # Session Handoff — AGAM
 
+## Current — Merge `dev` ke `feat/ui-ux-redesign`, 24 November 2026
+
+- Konflik PR redesign → `dev` diselesaikan dengan merge `dev` (PR #9 LA:
+  10/10 POI dan layanan LB asli) ke branch redesign.
+- `lib/main.dart`: jalur produksi dari UI10 (Firebase + `createLaAccountServices`
+  + gerbang login) dipertahankan, tetapi kini memakai layanan asli yang sama
+  dengan demo (`DeviceNavigationController` + `UnavailableCampusRouting`,
+  `RepositoryFacilityService`, `UnavailableRecommendationService`,
+  `UnavailableTrailService`) karena layanan LB fake sudah dilepas di `dev`.
+  Demo tetap memakai akun fake tanpa Firebase.
+- Catatan LA di bawah ("jalur non-demo tetap terblokir sampai UI10 di-merge")
+  sudah terpenuhi oleh merge ini.
+
+## Current — UI10 dipisah menjadi halaman Masuk dan Daftar, 24 November 2026
+
+**Permintaan:** pengguna ingin login dan register terasa sebagai dua layar
+terpisah (bukan segmented switcher) dengan tautan "belum punya akun", dan
+animasi transisinya diperhalus.
+
+**Perubahan:**
+- `lib/ui/auth_screen.dart`: segmented Masuk/Daftar dihapus. Halaman Masuk
+  punya tautan "Baru di AGAM? Daftar"; halaman Daftar punya tombol kembali
+  bulat, judul "Buat akun AGAM", dan tautan "Sudah punya akun? Masuk".
+  Tombol back Android di halaman Daftar kembali ke Masuk (`PopScope`).
+  Email terbawa antarhalaman, password tidak.
+- Transisi: header dan form bergerak dengan shared axis horizontal 320 ms
+  (sama dengan `AgamMotion.route`), maju ke Daftar dan mundur ke Masuk.
+  Latar navy dan sheet putih tetap diam sehingga tidak ada kilatan warna.
+  Tombol utama tidak ikut bergerak; labelnya fade-through.
+  Keyboard ditutup sebelum transisi agar halaman tidak melompat.
+- `AgamPrimaryButton`: label yang berubah kini fade-through 240 ms
+  (berlaku di semua layar).
+- Perbaikan: "Lupa password?" dan tautan pindah halaman sebelumnya memakai
+  `TextButton.styleFrom(textStyle:)` sehingga jatuh ke font bawaan (Roboto);
+  kini gaya ada di `Text` sehingga tetap PlusJakartaSans. Ripple baris
+  persetujuan sekarang terlihat di atas latarnya.
+- Ikon kartu peran beranimasi sekali saat kartu dipilih (460 ms, tanpa
+  loop, dilewati pada reduced motion): topi toga Mahasiswa ITB terangkat
+  dan miring lalu kembali; ikon Pengunjung melangkah maju sedikit lalu
+  kembali. Warna ikon berpindah halus (abu → biru).
+
+**Verifikasi:** analyze bersih, `flutter test` 387 lulus (tes auth 10 kasus,
+termasuk halaman terpisah dan back sistem). Frame transisi diperiksa lewat
+golden sementara (sudah dihapus). Belum di-commit.
+
+## Current — Redesign UI10 (masuk/daftar) dan splash, 24 November 2026
+
+**Permintaan:** pengguna meminta redesign layar login, register, dan splash
+di branch `feat/ui-ux-redesign`, identitas AGAM tetap, lebih intuitif.
+Perilaku `AuthService`, validasi, dan semua pesan galat tidak berubah.
+
+**Perubahan:**
+- `lib/ui/splash_screen.dart`: latar `#0D3F8F` sama dengan splash native,
+  logo di tengah, wordmark "AGAM" naik sekali, lalu crossfade 320 ms ke layar
+  berikutnya (sebelumnya berganti tanpa transisi). Tidak ada animasi loop;
+  reduced motion menampilkan keadaan akhir langsung. Durasi tetap ±1,1 s.
+- `lib/ui/auth_screen.dart`: header navy (logo + judul "Selamat datang" /
+  "Buat akun AGAM", tanpa subjudul), sheet putih dengan `AgamSegmented`
+  Masuk/Daftar, field filled dengan autofill (email, password/newPassword),
+  "Lupa password?" di kanan bawah field, kartu peran Mahasiswa ITB /
+  Pengunjung, baris persetujuan privasi yang menjadi merah beserta pesannya
+  bila belum dicentang, dan banner galat/info di atas tombol (pengganti
+  snackbar). Tombol utama dipin di bawah, naik di atas keyboard. Filler
+  sliver menggantikan `SliverFillRemaining` berisi form (bug tinggi intrinsik).
+- Teks pemberitahuan privasi tidak diubah (`AuthScreen.consentText`) dan tetap
+  menunggu persetujuan PM (PRD §22).
+- Berpindah Masuk/Daftar tidak lagi menghapus isi field (form diberi key
+  baru, bukan `reset()`); tombol utama tidak menampilkan spinner saat
+  mengirim reset password.
+- Tes baru `test/ui/auth_screen_test.dart` (8 kasus: validasi, kredensial
+  salah, persetujuan wajib + role, minimal 6 karakter, lupa password,
+  offline, toggle password, isi field bertahan saat ganti mode).
+- Status PBI di `implementationPhases.md` tidak berubah: UI10 tetap
+  "implementasi awal, menunggu teks privasi serta verifikasi PM".
+
+**Verifikasi:** `dart format`, `flutter analyze` bersih, `flutter test`
+385 lulus. Pratinjau web diperiksa (splash, masuk, daftar, keadaan galat).
+Belum diuji di perangkat fisik. Belum di-commit.
+
+## Current — UI10 login/logout dan perangkaian akun, 23 November 2026
+
+**Perubahan:**
+- Splash native Android dan splash Flutter ditambahkan dengan logo [assets/media/logo.png](/Users/aliyaharta/Documents/GitHub/AGAM/assets/media/logo.png);
+  splash Flutter berlangsung singkat lalu berpindah ke login/onboarding.
+- Tambah [AuthScreen](/Users/aliyaharta/Documents/GitHub/AGAM/lib/ui/auth_screen.dart)
+  untuk masuk, daftar, pemilihan role, lupa password, validasi, dan pesan
+  offline sesuai kontrak `AuthService`.
+- [AgamApp](/Users/aliyaharta/Documents/GitHub/AGAM/lib/ui/app.dart) sekarang
+  menampilkan gerbang login dalam build produk dan memulihkan UI berdasarkan
+  `AuthState`. Pengecualian demo internal tetap melewati login.
+- [main.dart](/Users/aliyaharta/Documents/GitHub/AGAM/lib/main.dart) memakai
+  Firebase initialization dan `createLaAccountServices` pada build produk.
+- Profil menampilkan email dan role nyata bila tersedia serta tombol logout
+  dengan konfirmasi. Logout mengakhiri navigasi profil dan kembali ke UI10.
+
+**Verifikasi:** format selesai; analyzer pinned hanya tersisa pemeriksaan
+lanjut terhadap test/build. Uji perangkat Firebase dan emulator Firestore belum
+dijalankan. Logout/hapus akun di layar belum diuji perangkat fisik.
+
+**Belum selesai:** teks pemberitahuan privasi tetap menunggu persetujuan PM,
+progres trail per akun, event FE/LB PB22, dan verifikasi aturan emulator.
+
+## Current — Redesign UI/UX menyeluruh (selain onboarding), 22 November 2026
+
+**Permintaan:** pengguna meminta perombakan total UI, animasi dan UX seluruh
+layar yang sudah ada, kecuali Onboarding & Izin, dengan identitas AGAM tetap
+dijaga dan gaya disamakan dengan onboarding. Tab Pengaturan dihapus dari
+navbar dan dipindah ke tombol akun di kanan atas. Layar yang belum ada (UI06
+penuh, UI07, UI10) sengaja tidak dibuat. Branch `feat/ui-ux-redesign` dari
+`dev` @ `5638f45` atas instruksi pengguna (pengecualian model branch track).
+
+**Sistem desain baru:** `lib/ui/widgets/agam_theme.dart` (token warna dari
+onboarding: navy/teal/forest/cyan/mint, kanvas `#F5F7FB` menggantikan tint
+lavender lama, skala teks 26/20/17/15/13/12, radius, bayangan, tema global)
+dan `agam_components.dart` (AgamGround = latar bergradien + glow onboarding,
+kartu, tile ikon, pill, tombol utama stadium bercahaya, tombol tonal, grup
+daftar, segmented control dengan thumb bergeser, tombol kembali bulat).
+`agam_motion.dart` menambah route shared-axis dan `AgamReveal` (masuk sekali,
+stagger 45 ms, menunggu tab pertama kali tampil, tanpa loop, reduced motion
+langsung tampil).
+
+**Per layar:**
+- Shell/navbar: 3 tab (Jelajah, Trail, Cari & Rute) dengan pill aktif yang
+  bergeser dan ikon outline→filled; haptic ringan saat ganti tab. Header
+  logo + wordmark + chip Mode uji; avatar membuka Profil & Pengaturan lewat
+  route shared-axis. Header lentur di 320 px.
+- Jelajah: peta penuh, status lokasi melayang, kapsul kontrol 48 px, kartu
+  sesi bawah yang berubah putih "Mulai" → navy "Explore aktif/Akhiri"
+  (redup saat sibuk, tanpa spinner tak berujung). Penanda POI baru (lencana
+  + label; label hanya saat zoom ≥18 atau terpilih agar tidak bertumpuk;
+  terpilih digambar paling atas), titik posisi dengan halo statis, atribusi
+  OSM satu baris di peta. Kartu UI03 meniru kartu prompt onboarding; POI yang
+  terpicu menampilkan prompt suara, POI yang diketuk menampilkan ringkasan.
+- Detail Lokasi: hero foto yang menyusut menjadi app bar berjudul, lembar
+  putih di atas foto, pemutar narasi di latar navy, seksi fungsi/fasilitas
+  (chip)/trivia/sumber, placeholder tanpa gambar gedung karangan.
+- Trail: hero hijau-teal dengan cincin progres, kartu lencana, segmented
+  filter, timeline bernomor bergaris; ilustrasi peta skematis dihapus dan
+  diganti catatan jujur "Graf rute belum tersedia".
+- Cari & Rute: hero navy dengan kolom cari (ring fokus cyan), pill filter
+  beranimasi, grup daftar tujuan, grid ikon 6 kategori fasilitas, kartu
+  tujuan/rute baru (painter rute palsu dihapus; peta asli bila titik ada).
+- Profil & Pengaturan: app bar navy ter-pin dengan identitas yang menyusut,
+  grup Detail Akun/Sesi/Narasi/Perangkat/Developer.
+
+**Bug yang ditemukan saat verifikasi visual dan diperbaiki:** konten Profil
+tidak bisa digulir sampai bawah (`SliverFillRemaining` mengukur intrinsics),
+tombol kembali Profil ikut tergulir hilang, header overflow di layar sempit.
+
+**Test:** asersi geometri FE lama di `demo_explore_test` ditulis ulang untuk
+tata letak baru dengan maksud yang sama (kontrol 48 px di dalam peta,
+atribusi satu baris tak tertutup kartu sesi, header di atas peta, target
+avatar 44 px, 320 px tanpa exception); akses Pengaturan lewat avatar; foto
+dicocokkan juga lewat `ResizeImage`; panel POI ditutup sebelum Akhiri sesi.
+`demo_frontend_test` menambah pump setelah ensureVisible. Test baru
+`test/ui/redesign_controls_test.dart` (3 tab + avatar, AgamReveal sekali
+jalan + reduced motion, segmented control).
+
+**Verifikasi:** format 0 perubahan, `fvm flutter analyze --no-pub` bersih,
+`fvm flutter test --no-pub` **376 lulus**, `git diff --check` bersih. Render
+diperiksa via golden sementara dengan dataset/tile asli di 390×844 dan
+320×640 (sudah dihapus). **Tidak** dijalankan di emulator/perangkat. Status
+PBI tidak berubah. Onboarding tidak disentuh. Belum commit/push.
+
+**Lanjutan (22 November 2026):**
+- Ligatur `liga` dimatikan di tema: Plus Jakarta Sans menggabungkan "fi"
+  tanpa titik pada "i" ("Profil", "Notifikasi").
+- Filter UI05 (keputusan pengguna, pilihan 1): chip/tombol filter jenis
+  gedung "Ruang Kuliah"/"Laboratorium" dihapus karena bertentangan dengan
+  PRD §9.1 (Labtek = gedung laboratorium **dan perkuliahan**; kesepuluh POI
+  punya Ruang Kelas) dan tidak ada di kontrak `SearchService`. Grid enam
+  kategori fasilitas kini satu-satunya "filter kategori" F05/UI05: memilih
+  kategori menyembunyikan daftar gedung dan meneruskan `facilityCategories`
+  ke pencarian; pill aktif muncul saat mengetik. Dataset fasilitas kosong →
+  "Data <kategori> belum tersedia.".
+- Ikon POI netral (satu ikon gedung) di peta, kartu, Trail, Cari, Detail.
+- Copywriting atas arahan pengguna ("hindari label/deskripsi sekunder,
+  biarkan tata letak menjelaskan"), termasuk onboarding (hanya teks): hapus
+  tagline header, subjudul kartu sesi, overline kategori, label "Pemandu
+  Suara", placeholder foto/fasilitas kosong, stat Jarak/Waktu kosong, pill
+  "Belum dikunjungi", catatan graf rute, subjudul baris pengaturan; judul
+  seksi detail dipendekkan (Narasi, Tentang gedung, Fungsi, Fasilitas,
+  Trivia, Sumber). Teks wajib PRD dipertahankan (penjelasan lokasi UI01/A01,
+  "Hanya saat aplikasi digunakan", panduan baterai, placeholder konten).
+- **Untuk tim konten:** Labtek I (P10) berkategori `laboratoryAndLecture`
+  tetapi `function` = "Gedung Kuliah" dan fasilitas tanpa "Laboratorium";
+  perlu dicek. Data tidak diubah.
+- Galeri screenshot untuk tinjauan dari HP: artifact privat
+  `https://claude.ai/artifact/JRZfRwoyqJCucgMS8GLEs4` (versi 3).
+- Pencarian pindah ke peta (persetujuan pengguna, pola Google Maps): tab
+  "Cari & Rute" dihapus, navbar tinggal Jelajah dan Trail. Search bar
+  melayang di atas peta membuka `SearchRouteScreen` sebagai halaman (fokus
+  otomatis); chip enam kategori fasilitas di bawahnya membuka halaman yang
+  sama dengan filter aktif (F05/UI05 tetap terpenuhi, hanya bentuknya
+  berubah dari tab menjadi overlay peta). "Tampilkan di peta" menutup
+  halaman dan memfokuskan peta.
+- Pill status lokasi dihapus (permintaan pengguna). Mengikuti Google Maps:
+  titik biru dengan lingkaran akurasi dalam meter, titik abu-abu saat
+  akurasi > `kTriggerMaxAccuracyM` (20 m, trigger tidak jalan), ikon tombol
+  pusatkan mengikuti keadaan GPS, dan banner hanya muncul saat GPS mati,
+  izin dicabut, atau di luar kampus. Atribusi OSM pindah ke tumpukan bawah
+  dan dapat membungkus baris.
+- Galeri HP versi 4 (17 layar, termasuk akurasi rendah).
+- Tombol "Rute" (F06) disiapkan di layar yang sudah ada, atas permintaan
+  pengguna: kartu POI di peta (Rute · Lihat · Lewati), kartu tujuan di
+  pencarian (aksi utama), baris fasilitas (ikon rute), Detail Lokasi
+  (tombol bawah), dan Trail ("Pilih rute" → "Rute"). Satu komponen
+  `AgamRouteButton`; di build demo (tanpa graf rute) tombol redup dan
+  mengetuknya menampilkan "Rute belum tersedia." tanpa memulai sesi. Di
+  build produk, Rute dari peta membuka halaman pencarian dengan gedung
+  terpilih (kartu rute UI06 yang ada). UI07 (Tiba & Rekomendasi) dan UI06
+  penuh belum dibuat. Test baru menelusuri ketiga titik masuk; **377 test
+  lulus**. Galeri versi 5.
+- Verifikasi: analyze bersih, **376 test lulus**. File sementara (belum
+  dihapus, jangan di-commit): `test/_preview/`, `tool/redesign_preview.dart`,
+  `web/`.
 ## Current — Konten 10/10 POI dan perangkaian layanan LB asli, 23 November 2026 (LA)
 
 - PB09: 10/10 POI approved di `pois.json` (rincian dan sumber media di implementationPhases PB09; video GKUB/GKUT opsional atas keputusan PM 23 November 2026, PRD §23).

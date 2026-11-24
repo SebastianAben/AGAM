@@ -159,7 +159,7 @@ void main() {
     await services.session.end();
   });
 
-  testWidgets('filter menu changes results and clear resets query', (
+  testWidgets('facility tiles filter results and clear resets query', (
     tester,
   ) async {
     final services = demoServices();
@@ -169,15 +169,36 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    // PRD F05 "filter kategori" means facility categories; building-type
+    // filters split Labtek from lecture buildings, which PRD §9.1 contradicts.
+    expect(find.byTooltip('Filter kategori'), findsNothing);
+    expect(find.text('Ruang Kuliah'), findsNothing);
+    expect(find.text('Laboratorium'), findsNothing);
+    expect(find.text('Labtek V'), findsOneWidget);
+    // The tiles sit below the building list, outside the first build.
+    await tester.scrollUntilVisible(
+      find.text('Musala'),
+      300,
+      scrollable: find
+          .descendant(
+            of: find.byType(CustomScrollView),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Musala'));
+    await tester.pumpAndSettle();
+    expect(find.text('Labtek V'), findsNothing); // Buildings step aside.
+    expect(find.text('Data musala belum tersedia.'), findsOneWidget);
     await tester.enterText(find.byType(TextField), 'labtek 5');
     await tester.pumpAndSettle();
-    expect(find.text('Labtek V'), findsOneWidget);
-    await tester.tap(find.byTooltip('Filter kategori'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(ListTile, 'Ruang Kuliah'));
-    await tester.pumpAndSettle();
     expect(find.text('Labtek V'), findsNothing);
-    expect(find.text('Tidak ada hasil yang cocok.'), findsOneWidget);
+    expect(find.text('Data musala belum tersedia.'), findsOneWidget);
+    // The active filter stays visible while typing and clears with one tap.
+    await tester.tap(find.text('Musala'));
+    await tester.pumpAndSettle();
+    expect(find.text('Labtek V'), findsOneWidget);
     await tester.tap(find.byTooltip('Hapus pencarian'));
     await tester.pumpAndSettle();
     expect(
@@ -198,10 +219,12 @@ void main() {
     );
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.byType(SwitchListTile));
+    await tester.pumpAndSettle();
     await tester.tap(find.byType(SwitchListTile));
     await tester.pumpAndSettle();
     expect(services.settings.current.autoPlayNarration, isTrue);
     await tester.ensureVisible(find.text('Akhiri'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Akhiri'));
     await tester.pumpAndSettle();
     expect(services.session.current.isActive, isFalse);

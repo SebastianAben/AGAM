@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 import 'contracts/contracts.dart';
 import 'contracts/fakes/fake_la_services.dart';
@@ -11,23 +12,18 @@ import 'logic/search/repository_facility_service.dart';
 import 'logic/trail/account_visit_store.dart';
 import 'ui/app.dart';
 import 'logic/session/trigger_notifier.dart';
+import 'firebase_options.dart';
+import 'logic/account/account_bootstrap.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   const demo = bool.fromEnvironment('AGAM_INTERNAL_DEMO');
   if (!demo) {
-    runApp(
-      const MaterialApp(
-        home: Scaffold(
-          body: Center(
-            child: Text(
-              'Login wajib belum tersedia.\n'
-              'Build demo internal harus diaktifkan secara eksplisit.',
-            ),
-          ),
-        ),
-      ),
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
     );
+    final services = await _createProductionAppServices();
+    runApp(AgamApp(services: services));
     return;
   }
   final (services, views, actions) = await _createAppServices();
@@ -41,11 +37,51 @@ Future<void> main() async {
   );
 }
 
+/// Build produk: Firebase, akun asli dengan gerbang login (UI10), dan layanan
+/// asli LA/LB yang sama dengan demo. Fitur yang datanya belum ada (graf jalur
+/// kampus, urutan resmi trail, rekomendasi) memakai layanan berstatus "belum
+/// tersedia", bukan data palsu.
+Future<AppServices> _createProductionAppServices() async {
+  final map = AgamMapConfig.pendingServiceArea();
+  const routing = UnavailableCampusRouting();
+  final la = await createLaServices(
+    bundledOnly: false,
+    developerTrialAvailable: false,
+    map: map,
+    navigation: (location, session) => DeviceNavigationController(
+      location: location,
+      routing: routing,
+      map: map,
+      session: session,
+    ),
+  );
+  final account = await createLaAccountServices(la);
+
+  return AppServices(
+    permissions: la.permissions,
+    location: la.location,
+    pois: la.pois,
+    session: la.session,
+    audio: la.audio,
+    voice: la.voice,
+    settings: la.settings,
+    auth: account.auth,
+    activity: account.activity,
+    map: map,
+    routing: routing,
+    navigation: la.navigation,
+    search: PoiSearchService(pois: la.pois),
+    recommendations: const UnavailableRecommendationService(),
+    trail: const UnavailableTrailService(),
+    facilities: RepositoryFacilityService(la.pois),
+  );
+}
+
 /// Demo memakai seluruh layanan asli LA dan LB. Fitur yang datanya belum ada
 /// memakai layanan asli berstatus "belum tersedia", bukan data palsu: graf
-/// jalur kampus (routing), urutan resmi trail, dan rekomendasi. Akun masih
-/// fake karena demo tidak menjalankan Firebase dan gerbang login (UI10)
-/// belum ada.
+/// jalur kampus (routing), urutan resmi trail, dan rekomendasi. Akun demo
+/// tetap fake karena demo tidak menjalankan Firebase; gerbang login hanya
+/// ada di build produk.
 Future<
   (AppServices, Stream<String>, Future<void> Function(String, TriggerAction))
 >
