@@ -9,8 +9,8 @@ import '../contracts/models/settings.dart';
 import '../logic/audio/audio_seek_control.dart';
 import 'widgets/agam_components.dart';
 import 'widgets/agam_motion.dart';
-import 'widgets/agam_theme.dart';
 import 'widgets/narration_wave.dart';
+import 'widgets/agam_theme.dart';
 
 /// UI04 — Detail Lokasi. Only approved POI content is presented as factual.
 class PoiDetailScreen extends StatefulWidget {

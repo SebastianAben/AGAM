@@ -19,6 +19,7 @@ class OfflineCampusMap extends StatefulWidget {
     this.selectedPoiId,
     this.showPois = true,
     this.initialFocus,
+    this.highlight,
     this.attributionPadding = const EdgeInsets.all(10),
   });
 
@@ -26,6 +27,10 @@ class OfflineCampusMap extends StatefulWidget {
   /// [MapAttribution] itself, next to its own overlays.
   final EdgeInsets? attributionPadding;
   final GeoPoint? initialFocus;
+
+  /// A non-POI place to point at, such as a facility chosen as a
+  /// destination. Drawn like a selected POI, with its own icon and label.
+  final MapHighlight? highlight;
   final bool showPois;
   final MapConfig config;
   final List<Poi> pois;
@@ -181,6 +186,14 @@ class OfflineCampusMapState extends State<OfflineCampusMap>
                           selected: poi.id == widget.selectedPoiId,
                           onTap: () => widget.onSelectPoi(poi),
                         ),
+                      ),
+                    if (widget.highlight case final highlight?)
+                      Marker(
+                        point: _latLng(highlight.point),
+                        width: 116,
+                        height: 70,
+                        alignment: const Alignment(0, .5),
+                        child: _HighlightMarker(highlight: highlight),
                       ),
                     if (widget.userPosition case final position?)
                       Marker(
@@ -338,6 +351,78 @@ class _PoiMarker extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    ),
+  );
+}
+
+/// A place on the map that is not a POI, e.g. a facility destination.
+class MapHighlight {
+  const MapHighlight({
+    required this.point,
+    required this.label,
+    required this.icon,
+  });
+
+  final GeoPoint point;
+  final String label;
+  final IconData icon;
+}
+
+/// Same shape as a selected POI marker, but not tappable: it only shows
+/// where the destination is.
+class _HighlightMarker extends StatelessWidget {
+  const _HighlightMarker({required this.highlight});
+
+  final MapHighlight highlight;
+
+  @override
+  Widget build(BuildContext context) => IgnorePointer(
+    child: Semantics(
+      label: highlight.label,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: AgamColors.cyan,
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 3),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x400B1F44),
+                  blurRadius: 8,
+                  offset: Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Icon(highlight.icon, size: 17, color: AgamColors.brandDeep),
+          ),
+          const SizedBox(height: 4),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: const [
+                BoxShadow(color: Color(0x260B1F44), blurRadius: 6),
+              ],
+            ),
+            child: Text(
+              highlight.label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 11,
+                height: 1.3,
+                color: AgamColors.ink,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
       ),
     ),
   );

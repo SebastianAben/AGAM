@@ -186,4 +186,17 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Selamat datang'), findsOneWidget);
   });
+
+  testWidgets('a field error clears once the input is fixed', (tester) async {
+    await pumpAuth(tester);
+
+    await tapVisible(tester, submit('Masuk'));
+    expect(find.text('Password wajib diisi.'), findsOneWidget);
+
+    await tester.enterText(field('Password'), 'rahasia1');
+    await tester.pumpAndSettle();
+    expect(find.text('Password wajib diisi.'), findsNothing);
+    // Email is still empty, so its error stays.
+    expect(find.text('Email wajib diisi.'), findsOneWidget);
+  });
 }

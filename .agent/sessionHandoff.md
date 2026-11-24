@@ -25,6 +25,77 @@
 - Verifikasi: analyze bersih, 396 test lulus (3 test baru di
   `test/ui/narration_wave_test.dart`); tampilan dicek lewat golden sementara
   (sudah dihapus). Belum dicoba di perangkat.
+- Merge `origin/dev` (PR #15 dataset fasilitas) untuk PR #14: konflik hanya
+  di catatan ini. Import `narration_wave.dart` di `poi_detail_screen.dart`
+  diletakkan sebelum `agam_theme.dart` agar tidak bentrok dengan import
+  `agam_video_player.dart` dari PR #13.
+
+## Current — Dataset fasilitas versi pertama, 24 November 2026
+
+- Branch `feat/facility-dataset` dari `dev` @ `cd5753d`; belum di-commit.
+  Perbaikan uji alur sebelumnya sudah di `dev` (`bafd782`); branch ini
+  di-rebase ke atasnya.
+- `assets/data/pois.json`: 26 fasilitas, disetujui SebastianAben (owner,
+  verifiedAt 2026-11-24, approved true).
+  - F01–F19 toilet/musala/kantin dari daftar `facilities` tiap POI;
+    `buildingId` gedungnya, titik = titik gedung (letak persis belum
+    disurvei). "Mushalla" → kategori `musala`; "Apotek", ruang kelas, dan
+    laboratorium tidak dipetakan.
+  - F20–F26 dari informasi pengguna: ATM BCA, ATM Center, Perpustakaan Pusat
+    ITB, Information Center (titik ditandai pengguna di screenshot peta AGAM,
+    digeoreferensi terhadap 8 penanda POI; skala 0,59 m/px, residu 0,5–6 m);
+    ATM BNI (GKUT lt. 1), Perpustakaan STEI (Labtek V lt. 3), Tata Usaha STEI
+    (Labtek V lt. 2) memakai titik gedung.
+- UI: kartu tujuan Cari & Rute kini menampilkan penanda fasilitas
+  (`MapHighlight` baru di `OfflineCampusMap`). Dicek di browser: keempat
+  titik yang ditandai jatuh di lokasi yang sama dengan tanda pengguna.
+- Test: dataset (26 item, semua kategori, buildingId valid, di dalam batas
+  kampus, cocok dengan daftar per POI) dan pencarian fasilitas diperbarui.
+  Analyze bersih, 394 test lulus.
+- PRD §22 dan implementationPhases (PB10) diperbarui.
+- Terbuka: jarak/ETA tetap "—" karena routing belum ada; letak persis
+  fasilitas dan verifikasi lapangan.
+- Lanjutan: label "· contoh" di "Fasilitas sekitar" panel POI dihapus
+  (`a42859a`). Panel kini menampilkan satu fasilitas terdekat per kategori,
+  maks. 4 (`nearestPerCategory` di `facility_labels.dart`); TVST: Toilet
+  TVST, Kantin Labtek X & XI, Musala Labtek VII, Tata Usaha STEI. Test
+  `test/ui/nearest_facilities_test.dart`.
+
+## Current — Uji alur Playwright `dev` setelah PR #12 (LB), 24 November 2026
+
+- Basis `dev` @ `cd5753d`: analyze bersih, 393 test lulus. Branch kerja
+  `chore/dev-flow-check`; masuk `dev` sebagai `bafd782`.
+- Uji alur di browser (pratinjau web sementara, sudah dihapus): layanan
+  perangkat (izin, lokasi, sesi, audio, akun) fake; selebihnya sama dengan
+  wiring demo `main.dart` (repository + search asli, `AgamMapConfig.campus()`,
+  `DeviceNavigationController` + `UnavailableCampusRouting`,
+  `RepositoryFacilityService`, trail/rekomendasi unavailable). Alur yang
+  lulus: splash → masuk gagal → daftar (persetujuan wajib, peran) →
+  onboarding → peta tile HD → panel POI Labtek V → Cari & Rute → cari
+  "labtek 5" → chip Toilet ("Data toilet belum tersedia.") → Trail →
+  Explore mulai/akhiri → profil → keluar → masuk ulang. Tanpa error console.
+- Bug yang ditemukan dan diperbaiki:
+  1. Logout di build produk kembali ke peta, bukan UI10: onboarding memakai
+     `pushReplacement` sehingga gerbang login hilang. Kini `_SignedInFlow`
+     (onboarding → shell, crossfade) berada di dalam gerbang `app.dart`.
+     Test `test/ui/auth_gate_test.dart` (gagal pada kode lama).
+  2. Rute tanpa graf menampilkan "Rute pratinjau ..." seolah berhasil:
+     `DeviceNavigationController` melapor status error tanpa throw. Kini
+     `search_route_screen.dart` memeriksa status dan menampilkan "Rute belum
+     tersedia untuk tujuan ini." Test `test/ui/route_unavailable_test.dart`
+     (gagal pada kode lama).
+  3. Galat kolom masuk/daftar tetap merah setelah diperbaiki: form kini
+     memvalidasi ulang saat mengetik setelah submit pertama
+     (`auth_screen.dart`, test baru di `auth_screen_test.dart`).
+  4. Trail kosong berkata "Belum ada gedung di daftar ini." — kini
+     "Urutan Orientation Trail belum tersedia." bila urutan kosong.
+  5. Laten: tombol "Detail" langkah trail berikutnya (`AgamTonalButton` di
+     `Row` tanpa `Expanded`) crash layout saat trail punya urutan; kini
+     Expanded (Rute 2 : Detail 1). Akan muncul begitu `DeviceTrailService`
+     disambungkan.
+- Verifikasi: analyze bersih, 396 test lulus.
+- Masih terbuka: `DeviceTrailService` dan graf draf LB belum disambungkan;
+  build APK belum (tanpa Android SDK di Mac ini); tombol hapus akun belum ada.
 
 ## Current — Merge `dev` ke `LB` untuk PR LB → dev, 24 November 2026
 
