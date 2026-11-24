@@ -473,7 +473,7 @@ Item berikut **belum diputuskan atau belum tersedia**. Agent dilarang mengisinya
 | Item | Status | Pemilik |
 | --- | --- | --- |
 | Koordinat pintu masuk tiap gedung | Menunggu survei lapangan | Tim |
-| Dataset fasilitas (toilet, musala, kantin, ATM, perpustakaan, layanan akademik) | Akan dikumpulkan | Tim konten |
+| Dataset fasilitas (toilet, musala, kantin, ATM, perpustakaan, layanan akademik) | Versi pertama 26 item disetujui SebastianAben 24 November 2026: toilet/musala/kantin dari daftar fasilitas tiap POI (titik gedung), ATM/perpustakaan/layanan akademik dari informasi pengguna (titik ditandai di peta AGAM). Letak persis dan verifikasi lapangan tetap tertunda | Tim konten |
 | Urutan Orientation Trail | Belum ditetapkan | Tim |
 | Project Firebase (Firestore + Authentication Email/Password) | Dibuat 15 November 2026 (`agam-9e704`); seed pertama 15 November 2026; secret `FIREBASE_SERVICE_ACCOUNT` untuk seed otomatis belum dibuat | PM / Backend |
 | Konten teks, foto, audio, video P01–P10 | Audit source 16 November: JSON menandai P01/P02 approved/non-placeholder, P03–P10 placeholder/unapproved; 30 file audio, foto P01/P02/P06, tanpa video. P01 foto/kartu terverifikasi di emulator terdahulu. P02 perlu rekonsiliasi pemilik konten/PM sebelum klaim konten final; catatan ini mencatat metadata source tanpa memberi approval baru. Kelengkapan F03, hak aset, durasi dan playback tetap perlu audit/uji | Tim konten / PM |

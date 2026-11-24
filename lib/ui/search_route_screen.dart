@@ -802,6 +802,14 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
                 initialFocus: point,
                 pois: [?_poiFor(destination)],
                 selectedPoiId: destination.id,
+                highlight: switch (_facilityFor(destination)) {
+                  final facility? => MapHighlight(
+                    point: facility.position,
+                    label: facility.name,
+                    icon: facilityIcon(facility.category),
+                  ),
+                  null => null,
+                },
                 onSelectPoi: _openPoiDetail,
                 attributionPadding: const EdgeInsets.all(8),
               ),
