@@ -1,9 +1,40 @@
 # Session Handoff — AGAM
 
+## Current — Dataset fasilitas versi pertama, 24 November 2026
+
+- Branch `feat/facility-dataset` dari `dev` @ `cd5753d`; belum di-commit.
+  Perbaikan uji alur sebelumnya sudah di `dev` (`bafd782`); branch ini
+  di-rebase ke atasnya.
+- `assets/data/pois.json`: 26 fasilitas, disetujui SebastianAben (owner,
+  verifiedAt 2026-11-24, approved true).
+  - F01–F19 toilet/musala/kantin dari daftar `facilities` tiap POI;
+    `buildingId` gedungnya, titik = titik gedung (letak persis belum
+    disurvei). "Mushalla" → kategori `musala`; "Apotek", ruang kelas, dan
+    laboratorium tidak dipetakan.
+  - F20–F26 dari informasi pengguna: ATM BCA, ATM Center, Perpustakaan Pusat
+    ITB, Information Center (titik ditandai pengguna di screenshot peta AGAM,
+    digeoreferensi terhadap 8 penanda POI; skala 0,59 m/px, residu 0,5–6 m);
+    ATM BNI (GKUT lt. 1), Perpustakaan STEI (Labtek V lt. 3), Tata Usaha STEI
+    (Labtek V lt. 2) memakai titik gedung.
+- UI: kartu tujuan Cari & Rute kini menampilkan penanda fasilitas
+  (`MapHighlight` baru di `OfflineCampusMap`). Dicek di browser: keempat
+  titik yang ditandai jatuh di lokasi yang sama dengan tanda pengguna.
+- Test: dataset (26 item, semua kategori, buildingId valid, di dalam batas
+  kampus, cocok dengan daftar per POI) dan pencarian fasilitas diperbarui.
+  Analyze bersih, 394 test lulus.
+- PRD §22 dan implementationPhases (PB10) diperbarui.
+- Terbuka: jarak/ETA tetap "—" karena routing belum ada; letak persis
+  fasilitas dan verifikasi lapangan.
+- Lanjutan: label "· contoh" di "Fasilitas sekitar" panel POI dihapus
+  (`a42859a`). Panel kini menampilkan satu fasilitas terdekat per kategori,
+  maks. 4 (`nearestPerCategory` di `facility_labels.dart`); TVST: Toilet
+  TVST, Kantin Labtek X & XI, Musala Labtek VII, Tata Usaha STEI. Test
+  `test/ui/nearest_facilities_test.dart`.
+
 ## Current — Uji alur Playwright `dev` setelah PR #12 (LB), 24 November 2026
 
 - Basis `dev` @ `cd5753d`: analyze bersih, 393 test lulus. Branch kerja
-  `chore/dev-flow-check`; belum di-commit.
+  `chore/dev-flow-check`; masuk `dev` sebagai `bafd782`.
 - Uji alur di browser (pratinjau web sementara, sudah dihapus): layanan
   perangkat (izin, lokasi, sesi, audio, akun) fake; selebihnya sama dengan
   wiring demo `main.dart` (repository + search asli, `AgamMapConfig.campus()`,

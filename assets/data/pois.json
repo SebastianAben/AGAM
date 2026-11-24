@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "generatedBy": "PB03 — track LA",
-  "note": "Sumber id, nama, alias, kategori, koordinat, dan radius: .agent/PRD.md §9.1. Teks P01-P10 (deskripsi, fungsi, fasilitas, trivia) dari tim konten, diverifikasi 14 November 2026. Foto, narasi, prompt, dan audio tiba tersedia untuk 10 POI; video hanya GKUB (opsional, keputusan PM 23 November 2026). Seluruh POI disetujui pemilik konten 23 November 2026.",
+  "note": "Sumber id, nama, alias, kategori, koordinat, dan radius: .agent/PRD.md §9.1. Teks P01-P10 (deskripsi, fungsi, fasilitas, trivia) dari tim konten, diverifikasi 14 November 2026. Foto, narasi, prompt, dan audio tiba tersedia untuk 10 POI; video hanya GKUB (opsional, keputusan PM 23 November 2026). Seluruh POI disetujui pemilik konten 23 November 2026. Dataset fasilitas (26 item) disetujui SebastianAben 24 November 2026: toilet, musala, dan kantin diturunkan dari daftar fasilitas tiap POI dengan titik gedung; ATM, perpustakaan, dan layanan akademik dari informasi pengguna (titik peta ditandai, belum diverifikasi lapangan).",
   "pois": [
     {
       "id": "P01",
@@ -422,5 +422,576 @@
       }
     }
   ],
-  "facilities": []
+  "facilities": [
+    {
+      "id": "F01",
+      "name": "Toilet Labtek V",
+      "category": "toilet",
+      "lat": -6.8905811,
+      "lng": 107.6097754,
+      "buildingId": "P01",
+      "description": "Di dalam Labtek V. Titik peta memakai titik gedung; letak persis di dalam gedung belum disurvei.",
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Daftar fasilitas POI P01 (Labtek V) di assets/data/pois.json",
+          "Institut Teknologi Bandung (itb.ac.id)",
+          "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
+          "Website resmi fakultas dan program studi ITB",
+          "Buku Saku Mahasiswa Pascasarjana ITB 2021"
+        ],
+        "owner": "SebastianAben",
+        "verifiedAt": "2026-11-24",
+        "assetAttribution": [],
+        "approved": true
+      }
+    },
+    {
+      "id": "F02",
+      "name": "Toilet Labtek VI",
+      "category": "toilet",
+      "lat": -6.8901358,
+      "lng": 107.6097167,
+      "buildingId": "P02",
+      "description": "Di dalam Labtek VI. Titik peta memakai titik gedung; letak persis di dalam gedung belum disurvei.",
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Daftar fasilitas POI P02 (Labtek VI) di assets/data/pois.json",
+          "Institut Teknologi Bandung (itb.ac.id)",
+          "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
+          "Website resmi fakultas dan program studi ITB",
+          "Buku Saku Mahasiswa Pascasarjana ITB 2021"
+        ],
+        "owner": "SebastianAben",
+        "verifiedAt": "2026-11-24",
+        "assetAttribution": [],
+        "approved": true
+      }
+    },
+    {
+      "id": "F03",
+      "name": "Toilet Labtek VII",
+      "category": "toilet",
+      "lat": -6.8901169,
+      "lng": 107.6105714,
+      "buildingId": "P03",
+      "description": "Di dalam Labtek VII. Titik peta memakai titik gedung; letak persis di dalam gedung belum disurvei.",
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Daftar fasilitas POI P03 (Labtek VII) di assets/data/pois.json",
+          "Institut Teknologi Bandung (itb.ac.id)",
+          "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
+          "Website resmi fakultas dan program studi ITB",
+          "Buku Saku Mahasiswa Pascasarjana ITB 2021"
+        ],
+        "owner": "SebastianAben",
+        "verifiedAt": "2026-11-24",
+        "assetAttribution": [],
+        "approved": true
+      }
+    },
+    {
+      "id": "F04",
+      "name": "Toilet Labtek VIII",
+      "category": "toilet",
+      "lat": -6.8905954,
+      "lng": 107.610576,
+      "buildingId": "P04",
+      "description": "Di dalam Labtek VIII. Titik peta memakai titik gedung; letak persis di dalam gedung belum disurvei.",
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Daftar fasilitas POI P04 (Labtek VIII) di assets/data/pois.json",
+          "Institut Teknologi Bandung (itb.ac.id)",
+          "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
+          "Website resmi fakultas dan program studi ITB",
+          "Buku Saku Mahasiswa Pascasarjana ITB 2021"
+        ],
+        "owner": "SebastianAben",
+        "verifiedAt": "2026-11-24",
+        "assetAttribution": [],
+        "approved": true
+      }
+    },
+    {
+      "id": "F05",
+      "name": "Toilet Labtek X & XI",
+      "category": "toilet",
+      "lat": -6.888994,
+      "lng": 107.6095767,
+      "buildingId": "P05",
+      "description": "Di dalam Labtek X & XI. Titik peta memakai titik gedung; letak persis di dalam gedung belum disurvei.",
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Daftar fasilitas POI P05 (Labtek X & XI) di assets/data/pois.json",
+          "Institut Teknologi Bandung (itb.ac.id)",
+          "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
+          "Website resmi fakultas dan program studi ITB",
+          "Buku Saku Mahasiswa Pascasarjana ITB 2021"
+        ],
+        "owner": "SebastianAben",
+        "verifiedAt": "2026-11-24",
+        "assetAttribution": [],
+        "approved": true
+      }
+    },
+    {
+      "id": "F06",
+      "name": "Toilet Gedung Kuliah Umum Barat",
+      "category": "toilet",
+      "lat": -6.89053,
+      "lng": 107.6089,
+      "buildingId": "P06",
+      "description": "Di dalam Gedung Kuliah Umum Barat. Titik peta memakai titik gedung; letak persis di dalam gedung belum disurvei.",
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Daftar fasilitas POI P06 (Gedung Kuliah Umum Barat) di assets/data/pois.json",
+          "Institut Teknologi Bandung (itb.ac.id)",
+          "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
+          "Website resmi fakultas dan program studi ITB",
+          "Buku Saku Mahasiswa Pascasarjana ITB 2021"
+        ],
+        "owner": "SebastianAben",
+        "verifiedAt": "2026-11-24",
+        "assetAttribution": [],
+        "approved": true
+      }
+    },
+    {
+      "id": "F07",
+      "name": "Toilet Gedung Kuliah Umum Timur",
+      "category": "toilet",
+      "lat": -6.8903881,
+      "lng": 107.611999,
+      "buildingId": "P07",
+      "description": "Di dalam Gedung Kuliah Umum Timur. Titik peta memakai titik gedung; letak persis di dalam gedung belum disurvei.",
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Daftar fasilitas POI P07 (Gedung Kuliah Umum Timur) di assets/data/pois.json",
+          "Institut Teknologi Bandung (itb.ac.id)",
+          "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
+          "Website resmi fakultas dan program studi ITB",
+          "Buku Saku Mahasiswa Pascasarjana ITB 2021"
+        ],
+        "owner": "SebastianAben",
+        "verifiedAt": "2026-11-24",
+        "assetAttribution": [],
+        "approved": true
+      }
+    },
+    {
+      "id": "F08",
+      "name": "Toilet Oktagon",
+      "category": "toilet",
+      "lat": -6.8890603,
+      "lng": 107.610047,
+      "buildingId": "P08",
+      "description": "Di dalam Oktagon. Titik peta memakai titik gedung; letak persis di dalam gedung belum disurvei.",
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Daftar fasilitas POI P08 (Oktagon) di assets/data/pois.json",
+          "Institut Teknologi Bandung (itb.ac.id)",
+          "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
+          "Website resmi fakultas dan program studi ITB",
+          "Buku Saku Mahasiswa Pascasarjana ITB 2021"
+        ],
+        "owner": "SebastianAben",
+        "verifiedAt": "2026-11-24",
+        "assetAttribution": [],
+        "approved": true
+      }
+    },
+    {
+      "id": "F09",
+      "name": "Toilet TVST",
+      "category": "toilet",
+      "lat": -6.8895043,
+      "lng": 107.6100594,
+      "buildingId": "P09",
+      "description": "Di dalam TVST. Titik peta memakai titik gedung; letak persis di dalam gedung belum disurvei.",
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Daftar fasilitas POI P09 (TVST) di assets/data/pois.json",
+          "Institut Teknologi Bandung (itb.ac.id)",
+          "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
+          "Website resmi fakultas dan program studi ITB",
+          "Buku Saku Mahasiswa Pascasarjana ITB 2021"
+        ],
+        "owner": "SebastianAben",
+        "verifiedAt": "2026-11-24",
+        "assetAttribution": [],
+        "approved": true
+      }
+    },
+    {
+      "id": "F10",
+      "name": "Toilet Labtek I",
+      "category": "toilet",
+      "lat": -6.8892078,
+      "lng": 107.6111876,
+      "buildingId": "P10",
+      "description": "Di dalam Labtek I. Titik peta memakai titik gedung; letak persis di dalam gedung belum disurvei.",
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Daftar fasilitas POI P10 (Labtek I) di assets/data/pois.json",
+          "Institut Teknologi Bandung (itb.ac.id)",
+          "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
+          "Website resmi fakultas dan program studi ITB",
+          "Buku Saku Mahasiswa Pascasarjana ITB 2021"
+        ],
+        "owner": "SebastianAben",
+        "verifiedAt": "2026-11-24",
+        "assetAttribution": [],
+        "approved": true
+      }
+    },
+    {
+      "id": "F11",
+      "name": "Musala Labtek V",
+      "category": "musala",
+      "lat": -6.8905811,
+      "lng": 107.6097754,
+      "buildingId": "P01",
+      "description": "Di dalam Labtek V. Titik peta memakai titik gedung; letak persis di dalam gedung belum disurvei.",
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Daftar fasilitas POI P01 (Labtek V) di assets/data/pois.json",
+          "Institut Teknologi Bandung (itb.ac.id)",
+          "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
+          "Website resmi fakultas dan program studi ITB",
+          "Buku Saku Mahasiswa Pascasarjana ITB 2021"
+        ],
+        "owner": "SebastianAben",
+        "verifiedAt": "2026-11-24",
+        "assetAttribution": [],
+        "approved": true
+      }
+    },
+    {
+      "id": "F12",
+      "name": "Musala Labtek VII",
+      "category": "musala",
+      "lat": -6.8901169,
+      "lng": 107.6105714,
+      "buildingId": "P03",
+      "description": "Di dalam Labtek VII. Titik peta memakai titik gedung; letak persis di dalam gedung belum disurvei.",
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Daftar fasilitas POI P03 (Labtek VII) di assets/data/pois.json",
+          "Institut Teknologi Bandung (itb.ac.id)",
+          "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
+          "Website resmi fakultas dan program studi ITB",
+          "Buku Saku Mahasiswa Pascasarjana ITB 2021"
+        ],
+        "owner": "SebastianAben",
+        "verifiedAt": "2026-11-24",
+        "assetAttribution": [],
+        "approved": true
+      }
+    },
+    {
+      "id": "F13",
+      "name": "Musala Labtek VIII",
+      "category": "musala",
+      "lat": -6.8905954,
+      "lng": 107.610576,
+      "buildingId": "P04",
+      "description": "Di dalam Labtek VIII. Titik peta memakai titik gedung; letak persis di dalam gedung belum disurvei.",
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Daftar fasilitas POI P04 (Labtek VIII) di assets/data/pois.json",
+          "Institut Teknologi Bandung (itb.ac.id)",
+          "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
+          "Website resmi fakultas dan program studi ITB",
+          "Buku Saku Mahasiswa Pascasarjana ITB 2021"
+        ],
+        "owner": "SebastianAben",
+        "verifiedAt": "2026-11-24",
+        "assetAttribution": [],
+        "approved": true
+      }
+    },
+    {
+      "id": "F14",
+      "name": "Musala Gedung Kuliah Umum Barat",
+      "category": "musala",
+      "lat": -6.89053,
+      "lng": 107.6089,
+      "buildingId": "P06",
+      "description": "Di dalam Gedung Kuliah Umum Barat. Titik peta memakai titik gedung; letak persis di dalam gedung belum disurvei.",
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Daftar fasilitas POI P06 (Gedung Kuliah Umum Barat) di assets/data/pois.json",
+          "Institut Teknologi Bandung (itb.ac.id)",
+          "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
+          "Website resmi fakultas dan program studi ITB",
+          "Buku Saku Mahasiswa Pascasarjana ITB 2021"
+        ],
+        "owner": "SebastianAben",
+        "verifiedAt": "2026-11-24",
+        "assetAttribution": [],
+        "approved": true
+      }
+    },
+    {
+      "id": "F15",
+      "name": "Musala Labtek I",
+      "category": "musala",
+      "lat": -6.8892078,
+      "lng": 107.6111876,
+      "buildingId": "P10",
+      "description": "Di dalam Labtek I. Titik peta memakai titik gedung; letak persis di dalam gedung belum disurvei.",
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Daftar fasilitas POI P10 (Labtek I) di assets/data/pois.json",
+          "Institut Teknologi Bandung (itb.ac.id)",
+          "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
+          "Website resmi fakultas dan program studi ITB",
+          "Buku Saku Mahasiswa Pascasarjana ITB 2021"
+        ],
+        "owner": "SebastianAben",
+        "verifiedAt": "2026-11-24",
+        "assetAttribution": [],
+        "approved": true
+      }
+    },
+    {
+      "id": "F16",
+      "name": "Kantin Labtek V",
+      "category": "kantin",
+      "lat": -6.8905811,
+      "lng": 107.6097754,
+      "buildingId": "P01",
+      "description": "Di dalam Labtek V. Titik peta memakai titik gedung; letak persis di dalam gedung belum disurvei.",
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Daftar fasilitas POI P01 (Labtek V) di assets/data/pois.json",
+          "Institut Teknologi Bandung (itb.ac.id)",
+          "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
+          "Website resmi fakultas dan program studi ITB",
+          "Buku Saku Mahasiswa Pascasarjana ITB 2021"
+        ],
+        "owner": "SebastianAben",
+        "verifiedAt": "2026-11-24",
+        "assetAttribution": [],
+        "approved": true
+      }
+    },
+    {
+      "id": "F17",
+      "name": "Kantin Labtek X & XI",
+      "category": "kantin",
+      "lat": -6.888994,
+      "lng": 107.6095767,
+      "buildingId": "P05",
+      "description": "Di dalam Labtek X & XI. Titik peta memakai titik gedung; letak persis di dalam gedung belum disurvei.",
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Daftar fasilitas POI P05 (Labtek X & XI) di assets/data/pois.json",
+          "Institut Teknologi Bandung (itb.ac.id)",
+          "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
+          "Website resmi fakultas dan program studi ITB",
+          "Buku Saku Mahasiswa Pascasarjana ITB 2021"
+        ],
+        "owner": "SebastianAben",
+        "verifiedAt": "2026-11-24",
+        "assetAttribution": [],
+        "approved": true
+      }
+    },
+    {
+      "id": "F18",
+      "name": "Kantin Gedung Kuliah Umum Barat",
+      "category": "kantin",
+      "lat": -6.89053,
+      "lng": 107.6089,
+      "buildingId": "P06",
+      "description": "Di dalam Gedung Kuliah Umum Barat. Titik peta memakai titik gedung; letak persis di dalam gedung belum disurvei.",
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Daftar fasilitas POI P06 (Gedung Kuliah Umum Barat) di assets/data/pois.json",
+          "Institut Teknologi Bandung (itb.ac.id)",
+          "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
+          "Website resmi fakultas dan program studi ITB",
+          "Buku Saku Mahasiswa Pascasarjana ITB 2021"
+        ],
+        "owner": "SebastianAben",
+        "verifiedAt": "2026-11-24",
+        "assetAttribution": [],
+        "approved": true
+      }
+    },
+    {
+      "id": "F19",
+      "name": "Kantin Gedung Kuliah Umum Timur",
+      "category": "kantin",
+      "lat": -6.8903881,
+      "lng": 107.611999,
+      "buildingId": "P07",
+      "description": "Di dalam Gedung Kuliah Umum Timur. Titik peta memakai titik gedung; letak persis di dalam gedung belum disurvei.",
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Daftar fasilitas POI P07 (Gedung Kuliah Umum Timur) di assets/data/pois.json",
+          "Institut Teknologi Bandung (itb.ac.id)",
+          "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
+          "Website resmi fakultas dan program studi ITB",
+          "Buku Saku Mahasiswa Pascasarjana ITB 2021"
+        ],
+        "owner": "SebastianAben",
+        "verifiedAt": "2026-11-24",
+        "assetAttribution": [],
+        "approved": true
+      }
+    },
+    {
+      "id": "F20",
+      "name": "ATM BCA",
+      "category": "atm",
+      "lat": -6.8906146,
+      "lng": 107.6092305,
+      "buildingId": null,
+      "description": "Di antara GKUB dan Labtek V. Titik ditandai pengguna pada peta AGAM, 24 November 2026; belum diverifikasi lapangan.",
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Informasi lokasi dari SebastianAben, 24 November 2026"
+        ],
+        "owner": "SebastianAben",
+        "verifiedAt": "2026-11-24",
+        "assetAttribution": [],
+        "approved": true
+      }
+    },
+    {
+      "id": "F21",
+      "name": "ATM Center",
+      "category": "atm",
+      "lat": -6.892245,
+      "lng": 107.6105443,
+      "buildingId": null,
+      "description": "Kawasan selatan kampus. Titik ditandai pengguna pada peta AGAM, 24 November 2026; belum diverifikasi lapangan.",
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Informasi lokasi dari SebastianAben, 24 November 2026"
+        ],
+        "owner": "SebastianAben",
+        "verifiedAt": "2026-11-24",
+        "assetAttribution": [],
+        "approved": true
+      }
+    },
+    {
+      "id": "F22",
+      "name": "ATM BNI",
+      "category": "atm",
+      "lat": -6.8903881,
+      "lng": 107.611999,
+      "buildingId": "P07",
+      "description": "Gedung Kuliah Umum Timur, lantai 1. Titik peta memakai titik gedung; letak persis di dalam gedung belum disurvei.",
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Informasi lokasi dari SebastianAben, 24 November 2026"
+        ],
+        "owner": "SebastianAben",
+        "verifiedAt": "2026-11-24",
+        "assetAttribution": [],
+        "approved": true
+      }
+    },
+    {
+      "id": "F23",
+      "name": "Perpustakaan Pusat ITB",
+      "category": "perpustakaan",
+      "lat": -6.8882337,
+      "lng": 107.610614,
+      "buildingId": null,
+      "description": "Kawasan utara kampus. Titik ditandai pengguna pada peta AGAM, 24 November 2026; belum diverifikasi lapangan.",
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Informasi lokasi dari SebastianAben, 24 November 2026"
+        ],
+        "owner": "SebastianAben",
+        "verifiedAt": "2026-11-24",
+        "assetAttribution": [],
+        "approved": true
+      }
+    },
+    {
+      "id": "F24",
+      "name": "Perpustakaan STEI",
+      "category": "perpustakaan",
+      "lat": -6.8905811,
+      "lng": 107.6097754,
+      "buildingId": "P01",
+      "description": "Labtek V, lantai 3. Titik peta memakai titik gedung; letak persis di dalam gedung belum disurvei.",
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Informasi lokasi dari SebastianAben, 24 November 2026"
+        ],
+        "owner": "SebastianAben",
+        "verifiedAt": "2026-11-24",
+        "assetAttribution": [],
+        "approved": true
+      }
+    },
+    {
+      "id": "F25",
+      "name": "Information Center",
+      "category": "layananAkademik",
+      "lat": -6.891392,
+      "lng": 107.6104209,
+      "buildingId": null,
+      "description": "Bagian tengah kampus. Titik ditandai pengguna pada peta AGAM, 24 November 2026; belum diverifikasi lapangan.",
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Informasi lokasi dari SebastianAben, 24 November 2026"
+        ],
+        "owner": "SebastianAben",
+        "verifiedAt": "2026-11-24",
+        "assetAttribution": [],
+        "approved": true
+      }
+    },
+    {
+      "id": "F26",
+      "name": "Tata Usaha STEI",
+      "category": "layananAkademik",
+      "lat": -6.8905811,
+      "lng": 107.6097754,
+      "buildingId": "P01",
+      "description": "Labtek V, lantai 2. Titik peta memakai titik gedung; letak persis di dalam gedung belum disurvei.",
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Informasi lokasi dari SebastianAben, 24 November 2026"
+        ],
+        "owner": "SebastianAben",
+        "verifiedAt": "2026-11-24",
+        "assetAttribution": [],
+        "approved": true
+      }
+    }
+  ]
 }

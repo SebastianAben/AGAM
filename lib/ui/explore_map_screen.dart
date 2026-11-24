@@ -233,16 +233,13 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
   Future<void> _loadFacilities() async {
     final poi = _selectedPoi;
     if (poi == null || widget.internalDemo) return;
+    // Ask for every facility, then keep the nearest one per category.
     final facilities = await widget.services.facilities.nearby(
       from: poi.position,
-      limit: 4,
+      limit: 1000,
     );
     if (mounted) {
-      setState(
-        () => _nearbyFacilities = facilities
-            .map((item) => item.facility)
-            .toList(),
-      );
+      setState(() => _nearbyFacilities = nearestPerCategory(facilities));
     }
   }
 
@@ -1167,13 +1164,10 @@ class _PoiSheet extends StatelessWidget {
                         spacing: 8,
                         runSpacing: 8,
                         children: [
+                          // The facility service only returns approved,
+                          // non-placeholder entries, so names show as-is.
                           for (final facility in facilities)
-                            AgamPill(
-                              facility.name.contains('(contoh)')
-                                  ? facility.name
-                                  : '${facility.name} · contoh',
-                              icon: Icons.place_rounded,
-                            ),
+                            AgamPill(facility.name, icon: Icons.place_rounded),
                         ],
                       ),
                     ],
