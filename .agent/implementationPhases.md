@@ -33,23 +33,25 @@ Setiap PBI berstatus `done` wajib memiliki:
 
 Bagian satu track yang selesai tetapi belum terintegrasi dicatat sebagai `in_progress` dengan keterangan, misalnya "logic selesai, menunggu integrasi UI".
 
-### Rekap total — 16 November 2026
+### Rekap total — 24 November 2026
 
 | Cakupan | `done` | `in_progress` | `planned` | Total |
 | --- | --- | --- | --- | --- |
 | Sprint 1 | 0 | 4 | 0 | 4 |
 | Sprint 2 | 0 | 5 | 0 | 5 |
-| Sprint 3 | 0 | 3 | 2 | 5 |
+| Sprint 3 | 0 | 5 | 0 | 5 |
 | Sprint 4 | 0 | 3 | 2 | 5 |
 | Sprint 5 | 0 | 0 | 3 | 3 |
-| **Seluruh PBI** | **0** | **15** | **7** | **22** |
+| **Seluruh PBI** | **0** | **17** | **5** | **22** |
 
-PBI aktif: PB01–PB12, PB15–PB17. PBI planned: PB13, PB14, PB18–PB22.
+PBI aktif: PB01–PB12, PB15–PB17, PB21, PB22. PBI planned: PB13, PB14, PB18–PB20.
 Tidak ada PBI berstatus `blocked`/`deferred`; blocker bagian pekerjaan tetap
 dicatat pada PBI masing-masing. Angka ini menghitung status deliverable, bukan
 persentase kode atau acceptance yang telah terpenuhi. PB17 dikoreksi dari
 `planned` ke `in_progress` karena verifikasi offline parsial sudah dijalankan;
-tidak ada PBI yang dinaikkan menjadi `done`.
+tidak ada PBI yang dinaikkan menjadi `done`. Koreksi 24 November 2026: PB21/PB22
+tercatat `in_progress` di bagian masing-masing sejak logic LA tersedia, sehingga rekap
+Sprint 3 disesuaikan.
 
 ## 2. Model Kerja Paralel
 
@@ -256,7 +258,7 @@ Progres trail, POI dikunjungi, dan pengaturan disimpan per akun (PRD §15.1). Im
 | --- | --- | --- | --- |
 | S1 — Week 10 | Kontrak, fondasi aplikasi, lokasi, peta | PB01, PB02, PB03, PB04 | `in_progress` |
 | S2 — Week 11 | Geofence, sesi, trigger, kartu POI, audio | PB05, PB06, PB07, PB08, PB09 | `in_progress` — integrasi demo layanan LA/UI03/UI04 tersedia; simulasi native dan uji HP terdahulu parsial. Trigger fisik, konten lengkap, playback/acceptance belum selesai |
-| S3 — Week 12 | Pencarian dan navigasi; akun dan log aktivitas | PB10, PB11, PB12, PB21, PB22 | `in_progress` — pencarian POI repository pada demo tersedia; UI rute pratinjau, routing/navigation masih fake; LA PB12 teruji unit. PB21/PB22 `planned` |
+| S3 — Week 12 | Pencarian dan navigasi; akun dan log aktivitas | PB10, PB11, PB12, PB21, PB22 | `in_progress` — pencarian POI repository pada demo tersedia; UI rute pratinjau, routing/navigation masih fake; LA PB12 teruji unit. PB21: login wajib, UI10 dan gerbang login tersambung di jalur produk; hapus akun di UI09 belum. PB22: event akun, `appOpen` dan mode tercatat; `featureUsed`/`trailCompleted` belum |
 | S4 — Week 13 | Eyes-free, rekomendasi, trail, fasilitas, offline; Feature Freeze | PB13, PB14, PB15, PB16, PB17 | `in_progress` — PB15 UI pratinjau, PB16 pengaturan nyata/kategori placeholder, PB17 verifikasi offline parsial. PB13/PB14 tetap `planned` |
 | S5 — Week 14 | Uji acceptance, perbaikan, rilis v1.0 | PB18, PB19, PB20 | `planned` |
 
@@ -339,7 +341,7 @@ Progres trail, POI dikunjungi, dan pengaturan disimpan per akun (PRD §15.1). Im
   - `firestore.rules` (PRD §15.4–§15.5) dengan 21 test emulator di `tools/firestore/rules.test.mjs`; sudah di-deploy ke `agam-9e704`.
   - Seed `tools/firestore/seed_pois.mjs` dan workflow `.github/workflows/seed-firestore.yml` (PRD §15.2); diuji di emulator.
 - **Seed pertama (15 November 2026):** dari `pois.json` `dev` `d602fed` memakai service account `agam-seed` (Cloud Datastore User); 10 dokumen `pois`, 0 `facilities`. Pemeriksaan REST: `pois` terbaca tanpa login, `users` ditolak (HTTP 403).
-- **Sisa:** secret `FIREBASE_SERVICE_ACCOUNT` dan GitHub Actions (terkunci billing) untuk seed otomatis; build APK dan uji perangkat (membaca dari server, cache, offline). Usulan untuk LA: pembanding versi dataset agar cache lama tidak menutupi JSON bawaan yang lebih baru (PRD §15.2).
+- **Sisa:** build APK dan uji perangkat (membaca dari server, cache, offline). Seed otomatis lewat `.github/workflows/seed-firestore.yml` berjalan sukses pada 24 November 2026 (run untuk `9faf7f4` dan `80add99`), sehingga secret dan Actions sudah tersedia. Usulan untuk LA: pembanding versi dataset agar cache lama tidak menutupi JSON bawaan yang lebih baru (PRD §15.2).
 - **Status:** `in_progress` — JSON bawaan, validasi, cache, fallback, dan sumber Firestore tersedia; repository yang sama dipakai oleh demo untuk marker/trigger/detail. Uji pada perangkat Android terhadap tree gabungan belum dijalankan.
 
 ### PB04 — Explore Map dengan tile vektor dibundel
@@ -487,7 +489,7 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
 - **Keputusan PM 23 November 2026 (disampaikan pemilik konten):** video GKUB/GKUT opsional; konten boleh disetujui tanpa video (PRD F03, §9.1, §23). P06 GKUB disetujui pemilik konten.
 - **Media tambahan 23 November 2026 (pemilik konten):** foto P08 Oktagon, P09 TVST, P10 Labtek I dari Google Maps dan video P06 GKUB dari TikTok; pemilik konten memutuskan memakainya dengan kredit eksplisit ("Foto: Google Maps", "Video: TikTok"). Foto GKUT (screenshot Street View) dan video GKUT tidak dipakai. Foto P10 memperlihatkan papan "SPITM"; pemilik konten memastikan itu Labtek I dari sisi lain. P08–P10 disetujui pemilik konten.
 - **GKUT (23 November 2026):** foto P07 dari Google Maps Street View ("Foto: Google Maps (Street View)"), papan gedung bertuliskan "Gedung Kuliah Umum Timur Paragon Innovation"; atas persetujuan pemilik konten, trivia P07 dikoreksi dari "Paragon Foundation" menjadi "Paragon Innovation". P07 disetujui pemilik konten; 10/10 POI approved.
-- **Status:** `in_progress` — 10/10 POI approved di JSON; tersisa uji tampilan/playback di perangkat, seed Firestore setelah merge ke `dev`, dan pencatatan keputusan PM soal video di Change Log PRD resmi
+- **Status:** `in_progress` — 10/10 POI approved di JSON; seed Firestore otomatis sudah berjalan (24 November 2026); video P06 GKUB ada di kartu; keputusan video opsional tercatat di PRD §23. Tersisa uji tampilan/playback di perangkat dan pencatatan oleh PM di Change Log PRD resmi
 
 ## 7. Sprint 3 — Pencarian, Navigasi, dan Akun
 
@@ -518,9 +520,10 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
   Dijkstra yang dibatasi ruas graf dan deteksi tiba di ujung rute demo.
   Integrasi bootstrap dan verifikasi lapangan tertunda. PB11 tetap `in_progress`.
 
+- **Titik akses (24 November 2026, branch `feat/access-points-trail-data`):** tujuan rute kini *titik akses* (pintu atau sisi lantai 1 yang terbuka), [CL] di PRD F06/§11. `tools/routing/plan_access_points.py` menghitung satu kandidat per gedung dari jaringan utama graf draf dan mengisi `entrances[]` dengan `verified: false`; daftar cek lapangan di `task-implementation/backend/PB11-access-point-field-check.md`. Kontrak `PoiEntrance.verified` ditambahkan: `hasSurveyedEntrance` hanya benar untuk titik terverifikasi, sedangkan `navigationPoint` memakai kandidat. Temuan: graf draf terdiri atas 17 potongan; titik terdekat Labtek V berada di potongan terisolasi (4 simpul) dan GKUT berjarak 26 m dari jaringan utama (di atas batas snap 25 m), sehingga perangkaian routing harus memakai jaringan utama atau titik akses.
 - **Track:** LB (graf, `RoutingService`, `NavigationController`), FE (UI06), LA (sesi Navigasi) · **Requirement:** F06, A01
-- **Dependency eksternal:** koordinat pintu masuk (survei).
-- **Done:** rute tampil ke pintu masuk tujuan; rerouting berjalan; tidak ada request routing ke server.
+- **Dependency eksternal:** verifikasi titik akses di lapangan.
+- **Done:** rute tampil ke titik akses tujuan yang sudah diverifikasi; rerouting berjalan; tidak ada request routing ke server.
 - **Status:** `in_progress` — `CampusRoutingService` dan `DeviceNavigationController` asli tersedia. Dijkstra, langkah, ETA, reroute >25 m, tiba ≤15 m, serta pembatalan perhitungan tertunda lulus test fixture sintetis. Integrasi UI/LA dan verifikasi lapangan belum selesai. Aktivasi rute produk menunggu graf jalan bersumber dan koordinat pintu masuk hasil survei; batas layanan produk ditetapkan 24 November 2026 (PRD §9.3).
 
 ### PB12 — Arahan suara navigasi dan deteksi tiba
@@ -531,7 +534,7 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
   - `lib/logic/audio/device_voice_guidance.dart`: `VoiceGuidance` asli dengan `flutter_tts` ^4.2.5, locale `id-ID`. Dianggap tersedia hanya jika suara `id-ID` **offline** terpasang (`isLanguageInstalled`); jika tidak, diam dan UI memakai arahan visual. Arahan baru menggantikan ucapan lama (QUEUE_FLUSH). Manifest menambah query `TTS_SERVICE` sesuai README plugin.
   - `lib/logic/audio/navigation_announcer.dart`: mendengarkan `NavigationState` (LB); membacakan `RouteStep.instruction` sekali per langkah dan saat rute baru setelah rerouting; langkah `arrive` tidak dibacakan; saat tiba, TTS dihentikan lalu file audio tiba POI diputar lewat `AudioService`.
   - Mode Navigasi di `SessionController` (POI lain hanya notifikasi ringkas) sudah selesai di PB06.
-- **Belum/keputusan terbuka:** tujuan fasilitas tidak punya file audio tiba sehingga konfirmasinya hanya visual. Jika tim ingin pengumuman suara untuk fasilitas atau fallback TTS saat file audio POI belum ada, itu menyimpang dari PRD §10 (TTS hanya arahan) dan perlu keputusan PM. Integrasi dengan `NavigationController` asli (LB), tampilan tiba (FE), file audio tiba (PB09), dan uji perangkat belum dilakukan.
+- **Keputusan 24 November 2026:** tiba di fasilitas diumumkan dengan TTS runtime ("Anda telah tiba di {nama fasilitas}"), fallback visual bila suara `id-ID` tidak tersedia ([CL] PRD §10/§23). **Belum:** implementasi pengumuman tersebut, tampilan tiba di layar Cari & Rute (saat ini baru di layar Trail), integrasi dengan routing asli (PB11), dan uji perangkat.
 - **Status:** `in_progress` — logic LA selesai dan teruji unit dengan navigasi palsu
 
 ### PB21 — Akun dan login wajib
@@ -548,8 +551,8 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
   - `lib/logic/settings/device_settings_store.dart`: pengaturan per `uid` (`switchAccount`, `clearAccount`); sebelum akun dipakai tetap memakai kunci perangkat agar demo tidak berubah.
   - `lib/logic/account/account_bootstrap.dart`: `createLaAccountServices(la)`; pengaturan mengikuti akun, akun yang keluar dari luar aplikasi ikut mengakhiri sesi.
   - Test: `test/logic/account/device_auth_service_test.dart`, tambahan per akun di `test/logic/settings/device_settings_store_test.dart`.
-- **Belum:** `lib/main.dart` belum memakai akun asli karena gerbang login/UI10 (FE) belum ada; jalur non-demo masih menampilkan "Login wajib belum tersedia". Progres trail per akun (LB). Test rules emulator (`tools/firestore/rules.test.mjs`) tidak dijalankan ulang di mesin ini karena Firebase CLI tidak terpasang; rules tidak diubah. Uji perangkat dengan project `agam-9e704`.
-- **Status:** `in_progress` — logic LA tersedia dan teruji unit; menunggu UI10, perangkaian `main.dart`, dan uji perangkat
+- **Pembaruan 24 November 2026:** jalur produk `lib/main.dart` memakai `createLaAccountServices` (akun asli); UI10 `lib/ui/auth_screen.dart` dan gerbang login di `lib/ui/app.dart` tersambung (`test/ui/auth_gate_test.dart`). **Belum:** tombol hapus akun di UI09, progres trail per akun dalam perangkaian produk (PB15), test rules emulator (`tools/firestore/rules.test.mjs`, Firebase CLI tidak terpasang di mesin ini), dan uji perangkat dengan project `agam-9e704`.
+- **Status:** `in_progress` — login wajib tersambung di jalur produk; hapus akun di UI09, test rules emulator, dan uji perangkat belum
 
 ### PB22 — Log aktivitas internal
 
@@ -562,7 +565,7 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
   - `lib/logic/account/firestore_activity_logger.dart`: `FirestoreActivityLogger` (`activity_logs`, tidak ditunggu dan tidak melempar; antrean offline dari cache Firestore; event tanpa akun diabaikan; `flush`, `deleteAllFor`). `activityLogDocument` membentuk dokumen persis seperti `hasExactly` di `firestore.rules`; `date` memakai tanggal lokal perangkat.
   - `lib/logic/account/activity_recorders.dart`: `SessionActivityRecorder` (`modeStart`/`modeEnd` dari `SessionController`, ganti mode = akhir lama + awal baru, tanpa alasan berakhir) dan `AppOpenRecorder` (sekali per proses; bila belum login dicatat saat login pertama; tidak dicatat bila aplikasi dibuka dari notifikasi trigger). Info perangkat dari package_info_plus ^10.2.2 dan device_info_plus ^13.3.0, dipotong 1–64 karakter.
   - Test: `test/logic/account/activity_log_test.dart` (field per event dibandingkan dengan daftar rules; uji mutasi: menyisipkan `lat` menggagalkan 8 test).
-- **Belum:** event `featureUsed` (FE) dan `trailCompleted`/pencarian (LB); perangkaian `main.dart` (bersama PB21); test rules emulator dan pemeriksaan lalu lintas jaringan di perangkat.
+- **Belum:** event `featureUsed` (pencarian, kartu POI, narasi, fasilitas) dan `trailCompleted` belum dipanggil di mana pun; test rules emulator dan pemeriksaan lalu lintas jaringan di perangkat. Event akun, `appOpen`, dan mode sudah dicatat di jalur produk lewat `createLaAccountServices`.
 - **Status:** `in_progress` — bagian LA tersedia dan teruji unit
 
 ## 8. Sprint 4 — Eyes-free, Rekomendasi, Trail, Fasilitas; Feature Freeze
@@ -590,7 +593,8 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
 ### PB15 — Orientation Trail
 
 - **Track:** LB (`TrailService`), FE (UI08), LA (sesi Trail) · **Requirement:** F08
-- **Dependency eksternal:** urutan trail dari tim.
+- **Urutan trail (24 November 2026):** keliling terpendek antar-titik akses (1.536 m pada graf draf) diisi ke `trailOrder` 1–10: Labtek V → Labtek VIII → Labtek VII → GKU Timur → Labtek I → Oktagon → Labtek X & XI → TVST → Labtek VI → GKU Barat. Trail dimulai dari POI terdekat dengan pengguna lalu searah putaran ([CL] PRD F08/§12). **Belum:** rotasi urutan dan penyimpanan titik awal per akun di `DeviceTrailService`, perangkaian di `main.dart` (masih `UnavailableTrailService`), dan `_canRoute` yang kini menolak titik akses kandidat (`hasSurveyedEntrance` false) sehingga trail tidak dapat dimulai sebelum verifikasi.
+- **Dependency eksternal:** verifikasi titik akses di lapangan.
 - **Done:** progres tersimpan setelah aplikasi ditutup; lencana muncul saat 10/10.
 - **Status:** `in_progress` — UI08 FE tersedia. Demo membaca POI repository dengan urutan contoh sintetis dan progres kosong, tanpa berlangganan progres/navigation fake. Aksi Mulai/Pilih rute hanya menjelaskan dependency; test membuktikan Explore aktif tidak diganti. Trail resmi, penyimpanan progres, check-in, lencana dan acceptance belum selesai.
 

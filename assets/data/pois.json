@@ -11,7 +11,7 @@
       "lat": -6.8905811,
       "lng": 107.6097754,
       "radiusM": 15,
-      "entrances": [],
+      "entrances": [{"lat": -6.8907403, "lng": 107.6096439, "label": "Titik akses sisi barat daya", "verified": false}],
       "description": "Labtek V atau Gedung Benny Subianto, gedung ini menjadi salah satu pusat kegiatan akademik Teknik Informatika ITB, termasuk perkuliahan, praktikum, dan penelitian.",
       "function": "Gedung Kuliah dan Laboratorium",
       "facilities": ["Ruang Kelas", "Laboratorium", "Toilet", "Mushalla", "Kantin"],
@@ -25,7 +25,7 @@
         "promptAudio": "assets/media/P01/prompt.m4a",
         "arrivalAudio": "assets/media/P01/tiba.m4a"
       },
-      "trailOrder": null,
+      "trailOrder": 1,
       "metadata": {
         "isPlaceholder": false,
         "sources": [
@@ -54,7 +54,7 @@
       "lat": -6.8901358,
       "lng": 107.6097167,
       "radiusM": 15,
-      "entrances": [],
+      "entrances": [{"lat": -6.8900219, "lng": 107.6098787, "label": "Titik akses sisi timur laut", "verified": false}],
       "description": "Labtek VI atau Gedung T.P. Rachmat, gedung ini digunakan untuk kegiatan pendidikan dan penelitian, khususnya Program Studi Teknik Fisika dan Teknik Kelautan ITB.",
       "function": "Gedung Kuliah dan Laboratorium",
       "facilities": ["Ruang Kelas", "Laboratorium", "Toilet"],
@@ -68,7 +68,7 @@
         "promptAudio": "assets/media/P02/prompt.m4a",
         "arrivalAudio": "assets/media/P02/tiba.m4a"
       },
-      "trailOrder": null,
+      "trailOrder": 9,
       "metadata": {
         "isPlaceholder": false,
         "sources": [
@@ -97,7 +97,7 @@
       "lat": -6.8901169,
       "lng": 107.6105714,
       "radiusM": 15,
-      "entrances": [],
+      "entrances": [{"lat": -6.8901175, "lng": 107.6104257, "label": "Titik akses sisi barat", "verified": false}],
       "description": "Labtek VII atau Gedung Yusuf Panigoro, gedung ini digunakan untuk kegiatan akademik dan penelitian Sekolah Farmasi ITB, khususnya bidang Sains dan Teknologi Farmasi serta Farmasi Klinik dan Komunitas.",
       "function": "Gedung Kuliah dan Laboratorium",
       "facilities": ["Ruang Kelas", "Laboratorium", "Toilet", "Mushalla"],
@@ -110,7 +110,7 @@
         "promptAudio": "assets/media/P03/prompt.m4a",
         "arrivalAudio": "assets/media/P03/tiba.m4a"
       },
-      "trailOrder": null,
+      "trailOrder": 3,
       "metadata": {
         "isPlaceholder": false,
         "sources": [
@@ -138,7 +138,7 @@
       "lat": -6.8905954,
       "lng": 107.6105760,
       "radiusM": 15,
-      "entrances": [],
+      "entrances": [{"lat": -6.8906368, "lng": 107.6105083, "label": "Titik akses sisi barat daya", "verified": false}],
       "description": "Labtek VIII atau Gedung Achmad Bakrie, gedung ini mendukung kegiatan akademik dan administrasi Sekolah Teknik Elektro dan Informatika (STEI) serta Fakultas Matematika dan Ilmu Pengetahuan Alam (FMIPA).",
       "function": "Gedung Kuliah dan Laboratorium",
       "facilities": ["Ruang Kelas", "Laboratorium", "Toilet", "Mushalla", "Apotek"],
@@ -151,7 +151,7 @@
         "promptAudio": "assets/media/P04/prompt.m4a",
         "arrivalAudio": "assets/media/P04/tiba.m4a"
       },
-      "trailOrder": null,
+      "trailOrder": 2,
       "metadata": {
         "isPlaceholder": false,
         "sources": [
@@ -179,7 +179,7 @@
       "lat": -6.8889940,
       "lng": 107.6095767,
       "radiusM": 15,
-      "entrances": [],
+      "entrances": [{"lat": -6.8889175, "lng": 107.6097767, "label": "Titik akses sisi timur", "verified": false}],
       "description": "Labtek Biru (Labir) merupakan kawasan gedung Labtek X dan Labtek XI di Kampus Ganesha ITB yang digunakan untuk kegiatan perkuliahan, praktikum, penelitian, dan aktivitas kemahasiswaan. Kawasan ini digunakan oleh program studi Teknik Kimia, Teknik Material, Biologi, Meteorologi, dan Oseanografi, serta menjadi tempat aktivitas sejumlah himpunan mahasiswa, seperti HIMATEK, MTM, HIMABIO Nymphaea, HMME, dan HMO.",
       "function": "Gedung Kuliah dan Laboratorium",
       "facilities": ["Ruang Kelas", "Laboratorium", "Toilet", "Kantin"],
@@ -192,7 +192,7 @@
         "promptAudio": "assets/media/P05/prompt.m4a",
         "arrivalAudio": "assets/media/P05/tiba.m4a"
       },
-      "trailOrder": null,
+      "trailOrder": 7,
       "metadata": {
         "isPlaceholder": false,
         "sources": [
@@ -220,7 +220,7 @@
       "lat": -6.89053,
       "lng": 107.60890,
       "radiusM": 15,
-      "entrances": [],
+      "entrances": [{"lat": -6.8906646, "lng": 107.608897, "label": "Titik akses sisi selatan", "verified": false}],
       "description": "Gedung perkuliahan umum di Kampus Ganesha ITB yang digunakan untuk berbagai kegiatan akademik, terutama perkuliahan bersama. Gedung ini juga dikenal sebagai Gedung Wardah Foundation.",
       "function": "Gedung Kuliah",
       "facilities": ["Ruang Kelas", "Toilet", "Mushalla", "Kantin"],
@@ -235,7 +235,7 @@
         "arrivalAudio": "assets/media/P06/tiba.m4a",
         "video": "assets/media/P06/video.mp4"
       },
-      "trailOrder": null,
+      "trailOrder": 10,
       "metadata": {
         "isPlaceholder": false,
         "sources": [
@@ -265,7 +265,7 @@
       "lat": -6.8903881,
       "lng": 107.6119990,
       "radiusM": 15,
-      "entrances": [],
+      "entrances": [{"lat": -6.8905032, "lng": 107.6117897, "label": "Titik akses sisi barat daya", "verified": false}],
       "description": "Gedung perkuliahan umum ITB yang digunakan untuk berbagai kegiatan akademik dan perkuliahan lintas program studi. Gedung ini juga dikenal sebagai Gedung Paragon Innovation.",
       "function": "Gedung Kuliah",
       "facilities": ["Ruang Kelas", "Toilet", "Kantin"],
@@ -278,7 +278,7 @@
         "promptAudio": "assets/media/P07/prompt.m4a",
         "arrivalAudio": "assets/media/P07/tiba.m4a"
       },
-      "trailOrder": null,
+      "trailOrder": 4,
       "metadata": {
         "isPlaceholder": false,
         "sources": [
@@ -306,7 +306,7 @@
       "lat": -6.8890603,
       "lng": 107.6100470,
       "radiusM": 15,
-      "entrances": [],
+      "entrances": [{"lat": -6.8888957, "lng": 107.6099707, "label": "Titik akses sisi barat laut", "verified": false}],
       "description": "Gedung perkuliahan umum ITB yang digunakan untuk kegiatan belajar mengajar berbagai mata kuliah. Gedung ini memiliki ruang kuliah berkapasitas beragam, termasuk ruang multimedia.",
       "function": "Gedung Kuliah",
       "facilities": ["Ruang Kelas", "Toilet"],
@@ -319,7 +319,7 @@
         "promptAudio": "assets/media/P08/prompt.m4a",
         "arrivalAudio": "assets/media/P08/tiba.m4a"
       },
-      "trailOrder": null,
+      "trailOrder": 6,
       "metadata": {
         "isPlaceholder": false,
         "sources": [
@@ -347,7 +347,7 @@
       "lat": -6.8895043,
       "lng": 107.6100594,
       "radiusM": 15,
-      "entrances": [],
+      "entrances": [{"lat": -6.8896356, "lng": 107.6099737, "label": "Titik akses sisi barat daya", "verified": false}],
       "description": "Gedung perkuliahan umum ITB yang digunakan untuk kegiatan pembelajaran berbagai mata kuliah, dengan ruang kelas reguler dan ruang multimedia.",
       "function": "Gedung Kuliah",
       "facilities": ["Ruang Kelas", "Toilet"],
@@ -360,7 +360,7 @@
         "promptAudio": "assets/media/P09/prompt.m4a",
         "arrivalAudio": "assets/media/P09/tiba.m4a"
       },
-      "trailOrder": null,
+      "trailOrder": 8,
       "metadata": {
         "isPlaceholder": false,
         "sources": [
@@ -388,7 +388,7 @@
       "lat": -6.8892078,
       "lng": 107.6111876,
       "radiusM": 15,
-      "entrances": [],
+      "entrances": [{"lat": -6.8892101, "lng": 107.6110291, "label": "Titik akses sisi barat", "verified": false}],
       "description": "Labtek I, yang dikenal sebagai Gedung Mekanika Tanah (Mektan), merupakan gedung perkuliahan umum di Kampus Ganesha ITB. Gedung ini juga menjadi lokasi sekretariat HIMASTRON dan HIMATIKA.",
       "function": "Gedung Kuliah",
       "facilities": ["Ruang Kelas", "Toilet", "Mushalla"],
@@ -401,7 +401,7 @@
         "promptAudio": "assets/media/P10/prompt.m4a",
         "arrivalAudio": "assets/media/P10/tiba.m4a"
       },
-      "trailOrder": null,
+      "trailOrder": 5,
       "metadata": {
         "isPlaceholder": false,
         "sources": [

@@ -88,7 +88,7 @@ Raka (18 tahun, mahasiswa baru S1 Teknik Informatika) datang pertama kali ke Gan
 5. **Eksplorasi.** Raka mengetuk tombol besar **Dengarkan**; kartu POI terbuka (foto, fungsi, fasilitas, trivia) dan narasi diputar. POI tercatat "dikunjungi"; selama Raka masih di area, trigger tidak berulang.
 6. **Pencarian.** Raka mengetik "labtek 5"; aplikasi mengenali alias sebagai Labtek V.
 7. **Navigasi.** Rute jalan kaki, jarak, ETA, dan arahan suara di setiap belokan tampil. POI lain yang dilewati hanya memunculkan notifikasi ringkas tanpa audio.
-8. **Tiba.** Dalam jarak ≤15 m dari pintu masuk Labtek V, aplikasi mengumumkan *"Anda telah tiba di Labtek V"*, menawarkan kartu informasi, merekomendasikan POI berikutnya yang terdekat dan belum dikunjungi, serta fasilitas terdekat.
+8. **Tiba.** Dalam jarak ≤15 m dari titik akses Labtek V, aplikasi mengumumkan *"Anda telah tiba di Labtek V"*, menawarkan kartu informasi, merekomendasikan POI berikutnya yang terdekat dan belum dikunjungi, serta fasilitas terdekat.
 9. **Progres.** Progres trail (mis. 3/10) tersimpan di ponsel dan dapat dilanjutkan di hari lain.
 
 ## 6. Mode Aplikasi dan Sesi Lokasi
@@ -123,7 +123,7 @@ Semua berprioritas **Must**.
 | F03 | Multimodal Exploration | Kartu POI memuat foto, deskripsi fungsi gedung, fasilitas di dalam gedung, trivia/sejarah singkat, dan narasi audio 45–90 detik; video narasi untuk GKUB dan GKUT bila tersedia **[CL: keputusan PM 23 November 2026 — video opsional]** | Seluruh 10 POI memiliki minimal 1 foto, teks, dan narasi audio yang dapat diputar, dijeda, dan diulang **[CL: termasuk P01–P05]**; video GKUB/GKUT, bila tersedia, dapat diputar di kartu; sumber konten dicantumkan pada setiap kartu |
 | F04 | Eyes-Free Interaction | Prompt suara dan getar saat trigger; tombol aksi besar (Dengarkan/Lewati); opsi auto-play narasi; arahan navigasi suara; kontrol dari notifikasi saat layar terkunci | Pengguna dapat menerima trigger, memutar narasi, dan mengikuti navigasi sampai tujuan tanpa membaca teks layar (diuji ≥3 penguji) |
 | F05 | Search & Destination | Pencarian gedung, fasilitas, dan ruang/unit penting dengan alias (angka Arab/Romawi, singkatan seperti "GKUT", "Labtek Biru") dan filter kategori | "labtek 5", "Labtek V", atau "lab 5" menampilkan Labtek V di urutan teratas; seluruh 10 POI dan kategori fasilitas dapat ditemukan; respons ≤1 detik |
-| F06 | Navigation | Rute jalan kaki dari posisi pengguna ke **pintu masuk** gedung/fasilitas tujuan: garis rute, jarak, ETA, arahan belokan visual + suara; rerouting bila menyimpang >25 m; deteksi tiba pada radius 15 m | Penguji mencapai ≥4 dari 5 tujuan acak hanya dengan panduan aplikasi; pengumuman tiba muncul saat pengguna ≤15 m dari titik tujuan |
+| F06 | Navigation | Rute jalan kaki dari posisi pengguna ke **titik akses** gedung/fasilitas tujuan, yaitu pintu masuk atau sisi lantai 1 yang terbuka ke jalur pejalan kaki **[CL: keputusan 24 November 2026]**: garis rute, jarak, ETA, arahan belokan visual + suara; rerouting bila menyimpang >25 m; deteksi tiba pada radius 15 m | Penguji mencapai ≥4 dari 5 tujuan acak hanya dengan panduan aplikasi; pengumuman tiba muncul saat pengguna ≤15 m dari titik tujuan |
 | F07 | Contextual Recommendation | Setelah kartu POI ditutup atau tiba di tujuan, merekomendasikan 1–3 POI berikutnya berdasarkan jarak terdekat, status belum dikunjungi, dan urutan trail, serta fasilitas terdekat | Rekomendasi muncul setelah kartu ditutup atau setelah tiba; rekomendasi dapat langsung dinavigasikan dengan satu ketukan |
 | F08 | Orientation Trail | Rute tur berurutan yang menghubungkan 10 POI, check-in otomatis saat trigger, progres kunjungan, dan lencana penyelesaian, dilengkapi informasi layanan dan fasilitas per gedung | Pengguna dapat memulai trail; setiap POI tercatat "dikunjungi" otomatis saat trigger; progres (x/10) tetap tersimpan setelah aplikasi ditutup; lencana muncul saat seluruh POI selesai |
 
@@ -139,7 +139,7 @@ Semua berprioritas **Must**.
 
 ### 9.1 Dataset POI
 
-Koordinat dalam derajat desimal (lintang selatan bernilai negatif). Koordinat adalah titik tengah gedung dari PRD; **koordinat pintu masuk belum tersedia** (lihat [§22](#22-hal-tertunda-tbd)).
+Koordinat dalam derajat desimal (lintang selatan bernilai negatif). Koordinat adalah titik tengah gedung dari PRD. Titik akses tiap gedung disimpan di `entrances[]`; saat ini berupa kandidat hasil perhitungan dari graf jalan kaki yang belum diverifikasi di lapangan (lihat [§11](#11-navigasi-dan-routing) dan [§22](#22-hal-tertunda-tbd)).
 
 | ID | Nama | Alias awal | Kategori | Lat | Lng | Radius | Konten |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -239,12 +239,13 @@ Bila survei batas tersedia, poligon diganti dan dicatat ulang di sini.
 | Prompt trigger & pengumuman tiba per POI | File audio jadi | Dibundel di APK |
 | Video narasi GKUB & GKUT | Disiapkan tim konten; ditampilkan di kartu POI | Dibundel di APK |
 | Arahan navigasi belokan | TTS runtime (`flutter_tts`, mesin TTS Android, locale `id-ID`) | Tidak disimpan |
+| Pengumuman tiba di fasilitas | TTS runtime: *"Anda telah tiba di {nama fasilitas}"* **[CL: keputusan 24 November 2026]**; fasilitas tidak memiliki file audio tiba | Tidak disimpan |
 
 Aturan konten:
 
 - **Dilarang mengarang** teks, trivia, sejarah, foto, audio, alias resmi, atau koordinat. Jika konten belum tersedia, gunakan placeholder yang jelas berlabel `PLACEHOLDER` dan jangan tampilkan sebagai konten final.
 - Setiap konten wajib memiliki metadata A02 (sumber, tanggal verifikasi, penanggung jawab, atribusi aset) sebelum dinyatakan siap rilis.
-- Jika suara TTS Bahasa Indonesia tidak tersedia di perangkat, arahan navigasi tetap tampil visual dan pengguna diberi tahu cara memasang data suara.
+- Jika suara TTS Bahasa Indonesia tidak tersedia di perangkat, arahan navigasi dan pengumuman tiba di fasilitas tetap tampil visual dan pengguna diberi tahu cara memasang data suara.
 - Seluruh konten berbahasa Indonesia.
 
 ## 11. Navigasi dan Routing
@@ -252,7 +253,9 @@ Aturan konten:
 - Routing dihitung **di perangkat**. Server routing (OSRM, GraphHopper, Google Directions, dsb.) **dilarang** karena titik awal rute adalah lokasi pengguna (A01, NG04).
 - Data rute: **graf jalur pejalan kaki kampus** (GeoJSON) yang diturunkan dari data OSM lalu dikoreksi dengan survei lapangan, dibundel di APK.
 - Algoritma: Dijkstra/A* pada graf tersebut. Pilihan detail adalah keputusan engineering.
-- Tujuan rute adalah **pintu masuk** gedung/fasilitas. Selama koordinat pintu masuk belum tersedia, titik tengah gedung dipakai dengan label sementara dan tidak boleh dianggap memenuhi F06.
+- Tujuan rute adalah **titik akses** gedung: tempat orang masuk dari jalur pejalan kaki, berupa pintu atau sisi lantai 1 yang terbuka. Sebagian besar gedung kampus tidak memiliki pintu masuk tunggal, sehingga istilah "pintu masuk" diganti **[CL: keputusan 24 November 2026]**. Gedung boleh memiliki beberapa titik akses; rute menuju yang terdekat.
+- Kandidat titik akses dihitung oleh `tools/routing/plan_access_points.py`: titik tengah gedung diproyeksikan ke ruas terdekat pada jaringan utama graf jalan kaki (potongan graf yang terpisah diabaikan karena tidak dapat dijangkau rute). Kandidat disimpan dengan `verified: false` dan baru diubah menjadi `true` setelah dicek di lapangan.
+- Navigasi ke kandidat yang belum diverifikasi diberi label sementara dan tidak boleh dianggap memenuhi F06. Bila sebuah gedung belum memiliki titik akses sama sekali, titik tengah gedung dipakai dengan label yang sama.
 - Rerouting bila pengguna menyimpang >25 m dari rute; deteksi tiba ≤15 m dari titik tujuan.
 - Output: garis rute, jarak, ETA, arahan belokan visual + suara.
 
@@ -263,7 +266,8 @@ Aturan konten:
 - POI yang dikunjungi **di luar urutan tetap dihitung** sebagai check-in.
 - Setelah kartu POI ditutup, POI berikutnya dalam urutan ditawarkan (sekaligus rekomendasi F07).
 - Progres x/10 disimpan lokal dan dapat dilanjutkan di hari lain; lencana muncul saat 10/10 selesai.
-- **Urutan trail belum ditetapkan tim.** Usulan: rute jalan kaki paling efisien dari gerbang depan. Jangan menetapkan urutan final tanpa keputusan tim.
+- **Urutan trail ditetapkan 24 November 2026** **[CL]**: keliling terpendek di atas graf jalan kaki antar-titik akses (±1,5 km, ±20 menit), dihitung oleh `tools/routing/plan_access_points.py`: Labtek V → Labtek VIII → Labtek VII → GKU Timur → Labtek I → Oktagon → Labtek X & XI → TVST → Labtek VI → GKU Barat → kembali ke Labtek V. Nilai `trailOrder` 1–10 di dataset mengikuti urutan ini.
+- Karena urutan berbentuk keliling, trail **dimulai dari POI terdekat dengan posisi pengguna** saat trail pertama kali dimulai, lalu berlanjut searah putaran. Titik awal disimpan per akun bersama progres; menghapus progres memilih ulang titik awal.
 
 ## 13. Pencarian dan Rekomendasi
 
@@ -324,7 +328,7 @@ Risiko yang diketahui: aplikasi memakai cache lebih dulu daripada JSON bawaan da
 
 Nama field final ditetapkan pada PB03 (2 November 2026). Bentuk ini dipakai sama untuk dokumen Firestore dan JSON bawaan `assets/data/pois.json`; parser dan validatornya di `lib/logic/data/poi_codec.dart`.
 
-- `pois/{id}`: `id`, `name`, `aliases[]`, `category`, `lat`, `lng`, `radiusM`, `entrances[]` (`lat`, `lng`, `label`), `description`, `function`, `facilities[]`, `trivia`, `media` (`photos[]`, `narrationAudio`, `promptAudio`, `arrivalAudio`, `video` — path aset di APK), `trailOrder`, `metadata`.
+- `pois/{id}`: `id`, `name`, `aliases[]`, `category`, `lat`, `lng`, `radiusM`, `entrances[]` (`lat`, `lng`, `label`, `verified`), `description`, `function`, `facilities[]`, `trivia`, `media` (`photos[]`, `narrationAudio`, `promptAudio`, `arrivalAudio`, `video` — path aset di APK), `trailOrder`, `metadata`.
 - `facilities/{id}`: `id`, `name`, `category`, `lat`, `lng`, `buildingId` (opsional), `description`, `metadata`.
 - `metadata`: `sources[]`, `verifiedAt` (ISO 8601), `owner`, `assetAttribution[]`, `approved`, `isPlaceholder`.
 - `users/{uid}`: `role` (`mahasiswaItb` | `pengunjung`), `createdAt` (timestamp). Email tidak diduplikasi di Firestore karena sudah ada di Firebase Auth.
@@ -340,7 +344,7 @@ Aturan validasi (PB03, menerapkan [§15.2](#152-alur-sinkronisasi) butir 3):
 | `lat`, `lng` | Angka dalam rentang WGS84 (−90..90, −180..180) | Dokumen diabaikan |
 | `category` | Harus salah satu nilai enum di atas | Dokumen diabaikan |
 | `radiusM` | Angka > 0; jika tidak ada, memakai default 15 m | Dokumen diabaikan |
-| `entrances[]` | Daftar objek dengan `lat`/`lng` valid; kosong selama survei belum dilakukan | Dokumen diabaikan |
+| `entrances[]` | Daftar titik akses dengan `lat`/`lng` valid; boleh kosong. `verified` hanya bernilai benar bila `true` eksplisit (titik sudah dicek di lapangan); selain itu titik dianggap kandidat | Dokumen diabaikan |
 | `trailOrder` | Boleh tidak ada; jika ada wajib bilangan bulat positif | Dokumen diabaikan |
 | `id` ganda dalam satu dataset | Hanya dokumen pertama dipakai | Duplikat diabaikan |
 | `metadata` tidak lengkap (tanpa `sources`, `owner`, atau `verifiedAt` yang valid) | Konten diperlakukan sebagai placeholder dan `approved` dipaksa `false` | Tidak siap rilis (A02) |
@@ -472,11 +476,11 @@ Item berikut **belum diputuskan atau belum tersedia**. Agent dilarang mengisinya
 
 | Item | Status | Pemilik |
 | --- | --- | --- |
-| Koordinat pintu masuk tiap gedung | Menunggu survei lapangan | Tim |
+| Titik akses tiap gedung | Kandidat 10 gedung dihitung 24 November 2026 dari graf jalan kaki draf (`verified: false`); daftar cek di `task-implementation/backend/PB11-access-point-field-check.md`. Verifikasi lapangan dan titik akses tambahan per sisi tertunda | Tim |
 | Dataset fasilitas (toilet, musala, kantin, ATM, perpustakaan, layanan akademik) | Versi pertama 26 item disetujui SebastianAben 24 November 2026: toilet/musala/kantin dari daftar fasilitas tiap POI (titik gedung), ATM/perpustakaan/layanan akademik dari informasi pengguna (titik ditandai di peta AGAM). Letak persis dan verifikasi lapangan tetap tertunda | Tim konten |
-| Urutan Orientation Trail | Belum ditetapkan | Tim |
-| Project Firebase (Firestore + Authentication Email/Password) | Dibuat 15 November 2026 (`agam-9e704`); seed pertama 15 November 2026; secret `FIREBASE_SERVICE_ACCOUNT` untuk seed otomatis belum dibuat | PM / Backend |
-| Konten teks, foto, audio, video P01–P10 | Audit source 16 November: JSON menandai P01/P02 approved/non-placeholder, P03–P10 placeholder/unapproved; 30 file audio, foto P01/P02/P06, tanpa video. P01 foto/kartu terverifikasi di emulator terdahulu. P02 perlu rekonsiliasi pemilik konten/PM sebelum klaim konten final; catatan ini mencatat metadata source tanpa memberi approval baru. Kelengkapan F03, hak aset, durasi dan playback tetap perlu audit/uji | Tim konten / PM |
+| Urutan Orientation Trail | Ditetapkan 24 November 2026 (§12); jarak dihitung dari graf draf dan dapat berubah setelah graf dikoreksi | Tim |
+| Project Firebase (Firestore + Authentication Email/Password) | Dibuat 15 November 2026 (`agam-9e704`); seed pertama 15 November 2026; seed otomatis lewat GitHub Actions berjalan sukses sejak 24 November 2026 (push `pois.json` ke `dev`) | PM / Backend |
+| Konten teks, foto, audio, video P01–P10 | 10/10 POI disetujui pemilik konten dan ditandai approved di JSON (23 November 2026, rincian di implementationPhases PB09); video hanya P06 GKUB (opsional, §23). Pencatatan keputusan di Change Log PRD resmi, hak aset, durasi narasi, dan playback di perangkat tetap perlu audit/uji | Tim konten / PM |
 | Daftar perangkat uji | Belum ditetapkan | QA |
 | Margin histeresis, kalibrasi radius per POI, dan parameter interval adaptif | Default engineering margin 5 m dan jeda sampel maksimum 10 detik (PB05-LA-01) serta parameter interval adaptif [§9.2](#92-logika-trigger) diterapkan; kalibrasi lapangan tetap tertunda | Developer / QA |
 | Batas area kampus (poligon/bounding box) | Diputuskan 24 November 2026: batas produk = bounds engineering OSM + 200 m (§9.3). Verifikasi lapangan dan poligon presisi tetap tertunda | Developer |
@@ -512,6 +516,9 @@ Perubahan berikut wajib dicatat PM pada Change Log PRD resmi.
 | Offline (A03) | Informasi tersedia tanpa jaringan | Tetap, tetapi login pertama memerlukan internet | Konsekuensi login wajib; A03 berprioritas Should |
 | Firestore | Sumber data konten | Ditambah profil pengguna dan log aktivitas | Akun |
 | Progres trail | Disimpan lokal | Tetap lokal, dipisahkan per akun di perangkat; tidak disinkronkan | Pergantian akun di perangkat yang sama |
+| F06 / §11 — tujuan rute | Pintu masuk gedung/fasilitas | Titik akses: pintu masuk atau sisi lantai 1 yang terbuka ke jalur; boleh lebih dari satu per gedung; kandidat dihitung dari graf lalu diverifikasi di lapangan (`verified`) | Sebagian besar gedung kampus tidak memiliki pintu masuk tunggal (keputusan 24 November 2026) |
+| §10 — pengumuman tiba fasilitas | Tidak dirinci; TTS hanya untuk arahan navigasi | TTS runtime mengumumkan tiba di fasilitas; fallback visual bila suara `id-ID` tidak tersedia | Fasilitas tidak memiliki file audio tiba (keputusan 24 November 2026) |
+| F08 / §12 — urutan dan awal trail | Urutan belum ditetapkan; usulan dari gerbang depan | Keliling terpendek antar-titik akses; trail dimulai dari POI terdekat dengan pengguna lalu searah putaran | Trail dapat dimulai dari mana saja tanpa menyeberang kampus dulu (keputusan 24 November 2026) |
 
 ## 24. Koreksi Minor terhadap Dokumen Resmi
 

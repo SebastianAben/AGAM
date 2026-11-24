@@ -1,5 +1,34 @@
 # Session Handoff — AGAM
 
+## Current — Gelombang 0: titik akses, urutan trail, dan dokumen, 24 November 2026
+
+- Branch `feat/access-points-trail-data` dari `dev` @ `bc42624`, worktree
+  `.claude/worktrees/wave0`. Bagian pertama rencana kerja menuju tes lapangan
+  25 November 2026 (WP0 dokumen + WP1 data); WP2–WP6 menyusul.
+- Keputusan pengguna 24 November 2026, dicatat [CL] di PRD: tujuan rute
+  menjadi *titik akses* (F06/§11), tiba di fasilitas diumumkan dengan TTS
+  (§10), trail berupa keliling yang dimulai dari POI terdekat (F08/§12).
+- `tools/routing/plan_access_points.py` (stdlib, deterministik, idempoten):
+  kandidat titik akses = proyeksi titik tengah gedung ke ruas terdekat di
+  jaringan utama graf draf; urutan trail = keliling terpendek antar-titik akses
+  (1.536 m). Mengisi `entrances[]` (`verified: false`) dan `trailOrder` 1–10 di
+  `pois.json` tanpa mengubah tata letak file, serta menulis daftar cek
+  `task-implementation/backend/PB11-access-point-field-check.md`.
+- Kontrak: `PoiEntrance.verified` (default `false`); `hasSurveyedEntrance`
+  hanya untuk titik terverifikasi; `navigationPoint` memakai kandidat. Codec
+  hanya menerima `true` eksplisit. Seed Firestore tidak menyaring field.
+- Temuan untuk WP2/WP4: graf draf 17 potongan; Labtek V menempel ke potongan
+  terisolasi dan GKUT 26 m dari jaringan utama (batas snap 25 m).
+  `DeviceTrailService._canRoute` menolak titik kandidat, jadi trail tidak bisa
+  dimulai sebelum aturan itu disesuaikan. Pesan "Pintu masuk belum disurvei"
+  di `search_route_screen.dart` perlu diganti saat routing disambungkan.
+- `implementationPhases.md`: rekap 24 November (17 `in_progress`, 5
+  `planned`), PB03 seed otomatis berjalan, PB09/PB11/PB12/PB15/PB21/PB22
+  diperbarui sesuai kode `dev`. PRD §22: titik akses, urutan trail, Firebase,
+  dan konten diperbarui.
+- Test: kandidat titik akses di dataset, urutan trail 1–10, codec `verified`.
+  Analyze bersih, 415 test lulus.
+
 ## Current — Onboarding crash di layar pendek, 24 November 2026
 
 - Branch `fix/onboarding-small-height` dari `dev` @ `6329963`.

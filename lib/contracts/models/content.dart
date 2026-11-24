@@ -69,11 +69,21 @@ class PoiMedia {
   final String? video;
 }
 
+/// Titik akses gedung: tempat orang masuk dari jalur pejalan kaki, berupa
+/// pintu atau sisi lantai 1 yang terbuka (PRD §11).
 class PoiEntrance {
-  const PoiEntrance({required this.position, required this.label});
+  const PoiEntrance({
+    required this.position,
+    required this.label,
+    this.verified = false,
+  });
 
   final GeoPoint position;
   final String label;
+
+  /// `true` setelah titik dicek di lapangan. Kandidat hasil perhitungan dari
+  /// graf jalan kaki bernilai `false`.
+  final bool verified;
 }
 
 class Poi {
@@ -121,12 +131,15 @@ class Poi {
   /// Posisi dalam Orientation Trail. `null` selama urutan belum ditetapkan.
   final int? trailOrder;
 
-  bool get hasSurveyedEntrance => entrances.isNotEmpty;
+  /// `true` jika ada titik akses yang sudah dicek di lapangan.
+  bool get hasSurveyedEntrance =>
+      entrances.any((entrance) => entrance.verified);
 
-  /// Titik tujuan navigasi. Memakai titik tengah gedung sebagai placeholder
-  /// jika pintu masuk belum disurvei (lihat [hasSurveyedEntrance]).
+  /// Titik tujuan navigasi: titik akses pertama, termasuk kandidat yang belum
+  /// diverifikasi karena kandidat sudah berada di jalur pejalan kaki. Titik
+  /// tengah gedung dipakai bila belum ada titik akses sama sekali.
   GeoPoint get navigationPoint =>
-      hasSurveyedEntrance ? entrances.first.position : position;
+      entrances.isEmpty ? position : entrances.first.position;
 }
 
 enum FacilityCategory {

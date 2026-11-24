@@ -12,7 +12,9 @@ final syntheticPois = List.generate(10, (i) {
     category: PoiCategory.lecture,
     position: point,
     radiusM: 15,
-    entrances: [PoiEntrance(position: point, label: 'Pintu sintetis')],
+    entrances: [
+      PoiEntrance(position: point, label: 'Pintu sintetis', verified: true),
+    ],
     description: '',
     function: '',
     facilities: [],

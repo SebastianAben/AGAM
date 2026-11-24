@@ -172,20 +172,32 @@ void main() {
       }
     });
 
-    test(
-      'pintu masuk belum disurvei; navigasi memakai titik tengah gedung',
-      () {
-        for (final poi in result.pois) {
-          expect(poi.hasSurveyedEntrance, isFalse, reason: poi.id);
-          expect(poi.navigationPoint, poi.position, reason: poi.id);
-        }
-      },
-    );
-
-    test('urutan trail belum ditetapkan', () {
+    test('setiap gedung punya titik akses di dekatnya', () {
       for (final poi in result.pois) {
-        expect(poi.trailOrder, isNull, reason: poi.id);
+        expect(poi.entrances, isNotEmpty, reason: poi.id);
+        for (final entrance in poi.entrances) {
+          // Titik akses ada di tepi gedung, bukan di gedung lain.
+          expect(
+            poi.position.distanceTo(entrance.position),
+            lessThan(40),
+            reason: '${poi.id} ${entrance.label}',
+          );
+          expect(entrance.label, startsWith('Titik akses'), reason: poi.id);
+        }
+        expect(poi.navigationPoint, poi.entrances.first.position);
+        // Navigasi ke kandidat tetap ditandai belum memenuhi F06.
+        expect(
+          poi.hasSurveyedEntrance,
+          poi.entrances.any((entrance) => entrance.verified),
+          reason: poi.id,
+        );
       }
+    });
+
+    test('urutan trail memakai 1–10 tepat satu kali', () {
+      final orders = [for (final poi in result.pois) poi.trailOrder];
+      expect(orders, everyElement(isNotNull));
+      expect(orders.toSet(), {for (var i = 1; i <= 10; i++) i});
     });
 
     test('dataset fasilitas disetujui dan merujuk POI yang ada', () {

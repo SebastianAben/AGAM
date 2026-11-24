@@ -79,8 +79,8 @@ class NavigationTarget {
   final NavigationTargetKind kind;
   final GeoPoint point;
 
-  /// `true` jika [point] adalah titik tengah gedung, bukan pintu masuk hasil
-  /// survei. Navigasi ke titik ini belum memenuhi F06.
+  /// `true` jika [point] adalah titik tengah gedung atau titik akses yang
+  /// belum dicek di lapangan. Navigasi ke titik ini belum memenuhi F06.
   final bool isPlaceholderPoint;
 }
 
