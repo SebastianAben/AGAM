@@ -29,6 +29,10 @@
   di catatan ini. Import `narration_wave.dart` di `poi_detail_screen.dart`
   diletakkan sebelum `agam_theme.dart` agar tidak bentrok dengan import
   `agam_video_player.dart` dari PR #13.
+- CI PR #14: CI `dev` merah sejak `cd5753d` karena
+  `tools/tiles/test_campus_export.py` butuh `requirements-campus.txt`
+  (pmtiles, fiona, dst.) yang tidak dipasang; `ci.yml` kini memasang Python
+  3.12 + requirements itu. Perubahan `ci.yml` identik di PR #13.
 
 ## Current — Dataset fasilitas versi pertama, 24 November 2026
 
