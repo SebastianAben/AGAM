@@ -509,7 +509,7 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
 
 - **Track:** LB (`SearchService`), FE (UI05) · **Requirement:** F05
 - **Done:** "labtek 5", "Labtek V", "lab 5" → Labtek V teratas; respons ≤1 detik.
-- **Integrasi layanan produk (19 November 2026):** `PoiSearchService` mencari POI dan fasilitas dengan metadata approved, filter kategori, normalisasi angka Romawi, dan hasil stabil. Dataset bawaan berisi 10 POI. Test lokal mencakup alias, keadaan fasilitas kosong, fasilitas placeholder, dan batas respons ≤1 detik. Acceptance fasilitas menunggu dataset resmi tim konten.
+- **Integrasi layanan produk (19 November 2026):** `PoiSearchService` mencari POI dan fasilitas dengan metadata approved, filter kategori, normalisasi angka Romawi, dan hasil stabil. Dataset bawaan berisi 10 POI. Test lokal mencakup alias, keadaan fasilitas kosong, fasilitas placeholder, dan batas respons ≤1 detik. Dataset fasilitas versi pertama (26 item, disetujui 24 November 2026) kini di `assets/data/pois.json`; letak persis dan verifikasi lapangan tetap tertunda.
 - **Status:** `in_progress` — logic pencarian produk tersedia di `SearchService`; pengujian UI lintas branch dan acceptance fasilitas masih menunggu integrasi FE/data tim konten.
 
 ### PB11 — Navigasi jalan kaki di perangkat

@@ -243,6 +243,12 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
         );
       }
       await widget.services.navigation.start(target);
+      // The real controller reports an unavailable route as an error state
+      // rather than throwing, e.g. while the campus walking graph is not
+      // bundled. Treat it as a failure instead of announcing a route.
+      if (widget.services.navigation.current.status == NavigationStatus.error) {
+        throw StateError('Rute belum tersedia.');
+      }
       if (mounted) {
         setState(() => _destination = result);
         if (target.isPlaceholderPoint) {
@@ -796,6 +802,14 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
                 initialFocus: point,
                 pois: [?_poiFor(destination)],
                 selectedPoiId: destination.id,
+                highlight: switch (_facilityFor(destination)) {
+                  final facility? => MapHighlight(
+                    point: facility.position,
+                    label: facility.name,
+                    icon: facilityIcon(facility.category),
+                  ),
+                  null => null,
+                },
                 onSelectPoi: _openPoiDetail,
                 attributionPadding: const EdgeInsets.all(8),
               ),

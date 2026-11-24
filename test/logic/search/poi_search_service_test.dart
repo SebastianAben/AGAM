@@ -38,17 +38,30 @@ void main() {
     expect(searches, 15);
     expect(await search.search('  '), isEmpty);
     expect(searches, 15);
-    expect(await repository.watchFacilities().first, isEmpty);
+    expect(await repository.watchFacilities().first, hasLength(26));
     for (final category in FacilityCategory.values) {
-      expect(
-        await search.search(
-          'toilet',
-          includePois: false,
-          facilityCategories: {category},
-        ),
-        isEmpty,
+      final results = await search.search(
+        'toilet',
+        includePois: false,
+        facilityCategories: {category},
       );
+      if (category == FacilityCategory.toilet) {
+        expect(results, hasLength(10));
+      } else {
+        expect(results, isEmpty, reason: category.name);
+      }
     }
+    expect(
+      (await search.search('ATM BCA', includePois: false)).first.name,
+      'ATM BCA',
+    );
+    expect(
+      (await search.search(
+        'perpustakaan pusat',
+        includePois: false,
+      )).first.name,
+      'Perpustakaan Pusat ITB',
+    );
   });
   test(
     'search filters verified facilities and excludes placeholders',

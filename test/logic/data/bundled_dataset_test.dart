@@ -10,6 +10,7 @@ import 'dart:io';
 
 import 'package:agam/contracts/contracts.dart';
 import 'package:agam/logic/data/poi_codec.dart';
+import 'package:agam/logic/map/agam_map_config.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// (id, nama, kategori, lat, lng) dari PRD §9.1. Radius seluruh POI 15 m.
@@ -187,8 +188,49 @@ void main() {
       }
     });
 
-    test('dataset fasilitas belum tersedia', () {
-      expect(result.facilities, isEmpty);
+    test('dataset fasilitas disetujui dan merujuk POI yang ada', () {
+      final facilities = result.facilities;
+      expect(facilities, hasLength(26));
+      expect(facilities.map((f) => f.id).toSet(), hasLength(facilities.length));
+      // Every category the map chips offer has at least one entry.
+      expect(
+        facilities.map((f) => f.category).toSet(),
+        FacilityCategory.values.toSet(),
+      );
+      final poiIds = result.pois.map((p) => p.id).toSet();
+      final campus = AgamMapConfig.campus();
+      for (final facility in facilities) {
+        expect(facility.metadata.approved, isTrue, reason: facility.id);
+        expect(facility.metadata.isPlaceholder, isFalse, reason: facility.id);
+        expect(facility.metadata.sources, isNotEmpty, reason: facility.id);
+        if (facility.buildingId case final building?) {
+          expect(poiIds, contains(building), reason: facility.id);
+        }
+        expect(
+          campus.isInsideCampus(facility.position),
+          isTrue,
+          reason: facility.id,
+        );
+      }
+    });
+
+    test('toilet, musala, dan kantin sesuai daftar fasilitas tiap POI', () {
+      const keyword = {
+        FacilityCategory.toilet: 'Toilet',
+        FacilityCategory.musala: 'Mushalla',
+        FacilityCategory.kantin: 'Kantin',
+      };
+      for (final MapEntry(key: category, value: word) in keyword.entries) {
+        final expected = {
+          for (final poi in result.pois)
+            if (poi.facilities.contains(word)) poi.id,
+        };
+        final actual = {
+          for (final f in result.facilities)
+            if (f.category == category) f.buildingId,
+        };
+        expect(actual, expected, reason: category.name);
+      }
     });
   });
 }
