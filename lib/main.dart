@@ -22,8 +22,10 @@ Future<void> main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-    final services = await _createProductionAppServices();
-    runApp(AgamApp(services: services));
+    final (services, views, actions) = await _createProductionAppServices();
+    runApp(
+      AgamApp(services: services, poiViewRequests: views, onPoiAction: actions),
+    );
     return;
   }
   final (services, views, actions) = await _createAppServices();
@@ -37,12 +39,19 @@ Future<void> main() async {
   );
 }
 
-/// Build produk: Firebase, akun asli dengan gerbang login (UI10), dan layanan
-/// asli LA/LB yang sama dengan demo. Fitur yang datanya belum ada (graf jalur
+/// Build produk: Firebase, akun asli dengan gerbang login (UI10), batas
+/// layanan Kampus Ganesha + 200 m (PRD §9.3), dan layanan asli LA/LB yang
+/// sama dengan demo. Fitur yang datanya belum ada (graf jalur
 /// kampus, urutan resmi trail, rekomendasi) memakai layanan berstatus "belum
 /// tersedia", bukan data palsu.
-Future<AppServices> _createProductionAppServices() async {
-  final map = AgamMapConfig.pendingServiceArea();
+///
+/// Seperti demo, permintaan buka POI dan aksi dari notifikasi trigger
+/// diteruskan ke UI; tanpa ini notifikasi POI tidak membuka kartunya.
+Future<
+  (AppServices, Stream<String>, Future<void> Function(String, TriggerAction))
+>
+_createProductionAppServices() async {
+  final map = AgamMapConfig.campus();
   const routing = UnavailableCampusRouting();
   final la = await createLaServices(
     bundledOnly: false,
@@ -57,7 +66,7 @@ Future<AppServices> _createProductionAppServices() async {
   );
   final account = await createLaAccountServices(la);
 
-  return AppServices(
+  final services = AppServices(
     permissions: la.permissions,
     location: la.location,
     pois: la.pois,
@@ -74,6 +83,13 @@ Future<AppServices> _createProductionAppServices() async {
     recommendations: const UnavailableRecommendationService(),
     trail: const UnavailableTrailService(),
     facilities: RepositoryFacilityService(la.pois),
+  );
+  return (
+    services,
+    la.triggerResponder.viewRequests,
+    (String id, TriggerAction action) => la.triggerResponder.handleAction(
+      TriggerActionEvent(poiId: id, action: action),
+    ),
   );
 }
 

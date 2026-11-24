@@ -220,6 +220,14 @@ menolak semua titik selama batas produk TBD; tidak ada koordinat baru yang
 dikira sebagai hasil survei. Radius, dwell, cooldown, dan filter akurasi §9.2
 tidak berubah.
 
+**Batas layanan produk (24 November 2026):** atas keputusan tim, build produk
+memakai empat sudut bounds engineering yang sama sebagai batas layanan resmi
+(`AgamMapConfig.campus()`), sesuai rumusan "Kampus Ganesha + ±200 m" di atas.
+Batas ini berasal dari coverage OSM, belum diverifikasi lapangan, dan sedikit
+lebih longgar dari kampus pada sisi jalan sekitar. Trigger tetap hanya dalam
+radius POI §9.2, sehingga kelonggaran batas tidak memicu POI di luar kampus.
+Bila survei batas tersedia, poligon diganti dan dicatat ulang di sini.
+
 
 ## 10. Konten dan Media
 
@@ -471,7 +479,7 @@ Item berikut **belum diputuskan atau belum tersedia**. Agent dilarang mengisinya
 | Konten teks, foto, audio, video P01–P10 | Audit source 16 November: JSON menandai P01/P02 approved/non-placeholder, P03–P10 placeholder/unapproved; 30 file audio, foto P01/P02/P06, tanpa video. P01 foto/kartu terverifikasi di emulator terdahulu. P02 perlu rekonsiliasi pemilik konten/PM sebelum klaim konten final; catatan ini mencatat metadata source tanpa memberi approval baru. Kelengkapan F03, hak aset, durasi dan playback tetap perlu audit/uji | Tim konten / PM |
 | Daftar perangkat uji | Belum ditetapkan | QA |
 | Margin histeresis, kalibrasi radius per POI, dan parameter interval adaptif | Default engineering margin 5 m dan jeda sampel maksimum 10 detik (PB05-LA-01) serta parameter interval adaptif [§9.2](#92-logika-trigger) diterapkan; kalibrasi lapangan tetap tertunda | Developer / QA |
-| Batas area kampus (poligon/bounding box) | Snapshot OSM/coverage tile dan area engineering khusus demo tercatat di §9.3; batas layanan produk dan verifikasi lapangan tetap tertunda | Developer |
+| Batas area kampus (poligon/bounding box) | Diputuskan 24 November 2026: batas produk = bounds engineering OSM + 200 m (§9.3). Verifikasi lapangan dan poligon presisi tetap tertunda | Developer |
 | Success metric | Belum ditetapkan. Log §15.5 disusun agar dapat dipakai metrik umum (pengguna aktif, pemakaian mode dan fitur, trail selesai); event yang tidak dipakai metrik mana pun dihapus setelah metrik ditetapkan | PM |
 | Tanggal penghapusan log aktivitas | Paling lambat setelah penilaian akhir mata kuliah; tanggal pasti belum ditetapkan | PM |
 | Teks pemberitahuan privasi layar daftar (UI10) | Disusun FE, wajib disetujui PM | FE / PM |
@@ -498,6 +506,7 @@ Perubahan berikut wajib dicatat PM pada Change Log PRD resmi.
 | Area kontak dan visual trigger | Tidak dirinci | Titik POI menjadi area kontak radius 5 m; radius pendekatan dataset tetap 15 m (efektif masuk 20 m, keluar >25 m). Explore/Trail menampilkan kartu terdekat + audio saat resumed, notifikasi + audio di latar belakang | Instruksi PM 16 November 2026 untuk memperluas kontak dan memperjelas respons di layar |
 | Uji developer trigger | Tidak dirinci | Sakelar Mode demo/trial di Pengaturan build internal mereset/melewati cooldown; pengunci saat tetap di POI dan validasi lokasi/dwell dipertahankan | Instruksi PM 16 November 2026 agar pengujian ulang tidak menunggu 10 menit; default mati, hanya memori |
 | Log aktivitas | Tidak disebut | Daftar event tertutup tanpa data lokasi (§15.5) | Success metric; tetap mematuhi NG04/A01 |
+| Batas area layanan produk | Kampus Ganesha + ±200 m, poligon ditetapkan saat PB04 | Bounds engineering OSM way/177629384 v19 + 200 m dipakai sebagai batas produk (§9.3); belum diverifikasi lapangan | Keputusan tim 24 November 2026 agar trigger dan navigasi aktif di build produk |
 | Backlog | PB01–PB20 | Ditambah PB21 (akun dan login wajib) dan PB22 (log aktivitas) pada Sprint 3; nomor PB01–PB20 tidak berubah | Fitur akun sebelum Feature Freeze |
 | Layar | UI01–UI09 | Ditambah UI10 Daftar & Login; UI09 memuat akun, logout, dan hapus akun | Akun |
 | Offline (A03) | Informasi tersedia tanpa jaringan | Tetap, tetapi login pertama memerlukan internet | Konsekuensi login wajib; A03 berprioritas Should |

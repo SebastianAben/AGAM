@@ -1,5 +1,23 @@
 # Session Handoff — AGAM
 
+## Current — Pemeriksaan sambungan `dev` setelah PR #9 (LA) dan #11 (redesign), 24 November 2026
+
+- Basis `dev` @ `1cf202e`: analyze bersih, 387 test lulus.
+- Jalur produksi `main.dart` kini meneruskan `poiViewRequests` dan
+  `onPoiAction` dari `la.triggerResponder` ke `AgamApp`, sama seperti demo.
+  Sebelumnya notifikasi trigger POI di build produk tidak membuka kartu POI.
+- Rute tanpa graf (`UnavailableCampusRouting`) ditangani: navigasi berstatus
+  error dan layar menampilkan "Rute belum tersedia untuk tujuan ini."
+- Batas layanan produk ditetapkan atas keputusan tim (opsi 1):
+  `AgamMapConfig.campus()` = bounds engineering OSM + 200 m, poligon yang sama
+  dengan demo (konstanta `engineeringBounds`), berlabel sumber "PRODUK". Build
+  produk memakainya sehingga trigger POI dan navigasi aktif. PRD §9.3, §22,
+  §23 dan PB04 di implementationPhases diperbarui. Belum diverifikasi lapangan.
+- Verifikasi: analyze bersih, 388 test lulus (test baru batas produk).
+- APK tidak dapat dibangun di Mac ini: Android SDK tidak terpasang
+  (`No Android SDK found`). Build Android dan uji perangkat perlu dijalankan
+  di mesin dengan Android SDK.
+
 ## Current — Merge `dev` ke `feat/ui-ux-redesign`, 24 November 2026
 
 - Konflik PR redesign → `dev` diselesaikan dengan merge `dev` (PR #9 LA:
