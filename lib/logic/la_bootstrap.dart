@@ -56,7 +56,8 @@ class LaServices {
 /// Membuat layanan LA. Dari track LB: [map] untuk cek area kampus (auto-end
 /// 30 menit dan penonaktifan trigger di luar area) dan [navigation] untuk
 /// arahan suara serta pengumuman tiba. [navigation] berupa factory karena
-/// navigasi membaca posisi dari `LocationService` asli yang dibuat di sini.
+/// navigasi membaca posisi dari `LocationService` dan mengikuti
+/// `SessionController` asli yang dibuat di sini.
 ///
 /// Wajib dipanggil sekali setelah `WidgetsFlutterBinding.ensureInitialized()`
 /// dan `Firebase.initializeApp()` untuk sumber Firestore. Demo [bundledOnly]
@@ -65,7 +66,11 @@ Future<LaServices> createLaServices({
   bool bundledOnly = false,
   bool developerTrialAvailable = false,
   required MapConfig map,
-  required NavigationController Function(LocationService location) navigation,
+  required NavigationController Function(
+    LocationService location,
+    SessionController session,
+  )
+  navigation,
 }) async {
   final pois = await createLaPoiRepository(bundledOnly: bundledOnly);
 
@@ -104,7 +109,7 @@ Future<LaServices> createLaServices({
         WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed,
   )..start();
 
-  final navigationController = navigation(location);
+  final navigationController = navigation(location, session);
   final voice = DeviceVoiceGuidance();
   final announcer = NavigationAnnouncer(
     navigation: navigationController,

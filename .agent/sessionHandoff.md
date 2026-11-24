@@ -1,5 +1,18 @@
 # Session Handoff — AGAM
 
+## Current — Merge `dev` ke `feat/ui-ux-redesign`, 24 November 2026
+
+- Konflik PR redesign → `dev` diselesaikan dengan merge `dev` (PR #9 LA:
+  10/10 POI dan layanan LB asli) ke branch redesign.
+- `lib/main.dart`: jalur produksi dari UI10 (Firebase + `createLaAccountServices`
+  + gerbang login) dipertahankan, tetapi kini memakai layanan asli yang sama
+  dengan demo (`DeviceNavigationController` + `UnavailableCampusRouting`,
+  `RepositoryFacilityService`, `UnavailableRecommendationService`,
+  `UnavailableTrailService`) karena layanan LB fake sudah dilepas di `dev`.
+  Demo tetap memakai akun fake tanpa Firebase.
+- Catatan LA di bawah ("jalur non-demo tetap terblokir sampai UI10 di-merge")
+  sudah terpenuhi oleh merge ini.
+
 ## Current — UI10 dipisah menjadi halaman Masuk dan Daftar, 24 November 2026
 
 **Permintaan:** pengguna ingin login dan register terasa sebagai dua layar
@@ -203,6 +216,12 @@ PBI tidak berubah. Onboarding tidak disentuh. Belum commit/push.
 - Verifikasi: analyze bersih, **376 test lulus**. File sementara (belum
   dihapus, jangan di-commit): `test/_preview/`, `tool/redesign_preview.dart`,
   `web/`.
+## Current — Konten 10/10 POI dan perangkaian layanan LB asli, 23 November 2026 (LA)
+
+- PB09: 10/10 POI approved di `pois.json` (rincian dan sumber media di implementationPhases PB09; video GKUB/GKUT opsional atas keputusan PM 23 November 2026, PRD §23).
+- `lib/main.dart` (build demo `AGAM_INTERNAL_DEMO`) kini memakai layanan LB asli: `DeviceNavigationController` dengan `UnavailableCampusRouting` (graf jalur kampus belum ada), `RepositoryFacilityService`, `UnavailableRecommendationService`, `UnavailableTrailService`. Factory `navigation` di `createLaServices` menerima `SessionController`. Akun tetap fake di demo (tanpa Firebase, belum ada gerbang login); jalur non-demo tetap terblokir sampai UI10 FE di-merge, lalu memakai `createLaAccountServices`.
+- Verifikasi: analyze bersih, 373 test lulus; APK demo release dibangun ulang setelah `flutter clean` (build sebelumnya gagal karena duplikat Finder `launch_background 2.xml` di `build/`), dipasang di emulator `agam_api34`: onboarding, peta, trigger Labtek V (kartu, foto), chip "Fasilitas belum tersedia", Trail 0/10 dengan tombol nonaktif, daftar Cari & Rute; tanpa crash. Bukan bukti perangkat fisik.
+- Berikutnya: push `LA` dan PR ke `dev`; sambungkan akun asli setelah UI10; keystore rilis (PB19).
 
 ---
 
