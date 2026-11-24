@@ -1,5 +1,19 @@
 # Session Handoff — AGAM
 
+## Current — Onboarding crash di layar pendek, 24 November 2026
+
+- Branch `fix/onboarding-small-height` dari `dev` @ `6329963`.
+- Gejala: layar merah di pratinjau web setelah jendela browser dikecilkan
+  ("BoxConstraints has a negative minimum height", disusul
+  `_elements.contains(element)`); halaman tetap rusak setelah jendela
+  dibesarkan lagi. Juga terjadi di ponsel landscape (tinggi 360 px).
+- Sebab: di `onboarding_screen.dart` tinggi sheet minimal 280 px, sehingga
+  `visualHeight` (tinggi layar − sheet) dan `photoHeight` (− overlap 92 px)
+  bisa negatif. Kini `_sheetHeight` dibatasi ke tinggi layar dan
+  `photoHeight` di-clamp ke 0–330.
+- Test `test/ui/onboarding_small_height_test.dart` (2 test, keduanya gagal
+  pada kode lama). Analyze bersih, 410 test lulus.
+
 ## Current — Animasi tombol narasi, gelombang audio, ikon fasilitas, 24 November 2026
 
 - Branch `feat/narration-card-motion` dari `dev` @ `cd5753d`, worktree
