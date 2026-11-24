@@ -1,5 +1,39 @@
 # Session Handoff — AGAM
 
+## Current — Redesign UI10 (masuk/daftar) dan splash, 24 November 2026
+
+**Permintaan:** pengguna meminta redesign layar login, register, dan splash
+di branch `feat/ui-ux-redesign`, identitas AGAM tetap, lebih intuitif.
+Perilaku `AuthService`, validasi, dan semua pesan galat tidak berubah.
+
+**Perubahan:**
+- `lib/ui/splash_screen.dart`: latar `#0D3F8F` sama dengan splash native,
+  logo di tengah, wordmark "AGAM" naik sekali, lalu crossfade 320 ms ke layar
+  berikutnya (sebelumnya berganti tanpa transisi). Tidak ada animasi loop;
+  reduced motion menampilkan keadaan akhir langsung. Durasi tetap ±1,1 s.
+- `lib/ui/auth_screen.dart`: header navy (logo + judul "Selamat datang" /
+  "Buat akun AGAM", tanpa subjudul), sheet putih dengan `AgamSegmented`
+  Masuk/Daftar, field filled dengan autofill (email, password/newPassword),
+  "Lupa password?" di kanan bawah field, kartu peran Mahasiswa ITB /
+  Pengunjung, baris persetujuan privasi yang menjadi merah beserta pesannya
+  bila belum dicentang, dan banner galat/info di atas tombol (pengganti
+  snackbar). Tombol utama dipin di bawah, naik di atas keyboard. Filler
+  sliver menggantikan `SliverFillRemaining` berisi form (bug tinggi intrinsik).
+- Teks pemberitahuan privasi tidak diubah (`AuthScreen.consentText`) dan tetap
+  menunggu persetujuan PM (PRD §22).
+- Berpindah Masuk/Daftar tidak lagi menghapus isi field (form diberi key
+  baru, bukan `reset()`); tombol utama tidak menampilkan spinner saat
+  mengirim reset password.
+- Tes baru `test/ui/auth_screen_test.dart` (8 kasus: validasi, kredensial
+  salah, persetujuan wajib + role, minimal 6 karakter, lupa password,
+  offline, toggle password, isi field bertahan saat ganti mode).
+- Status PBI di `implementationPhases.md` tidak berubah: UI10 tetap
+  "implementasi awal, menunggu teks privasi serta verifikasi PM".
+
+**Verifikasi:** `dart format`, `flutter analyze` bersih, `flutter test`
+385 lulus. Pratinjau web diperiksa (splash, masuk, daftar, keadaan galat).
+Belum diuji di perangkat fisik. Belum di-commit.
+
 ## Current — UI10 login/logout dan perangkaian akun, 23 November 2026
 
 **Perubahan:**
