@@ -400,7 +400,7 @@ Log yang dibuat saat offline disimpan dalam antrean Firestore di perangkat dan t
 | Log aktivitas | Firestore (`activity_logs`) | Bukan Firebase Analytics; lihat §15.5 |
 | Audio | `just_audio` + `audio_service` untuk file narasi/prompt/tiba; `flutter_tts` untuk arahan navigasi | Kontrol dari notifikasi dan lock screen |
 | Notifikasi trigger | `flutter_local_notifications` | Getar, prompt, tombol Dengarkan/Lihat/Lewati |
-| Video | Pemutar video di kartu POI | GKUB, GKUT |
+| Video | `video_player` untuk pemutar video di kartu POI (aset APK) | GKUB, GKUT |
 | Penyimpanan lokal | `shared_preferences` (pengaturan); `path_provider` untuk direktori cache data POI | Hanya progres & pengaturan |
 | CI/CD | GitHub Actions → build APK → GitHub Releases | Repo `SebastianAben/AGAM` |
 | Tools | Figma, GitHub, Flutter DevTools, `flutter_test`, `integration_test`, Android Emulator, perangkat Android fisik | |

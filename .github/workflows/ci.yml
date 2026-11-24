@@ -29,6 +29,14 @@ jobs:
       - run: dart format --output=none --set-exit-if-changed lib test
       - run: flutter analyze
       - run: flutter test
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: tools/tiles/requirements-campus.txt
+
+      - run: python3 -m pip install -r tools/tiles/requirements-campus.txt
       - run: python3 -X utf8 -m unittest discover -s tools/tiles -p 'test_*.py' -q
 
       - run: flutter build apk --debug

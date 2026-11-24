@@ -31,6 +31,50 @@
   TVST, Kantin Labtek X & XI, Musala Labtek VII, Tata Usaha STEI. Test
   `test/ui/nearest_facilities_test.dart`.
 
+## Current — Pemutar video kartu POI (PB07), 24 November 2026
+
+- Branch `feat/poi-video-player` dari `dev` @ `cd5753d`, atas instruksi
+  pengguna (menyimpang dari model branch main/dev/LA/LB/FE di rules §8).
+  Belum di-commit.
+- Sebelumnya video P06 sudah dibundel dan terbaca di `PoiMedia.video`, tetapi
+  tidak ada pemutar di branch mana pun.
+- Baru: `lib/ui/widgets/agam_video_player.dart` (`AgamVideoPlayer`) dan bagian
+  "Video" di `lib/ui/poi_detail_screen.dart`, hanya untuk POI approved dengan
+  `media.video` (saat ini P06 GKUB). Controller dibuat saat diketuk, tanpa
+  autoplay; layar penuh memakai controller yang sama; video dan audio POI
+  saling menjeda; atribusi "Video: TikTok" tetap dari kartu Sumber.
+- `pubspec.yaml`/`pubspec.lock` (milik LA): `video_player: ^2.14.1`
+  (dependency) dan `video_player_platform_interface: ^6.9.0` (dev, untuk fake
+  di test), keduanya dari resolver `pub add`; versi package lain tidak
+  berubah. minSdk `video_player_android` 2.13.0 = 24, sama dengan default
+  Flutter 3.47.9. PR perlu direview LA.
+- Test: `test/ui/poi_video_player_test.dart` (5 test, fake platform mengikuti
+  pola test `video_player`). Analyze bersih, 398 test lulus (393 + 5).
+- Privasi (rules §5.1): `video_player` hanya memutar aset bundel APK; manifest
+  plugin `video_player_android` 2.13.0 tidak mendeklarasikan izin apa pun, dan
+  tidak ada akses lokasi atau pengiriman data. PRD §17 tabel stack baris Video
+  kini menyebut `video_player`.
+- Belum: build APK dan uji di perangkat (Mac ini tanpa Android SDK). PB07 tetap
+  `in_progress`. Yang perlu dicek di HP:
+  1. APK **release**, bukan hanya debug (lihat preseden `f033e4d`:
+     resource shrinking merusak `audio_service` hanya di release).
+  2. Video GKUB terputar dengan suara; layar penuh melanjutkan posisi yang
+     sama.
+  3. Mulai video saat narasi berjalan, dan sebaliknya: hanya satu suara,
+     notifikasi media dan status kartu Narasi tetap konsisten (ExoPlayer
+     video mengambil audio focus karena `mixWithOthers` bawaan `false`).
+  4. Video berhenti saat aplikasi ke latar belakang.
+- Preview web: video seharusnya dapat diputar lewat `video_player_web`, tetapi
+  belum dicoba.
+- Merge `origin/dev` (PR #15 dataset fasilitas) untuk PR #13: konflik hanya
+  di catatan ini; catatan ini diletakkan di bawah catatan dataset fasilitas
+  agar tidak bentrok dengan catatan PR #14.
+- CI PR #13: `agam_video_player.dart` diformat ulang (`dart format`). CI
+  `dev` merah sejak `cd5753d` karena `tools/tiles/test_campus_export.py`
+  butuh `requirements-campus.txt` (pmtiles, fiona, dst.) yang tidak dipasang;
+  `ci.yml` kini memasang Python 3.12 + requirements itu. Perubahan `ci.yml`
+  identik di PR #14.
+
 ## Current — Uji alur Playwright `dev` setelah PR #12 (LB), 24 November 2026
 
 - Basis `dev` @ `cd5753d`: analyze bersih, 393 test lulus. Branch kerja

@@ -10,6 +10,7 @@ import '../logic/audio/audio_seek_control.dart';
 import 'widgets/agam_components.dart';
 import 'widgets/agam_motion.dart';
 import 'widgets/agam_theme.dart';
+import 'widgets/agam_video_player.dart';
 
 /// UI04 — Detail Lokasi. Only approved POI content is presented as factual.
 class PoiDetailScreen extends StatefulWidget {
@@ -66,6 +67,23 @@ class _PoiDetailScreenState extends State<PoiDetailScreen> {
   bool get _currentNarration =>
       _playback.clip?.poiId == widget.poi.id &&
       _playback.clip?.kind == AudioClipKind.narration;
+
+  /// Video hanya ditampilkan bila tersedia dan kontennya sudah disetujui
+  /// (F03: GKUB/GKUT, video opsional).
+  String? get _videoPath {
+    final video = widget.poi.media.video;
+    return _contentReady && video != null && video.trim().isNotEmpty
+        ? video
+        : null;
+  }
+
+  /// Dua suara tidak diputar bersamaan: audio POI apa pun dijeda saat video
+  /// mulai.
+  void _pauseAudioForVideo() {
+    if (widget.audio.current.status == PlaybackStatus.playing) {
+      unawaited(widget.audio.pause());
+    }
+  }
 
   String get _pendingContent => 'Informasi belum tersedia.';
 
@@ -136,6 +154,16 @@ class _PoiDetailScreenState extends State<PoiDetailScreen> {
             sliver: SliverList.list(
               children: [
                 AgamReveal(child: _narrationCard(poi)),
+                if (_videoPath case final video?) ...[
+                  const SizedBox(height: 16),
+                  AgamReveal(
+                    child: AgamVideoPlayer(
+                      assetPath: video,
+                      audioActive: _playback.status == PlaybackStatus.playing,
+                      onPlay: _pauseAudioForVideo,
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 28),
                 AgamReveal(order: 1, child: _transcript(poi)),
                 const SizedBox(height: 28),
