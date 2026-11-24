@@ -310,12 +310,16 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     if (mounted) setState(() => _batteryOptimized = optimized);
   }
 
+  // Never taller than the window, so very short windows (split screen, a
+  // browser being resized) do not produce negative layout sizes.
   double _sheetHeight(int index, Size size, EdgeInsets padding) {
-    if (index != _last) return (size.height * .38).clamp(280.0, 330.0);
-    return math.min(
-      math.max(size.height * .62, 480.0),
-      size.height - padding.top - 150,
-    );
+    final height = index != _last
+        ? (size.height * .38).clamp(280.0, 330.0)
+        : math.min(
+            math.max(size.height * .62, 480.0),
+            size.height - padding.top - 150,
+          );
+    return height.clamp(0.0, math.max(0.0, size.height));
   }
 
   @override
@@ -450,6 +454,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     final distance = (index - page).abs().clamp(0.0, 1.0);
     final reveal = reduce ? kAlwaysCompleteAnimation : _reveals[index];
     final visualHeight = size.height - _sheetHeight(index, size, padding);
+    // _sheetHeight is capped at size.height, so this is never negative.
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -984,7 +989,7 @@ class _StoryVisual extends StatelessWidget {
       // The prompt overlaps only the roofline, so the building sign stays
       // visible below it.
       const overlap = 92.0;
-      final photoHeight = math.min(constraints.maxHeight - overlap, 330.0);
+      final photoHeight = (constraints.maxHeight - overlap).clamp(0.0, 330.0);
       final photoWidth = math.min(photoHeight * .8, constraints.maxWidth * .8);
       final cardWidth = math.min(constraints.maxWidth, 320.0);
       final cardTop = (constraints.maxHeight - overlap - photoHeight) / 2;
