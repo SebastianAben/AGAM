@@ -1,5 +1,37 @@
 # Session Handoff — AGAM
 
+## Current — UI10 dipisah menjadi halaman Masuk dan Daftar, 24 November 2026
+
+**Permintaan:** pengguna ingin login dan register terasa sebagai dua layar
+terpisah (bukan segmented switcher) dengan tautan "belum punya akun", dan
+animasi transisinya diperhalus.
+
+**Perubahan:**
+- `lib/ui/auth_screen.dart`: segmented Masuk/Daftar dihapus. Halaman Masuk
+  punya tautan "Baru di AGAM? Daftar"; halaman Daftar punya tombol kembali
+  bulat, judul "Buat akun AGAM", dan tautan "Sudah punya akun? Masuk".
+  Tombol back Android di halaman Daftar kembali ke Masuk (`PopScope`).
+  Email terbawa antarhalaman, password tidak.
+- Transisi: header dan form bergerak dengan shared axis horizontal 320 ms
+  (sama dengan `AgamMotion.route`), maju ke Daftar dan mundur ke Masuk.
+  Latar navy dan sheet putih tetap diam sehingga tidak ada kilatan warna.
+  Tombol utama tidak ikut bergerak; labelnya fade-through.
+  Keyboard ditutup sebelum transisi agar halaman tidak melompat.
+- `AgamPrimaryButton`: label yang berubah kini fade-through 240 ms
+  (berlaku di semua layar).
+- Perbaikan: "Lupa password?" dan tautan pindah halaman sebelumnya memakai
+  `TextButton.styleFrom(textStyle:)` sehingga jatuh ke font bawaan (Roboto);
+  kini gaya ada di `Text` sehingga tetap PlusJakartaSans. Ripple baris
+  persetujuan sekarang terlihat di atas latarnya.
+- Ikon kartu peran beranimasi sekali saat kartu dipilih (460 ms, tanpa
+  loop, dilewati pada reduced motion): topi toga Mahasiswa ITB terangkat
+  dan miring lalu kembali; ikon Pengunjung melangkah maju sedikit lalu
+  kembali. Warna ikon berpindah halus (abu → biru).
+
+**Verifikasi:** analyze bersih, `flutter test` 387 lulus (tes auth 10 kasus,
+termasuk halaman terpisah dan back sistem). Frame transisi diperiksa lewat
+golden sementara (sudah dihapus). Belum di-commit.
+
 ## Current — Redesign UI10 (masuk/daftar) dan splash, 24 November 2026
 
 **Permintaan:** pengguna meminta redesign layar login, register, dan splash

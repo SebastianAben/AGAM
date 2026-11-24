@@ -38,6 +38,9 @@ void main() {
     matching: find.text(label),
   );
 
+  Finder link(String label) =>
+      find.descendant(of: find.byType(TextButton), matching: find.text(label));
+
   testWidgets('empty login shows field errors inline', (tester) async {
     await pumpAuth(tester);
 
@@ -70,14 +73,14 @@ void main() {
   ) async {
     final auth = await pumpAuth(tester);
 
-    await tapVisible(tester, find.text('Daftar'));
+    await tapVisible(tester, link('Daftar'));
     expect(find.text('Buat akun AGAM'), findsOneWidget);
     expect(find.text('Lupa password?'), findsNothing);
 
     await tester.enterText(field('Email'), 'tamu@contoh.id');
     await tester.enterText(field('Password'), 'rahasia1');
     await tapVisible(tester, find.text('Pengunjung'));
-    await tapVisible(tester, submit('Buat akun'));
+    await tapVisible(tester, submit('Daftar'));
 
     expect(
       find.text('Setujui pemberitahuan privasi untuk melanjutkan.'),
@@ -90,7 +93,7 @@ void main() {
       find.text('Setujui pemberitahuan privasi untuk melanjutkan.'),
       findsNothing,
     );
-    await tapVisible(tester, submit('Buat akun'));
+    await tapVisible(tester, submit('Daftar'));
 
     expect(auth.current.isSignedIn, isTrue);
     expect(auth.current.account!.role, UserRole.pengunjung);
@@ -99,10 +102,10 @@ void main() {
   testWidgets('register enforces the 6 character minimum', (tester) async {
     await pumpAuth(tester);
 
-    await tapVisible(tester, find.text('Daftar'));
+    await tapVisible(tester, link('Daftar'));
     await tester.enterText(field('Email'), 'tamu@contoh.id');
     await tester.enterText(field('Password'), '123');
-    await tapVisible(tester, submit('Buat akun'));
+    await tapVisible(tester, submit('Daftar'));
 
     expect(find.text('Password minimal 6 karakter.'), findsOneWidget);
   });
@@ -149,10 +152,38 @@ void main() {
     await pumpAuth(tester);
 
     await tester.enterText(field('Email'), 'tamu@contoh.id');
-    await tapVisible(tester, find.text('Daftar'));
+    await tapVisible(tester, link('Daftar'));
     expect(find.text('tamu@contoh.id'), findsOneWidget);
 
-    await tapVisible(tester, find.text('Masuk').first);
+    await tapVisible(tester, link('Masuk'));
     expect(find.text('tamu@contoh.id'), findsOneWidget);
+  });
+
+  testWidgets('login and register are separate pages', (tester) async {
+    await pumpAuth(tester);
+
+    expect(find.text('Baru di AGAM?'), findsOneWidget);
+    expect(find.text('Daftar sebagai'), findsNothing);
+
+    await tapVisible(tester, link('Daftar'));
+    expect(find.text('Selamat datang'), findsNothing);
+    expect(find.text('Lupa password?'), findsNothing);
+    expect(find.text('Sudah punya akun?'), findsOneWidget);
+    expect(find.text('Daftar sebagai'), findsOneWidget);
+
+    await tapVisible(tester, find.byTooltip('Kembali'));
+    expect(find.text('Selamat datang'), findsOneWidget);
+    expect(find.text('Daftar sebagai'), findsNothing);
+  });
+
+  testWidgets('system back on register returns to login', (tester) async {
+    await pumpAuth(tester);
+
+    await tapVisible(tester, link('Daftar'));
+    expect(find.text('Buat akun AGAM'), findsOneWidget);
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.text('Selamat datang'), findsOneWidget);
   });
 }

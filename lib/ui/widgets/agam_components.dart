@@ -236,14 +236,22 @@ class AgamPrimaryButton extends StatelessWidget {
                 Icon(icon, size: 20),
               if (busy || icon != null) const SizedBox(width: 10),
               Flexible(
-                child: Text(
-                  label,
-                  maxLines: labelMaxLines,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
+                // A changed label fades through: the old word is gone
+                // before the new one appears, so the two never overlap.
+                child: AnimatedSwitcher(
+                  duration: AgamMotion.duration(context, 240),
+                  switchInCurve: const Interval(.5, 1, curve: Curves.easeOut),
+                  switchOutCurve: const Interval(.5, 1, curve: Curves.easeIn),
+                  child: Text(
+                    label,
+                    key: ValueKey(label),
+                    maxLines: labelMaxLines,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ),

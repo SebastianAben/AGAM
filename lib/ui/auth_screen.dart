@@ -1,3 +1,6 @@
+import 'dart:math' as math;
+
+import 'package:animations/animations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -8,10 +11,11 @@ import 'widgets/agam_theme.dart';
 
 /// UI10, daftar dan masuk dengan Firebase Auth email/password.
 ///
-/// One screen, two modes. The navy header continues the splash; the white
-/// sheet holds the form. Problems are shown where they happen (under the
-/// field, on the consent row, above the button) instead of in snackbars
-/// that disappear before they are read.
+/// Login and register are two separate pages. The navy header and the white
+/// sheet stay put; only the title, the form and the action move, along the
+/// same horizontal axis as every pushed page in the app. Going to register
+/// moves forward, coming back moves backward. Problems are shown where they
+/// happen instead of in snackbars.
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key, required this.auth});
 
@@ -36,10 +40,15 @@ class _Notice {
 }
 
 class _AuthScreenState extends State<AuthScreen> {
+  // The email follows the user between pages; passwords do not.
   final _email = TextEditingController();
-  final _password = TextEditingController();
-  final _passwordFocus = FocusNode();
-  var _formKey = GlobalKey<FormState>();
+  final _loginPassword = TextEditingController();
+  final _registerPassword = TextEditingController();
+  final _loginPasswordFocus = FocusNode();
+  final _registerPasswordFocus = FocusNode();
+  final _loginForm = GlobalKey<FormState>();
+  final _registerForm = GlobalKey<FormState>();
+  final _scroll = ScrollController();
   bool _register = false;
   bool _obscure = true;
   bool _acceptedPrivacy = false;
@@ -52,21 +61,31 @@ class _AuthScreenState extends State<AuthScreen> {
   @override
   void dispose() {
     _email.dispose();
-    _password.dispose();
-    _passwordFocus.dispose();
+    _loginPassword.dispose();
+    _registerPassword.dispose();
+    _loginPasswordFocus.dispose();
+    _registerPasswordFocus.dispose();
+    _scroll.dispose();
     super.dispose();
   }
 
-  void _setMode(bool register) {
+  void _showPage({required bool register}) {
     if (_busy || register == _register) return;
+    // Drop the keyboard first: letting it close during the slide makes the
+    // whole page jump halfway through the transition.
+    FocusScope.of(context).unfocus();
+    if (_scroll.hasClients) _scroll.jumpTo(0);
     setState(() {
-      // A new key rebuilds the fields: stale errors go, typed text stays
-      // in the controllers. Form.reset() would roll the text back instead.
-      _formKey = GlobalKey<FormState>();
       _register = register;
-      _acceptedPrivacy = false;
-      _consentMissing = false;
+      _obscure = true;
       _notice = null;
+      if (register) {
+        _registerPassword.clear();
+        _acceptedPrivacy = false;
+        _consentMissing = false;
+      } else {
+        _loginPassword.clear();
+      }
     });
   }
 
@@ -76,7 +95,8 @@ class _AuthScreenState extends State<AuthScreen> {
 
   Future<void> _submit() async {
     if (_busy) return;
-    final valid = _formKey.currentState?.validate() ?? false;
+    final form = _register ? _registerForm : _loginForm;
+    final valid = form.currentState?.validate() ?? false;
     final consentMissing = _register && !_acceptedPrivacy;
     setState(() {
       _consentMissing = consentMissing;
@@ -90,13 +110,13 @@ class _AuthScreenState extends State<AuthScreen> {
       if (_register) {
         await widget.auth.signUp(
           email: _email.text.trim(),
-          password: _password.text,
+          password: _registerPassword.text,
           role: _role,
         );
       } else {
         await widget.auth.login(
           email: _email.text.trim(),
-          password: _password.text,
+          password: _loginPassword.text,
         );
       }
     } on AuthException catch (error) {
@@ -139,188 +159,236 @@ class _AuthScreenState extends State<AuthScreen> {
     }
   }
 
+  Widget _emailField() => _Field(
+    controller: _email,
+    label: 'Email',
+    icon: Icons.alternate_email_rounded,
+    enabled: !_busy,
+    keyboardType: TextInputType.emailAddress,
+    autofillHints: const [AutofillHints.email],
+    textInputAction: TextInputAction.next,
+    onChanged: (_) => _clearNotice(),
+    onSubmitted: (_) =>
+        (_register ? _registerPasswordFocus : _loginPasswordFocus)
+            .requestFocus(),
+    validator: (value) {
+      final email = value?.trim() ?? '';
+      if (email.isEmpty) return 'Email wajib diisi.';
+      if (!email.contains('@')) return 'Format email tidak valid.';
+      return null;
+    },
+  );
+
+  Widget _passwordField({required bool register}) => _Field(
+    controller: register ? _registerPassword : _loginPassword,
+    focusNode: register ? _registerPasswordFocus : _loginPasswordFocus,
+    label: 'Password',
+    icon: Icons.lock_outline_rounded,
+    enabled: !_busy,
+    obscureText: _obscure,
+    helperText: register ? 'Minimal 6 karakter' : null,
+    autofillHints: [
+      register ? AutofillHints.newPassword : AutofillHints.password,
+    ],
+    textInputAction: TextInputAction.done,
+    onChanged: (_) => _clearNotice(),
+    onSubmitted: (_) => _submit(),
+    suffix: IconButton(
+      tooltip: _obscure ? 'Tampilkan password' : 'Sembunyikan password',
+      onPressed: () => setState(() => _obscure = !_obscure),
+      color: AgamColors.subtle,
+      icon: Icon(
+        _obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+        size: 20,
+      ),
+    ),
+    validator: (value) {
+      if ((value ?? '').isEmpty) return 'Password wajib diisi.';
+      if (register && value!.length < 6) {
+        return 'Password minimal 6 karakter.';
+      }
+      return null;
+    },
+  );
+
+  Widget _noticeSlot() => AnimatedSize(
+    duration: AgamMotion.duration(context, 240),
+    curve: AgamMotion.easeOut,
+    alignment: Alignment.topCenter,
+    child: _notice == null
+        ? const SizedBox(width: double.infinity)
+        : Padding(
+            padding: const EdgeInsets.only(top: 14),
+            child: _NoticeBanner(notice: _notice!),
+          ),
+  );
+
+  Widget _buildLogin() => Form(
+    key: _loginForm,
+    child: AutofillGroup(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _emailField(),
+          const SizedBox(height: 12),
+          _passwordField(register: false),
+          Align(
+            alignment: Alignment.centerRight,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: TextButton(
+                onPressed: _busy ? null : _resetPassword,
+                style: TextButton.styleFrom(foregroundColor: AgamColors.brand),
+                // Styled on the Text, not via textStyle: a button textStyle
+                // replaces the theme font instead of merging with it.
+                child: Text(
+                  'Lupa password?',
+                  style: AgamText.label.copyWith(
+                    fontSize: 13,
+                    color: AgamColors.brand,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          _noticeSlot(),
+        ],
+      ),
+    ),
+  );
+
+  Widget _buildRegister() => Form(
+    key: _registerForm,
+    child: AutofillGroup(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _emailField(),
+          const SizedBox(height: 12),
+          _passwordField(register: true),
+          _RegisterExtras(
+            role: _role,
+            accepted: _acceptedPrivacy,
+            missing: _consentMissing,
+            enabled: !_busy,
+            onRole: (role) => setState(() => _role = role),
+            onConsent: (value) => setState(() {
+              _acceptedPrivacy = value;
+              if (value) _consentMissing = false;
+            }),
+          ),
+          _noticeSlot(),
+        ],
+      ),
+    ),
+  );
+
   @override
   Widget build(BuildContext context) {
-    final resize = AgamMotion.duration(context, 280);
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.light,
-      child: Scaffold(
-        backgroundColor: Colors.white,
-        body: Column(
-          children: [
-            Expanded(
-              child: ColoredBox(
-                // Navy behind the sheet's rounded corners.
-                color: AgamColors.brandDeep,
-                child: CustomScrollView(
-                  physics: const ClampingScrollPhysics(),
-                  keyboardDismissBehavior:
-                      ScrollViewKeyboardDismissBehavior.onDrag,
-                  slivers: [
-                    SliverToBoxAdapter(child: _Header(register: _register)),
-                    SliverToBoxAdapter(
-                      child: _Sheet(
-                        child: Form(
-                          key: _formKey,
-                          child: AutofillGroup(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                AgamSegmented(
-                                  labels: const ['Masuk', 'Daftar'],
-                                  selected: _register ? 1 : 0,
-                                  onChanged: (index) => _setMode(index == 1),
-                                ),
-                                const SizedBox(height: 22),
-                                _Field(
-                                  controller: _email,
-                                  label: 'Email',
-                                  icon: Icons.alternate_email_rounded,
-                                  enabled: !_busy,
-                                  keyboardType: TextInputType.emailAddress,
-                                  autofillHints: const [AutofillHints.email],
-                                  textInputAction: TextInputAction.next,
-                                  onChanged: (_) => _clearNotice(),
-                                  onSubmitted: (_) =>
-                                      _passwordFocus.requestFocus(),
-                                  validator: (value) {
-                                    final email = value?.trim() ?? '';
-                                    if (email.isEmpty) {
-                                      return 'Email wajib diisi.';
-                                    }
-                                    if (!email.contains('@')) {
-                                      return 'Format email tidak valid.';
-                                    }
-                                    return null;
-                                  },
-                                ),
-                                const SizedBox(height: 12),
-                                _Field(
-                                  controller: _password,
-                                  focusNode: _passwordFocus,
-                                  label: 'Password',
-                                  icon: Icons.lock_outline_rounded,
-                                  enabled: !_busy,
-                                  obscureText: _obscure,
-                                  helperText: _register
-                                      ? 'Minimal 6 karakter'
-                                      : null,
-                                  autofillHints: [
-                                    _register
-                                        ? AutofillHints.newPassword
-                                        : AutofillHints.password,
-                                  ],
-                                  textInputAction: TextInputAction.done,
-                                  onChanged: (_) => _clearNotice(),
-                                  onSubmitted: (_) => _submit(),
-                                  suffix: IconButton(
-                                    tooltip: _obscure
-                                        ? 'Tampilkan password'
-                                        : 'Sembunyikan password',
-                                    onPressed: () =>
-                                        setState(() => _obscure = !_obscure),
-                                    color: AgamColors.subtle,
-                                    icon: Icon(
-                                      _obscure
-                                          ? Icons.visibility_outlined
-                                          : Icons.visibility_off_outlined,
-                                      size: 20,
+    final page = _register ? 'register' : 'login';
+    return PopScope(
+      // Back on the register page returns to login, like a pushed page.
+      canPop: !_register,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _showPage(register: false);
+      },
+      child: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: SystemUiOverlayStyle.light,
+        child: Scaffold(
+          backgroundColor: Colors.white,
+          body: Column(
+            children: [
+              Expanded(
+                child: ColoredBox(
+                  // Navy behind the sheet's rounded corners.
+                  color: AgamColors.brandDeep,
+                  child: CustomScrollView(
+                    controller: _scroll,
+                    physics: const ClampingScrollPhysics(),
+                    keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.onDrag,
+                    slivers: [
+                      SliverToBoxAdapter(
+                        child: _Header(
+                          child: _PageSwap(
+                            forward: _register,
+                            alignment: Alignment.bottomLeft,
+                            child: _register
+                                ? _HeaderContent(
+                                    key: ValueKey('$page-header'),
+                                    title: 'Buat akun AGAM',
+                                    leading: _RoundBack(
+                                      onPressed: _busy
+                                          ? null
+                                          : () => _showPage(register: false),
                                     ),
+                                  )
+                                : const _HeaderContent(
+                                    key: ValueKey('login-header'),
+                                    title: 'Selamat datang',
+                                    leading: _Brand(),
                                   ),
-                                  validator: (value) {
-                                    if ((value ?? '').isEmpty) {
-                                      return 'Password wajib diisi.';
-                                    }
-                                    if (_register && value!.length < 6) {
-                                      return 'Password minimal 6 karakter.';
-                                    }
-                                    return null;
-                                  },
-                                ),
-                                AnimatedSize(
-                                  duration: resize,
-                                  curve: AgamMotion.drawer,
-                                  alignment: Alignment.topCenter,
-                                  child: _register
-                                      ? _RegisterExtras(
-                                          role: _role,
-                                          accepted: _acceptedPrivacy,
-                                          missing: _consentMissing,
-                                          enabled: !_busy,
-                                          onRole: (role) =>
-                                              setState(() => _role = role),
-                                          onConsent: (value) => setState(() {
-                                            _acceptedPrivacy = value;
-                                            if (value) {
-                                              _consentMissing = false;
-                                            }
-                                          }),
-                                        )
-                                      : Align(
-                                          alignment: Alignment.centerRight,
-                                          child: Padding(
-                                            padding: const EdgeInsets.only(
-                                              top: 4,
-                                            ),
-                                            child: TextButton(
-                                              onPressed: _busy
-                                                  ? null
-                                                  : _resetPassword,
-                                              style: TextButton.styleFrom(
-                                                foregroundColor:
-                                                    AgamColors.brand,
-                                                textStyle: AgamText.label
-                                                    .copyWith(fontSize: 13),
-                                              ),
-                                              child: const Text(
-                                                'Lupa password?',
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                ),
-                                AnimatedSize(
-                                  duration: resize,
-                                  curve: AgamMotion.easeOut,
-                                  alignment: Alignment.topCenter,
-                                  child: _notice == null
-                                      ? const SizedBox(width: double.infinity)
-                                      : Padding(
-                                          padding: const EdgeInsets.only(
-                                            top: 12,
-                                          ),
-                                          child: _NoticeBanner(
-                                            notice: _notice!,
-                                          ),
-                                        ),
-                                ),
-                                const SizedBox(height: 24),
-                              ],
+                          ),
+                        ),
+                      ),
+                      SliverToBoxAdapter(
+                        child: _Sheet(
+                          child: _PageSwap(
+                            forward: _register,
+                            alignment: Alignment.topCenter,
+                            child: KeyedSubtree(
+                              key: ValueKey('$page-form'),
+                              child: _register
+                                  ? _buildRegister()
+                                  : _buildLogin(),
                             ),
                           ),
                         ),
                       ),
+                      // White filler so the sheet runs to the action bar on
+                      // tall screens, without measuring the form's intrinsic
+                      // height.
+                      const SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: ColoredBox(color: Colors.white),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              // The action stays in the thumb zone and rides on top of the
+              // keyboard, so it is never scrolled out of reach.
+              _ActionBar(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // The button is the same control on both pages, so it
+                    // stays still; only its label crossfades.
+                    AgamPrimaryButton(
+                      label: _register ? 'Daftar' : 'Masuk',
+                      busy: _submitting,
+                      onPressed: _busy ? null : _submit,
                     ),
-                    // White filler so the sheet runs to the action bar on tall
-                    // screens, without measuring the form's intrinsic height.
-                    const SliverFillRemaining(
-                      hasScrollBody: false,
-                      child: ColoredBox(color: Colors.white),
+                    _PageSwap(
+                      forward: _register,
+                      alignment: Alignment.center,
+                      child: _SwitchLink(
+                        key: ValueKey('$page-link'),
+                        prompt: _register
+                            ? 'Sudah punya akun?'
+                            : 'Baru di AGAM?',
+                        action: _register ? 'Masuk' : 'Daftar',
+                        onPressed: _busy
+                            ? null
+                            : () => _showPage(register: !_register),
+                      ),
                     ),
                   ],
                 ),
               ),
-            ),
-            // The action stays in the thumb zone and rides on top of the
-            // keyboard, so it is never scrolled out of reach.
-            _ActionBar(
-              child: AgamPrimaryButton(
-                label: _register ? 'Buat akun' : 'Masuk',
-                busy: _submitting,
-                onPressed: _busy ? null : _submit,
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -339,10 +407,40 @@ class _AuthScreenState extends State<AuthScreen> {
   };
 }
 
-class _Header extends StatelessWidget {
-  const _Header({required this.register});
+/// Moves one slot of the page along the horizontal shared axis. All slots
+/// use the same duration and direction, so header, form and action travel
+/// together and read as one page change.
+class _PageSwap extends StatelessWidget {
+  const _PageSwap({
+    required this.forward,
+    required this.alignment,
+    required this.child,
+  });
 
-  final bool register;
+  final bool forward;
+  final Alignment alignment;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => PageTransitionSwitcher(
+    duration: AgamMotion.duration(context, 320),
+    reverse: !forward,
+    layoutBuilder: (entries) => Stack(alignment: alignment, children: entries),
+    transitionBuilder: (child, animation, secondary) => SharedAxisTransition(
+      animation: animation,
+      secondaryAnimation: secondary,
+      transitionType: SharedAxisTransitionType.horizontal,
+      fillColor: Colors.transparent,
+      child: child,
+    ),
+    child: child,
+  );
+}
+
+class _Header extends StatelessWidget {
+  const _Header({required this.child});
+
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
@@ -350,66 +448,128 @@ class _Header extends StatelessWidget {
     return AgamGround(
       radius: 0,
       colors: const [AgamColors.brandDeep, AgamColors.brandDeep],
-      padding: EdgeInsets.fromLTRB(24, top + 28, 24, 44),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.asset(
-                  'assets/media/logo.png',
-                  width: 40,
-                  height: 40,
-                  cacheWidth: 120,
-                  excludeFromSemantics: true,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Text(
-                'AGAM',
-                style: AgamText.label.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 2,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 64),
-          AnimatedSwitcher(
-            duration: AgamMotion.duration(context, 220),
-            switchInCurve: AgamMotion.easeOut,
-            switchOutCurve: AgamMotion.easeOut,
-            layoutBuilder: (current, previous) => Stack(
-              alignment: Alignment.centerLeft,
-              children: [...previous, ?current],
-            ),
-            transitionBuilder: (child, animation) => FadeTransition(
-              opacity: animation,
-              child: SlideTransition(
-                position: Tween(
-                  begin: const Offset(0, .18),
-                  end: Offset.zero,
-                ).animate(animation),
-                child: child,
-              ),
-            ),
-            child: Text(
-              register ? 'Buat akun AGAM' : 'Selamat datang',
-              key: ValueKey(register),
-              style: AgamText.display.copyWith(
-                color: Colors.white,
-                fontSize: 30,
-                height: 1.15,
-              ),
-            ),
-          ),
-        ],
-      ),
+      padding: EdgeInsets.fromLTRB(24, top + 24, 24, 44),
+      child: SizedBox(width: double.infinity, child: child),
     );
   }
+}
+
+class _HeaderContent extends StatelessWidget {
+  const _HeaderContent({super.key, required this.title, required this.leading});
+
+  final String title;
+  final Widget leading;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      SizedBox(height: 44, child: leading),
+      const SizedBox(height: 64),
+      Semantics(
+        header: true,
+        child: Text(
+          title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AgamText.display.copyWith(
+            color: Colors.white,
+            fontSize: 30,
+            height: 1.15,
+          ),
+        ),
+      ),
+    ],
+  );
+}
+
+class _Brand extends StatelessWidget {
+  const _Brand();
+
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Image.asset(
+          'assets/media/logo.png',
+          width: 40,
+          height: 40,
+          cacheWidth: 120,
+          excludeFromSemantics: true,
+        ),
+      ),
+      const SizedBox(width: 10),
+      Text(
+        'AGAM',
+        style: AgamText.label.copyWith(
+          color: Colors.white,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 2,
+        ),
+      ),
+    ],
+  );
+}
+
+class _RoundBack extends StatelessWidget {
+  const _RoundBack({required this.onPressed});
+
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) => Align(
+    alignment: Alignment.centerLeft,
+    child: IconButton(
+      tooltip: 'Kembali',
+      onPressed: onPressed,
+      style: IconButton.styleFrom(
+        backgroundColor: Colors.white.withValues(alpha: .12),
+        foregroundColor: Colors.white,
+        fixedSize: const Size.square(44),
+      ),
+      icon: const Icon(Icons.arrow_back_rounded, size: 22),
+    ),
+  );
+}
+
+class _SwitchLink extends StatelessWidget {
+  const _SwitchLink({
+    super.key,
+    required this.prompt,
+    required this.action,
+    required this.onPressed,
+  });
+
+  final String prompt;
+  final String action;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(top: 6),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(prompt, style: AgamText.bodySmall),
+        TextButton(
+          onPressed: onPressed,
+          style: TextButton.styleFrom(
+            foregroundColor: AgamColors.brand,
+            padding: const EdgeInsets.symmetric(horizontal: 6),
+            minimumSize: const Size(48, 44),
+          ),
+          child: Text(
+            action,
+            style: AgamText.label.copyWith(
+              fontSize: 13,
+              color: AgamColors.brand,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _ActionBar extends StatelessWidget {
@@ -425,7 +585,7 @@ class _ActionBar extends StatelessWidget {
     return ColoredBox(
       color: Colors.white,
       child: Padding(
-        padding: EdgeInsets.fromLTRB(20, 8, 20, 12 + inset),
+        padding: EdgeInsets.fromLTRB(20, 8, 20, 4 + inset),
         child: child,
       ),
     );
@@ -445,7 +605,7 @@ class _Sheet extends StatelessWidget {
         top: Radius.circular(AgamRadius.sheet),
       ),
     ),
-    padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+    padding: const EdgeInsets.fromLTRB(20, 28, 20, 24),
     child: child,
   );
 }
@@ -573,6 +733,7 @@ class _RegisterExtras extends StatelessWidget {
             child: _RoleCard(
               label: 'Mahasiswa ITB',
               icon: Icons.school_outlined,
+              motion: _RoleMotion.toss,
               selected: role == UserRole.mahasiswaItb,
               onTap: enabled ? () => onRole(UserRole.mahasiswaItb) : null,
             ),
@@ -582,6 +743,7 @@ class _RegisterExtras extends StatelessWidget {
             child: _RoleCard(
               label: 'Pengunjung',
               icon: Icons.hiking_rounded,
+              motion: _RoleMotion.step,
               selected: role == UserRole.pengunjung,
               onTap: enabled ? () => onRole(UserRole.pengunjung) : null,
             ),
@@ -602,12 +764,14 @@ class _RoleCard extends StatelessWidget {
   const _RoleCard({
     required this.label,
     required this.icon,
+    required this.motion,
     required this.selected,
     required this.onTap,
   });
 
   final String label;
   final IconData icon;
+  final _RoleMotion motion;
   final bool selected;
   final VoidCallback? onTap;
 
@@ -639,11 +803,7 @@ class _RoleCard extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Icon(
-                      icon,
-                      size: 22,
-                      color: selected ? AgamColors.brand : AgamColors.muted,
-                    ),
+                    _RoleIcon(icon: icon, motion: motion, selected: selected),
                     const Spacer(),
                     AnimatedContainer(
                       duration: duration,
@@ -688,6 +848,84 @@ class _RoleCard extends StatelessWidget {
   }
 }
 
+/// How a role icon reacts once when its card is chosen.
+enum _RoleMotion {
+  /// The cap lifts and tips back, like a small graduation toss.
+  toss,
+
+  /// The walker takes one small step forward.
+  step,
+}
+
+/// Plays a short one-shot gesture when [selected] turns true. It never
+/// loops, never plays on first build, and is skipped under reduced motion.
+class _RoleIcon extends StatefulWidget {
+  const _RoleIcon({
+    required this.icon,
+    required this.motion,
+    required this.selected,
+  });
+
+  final IconData icon;
+  final _RoleMotion motion;
+  final bool selected;
+
+  @override
+  State<_RoleIcon> createState() => _RoleIconState();
+}
+
+class _RoleIconState extends State<_RoleIcon>
+    with SingleTickerProviderStateMixin {
+  late final _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 460),
+  );
+
+  @override
+  void didUpdateWidget(_RoleIcon old) {
+    super.didUpdateWidget(old);
+    if (widget.selected && !old.selected) {
+      if (MediaQuery.disableAnimationsOf(context)) return;
+      _controller.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => TweenAnimationBuilder<Color?>(
+    tween: ColorTween(
+      end: widget.selected ? AgamColors.brand : AgamColors.muted,
+    ),
+    duration: AgamMotion.duration(context, 200),
+    curve: AgamMotion.easeOut,
+    builder: (context, color, _) => AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        // Rises quickly, settles slowly: one arc, back to rest at the end.
+        final arc = math.sin(
+          math.pi * Curves.easeOutCubic.transform(_controller.value),
+        );
+        return switch (widget.motion) {
+          _RoleMotion.toss => Transform.translate(
+            offset: Offset(0, -4 * arc),
+            child: Transform.rotate(angle: -.22 * arc, child: child),
+          ),
+          _RoleMotion.step => Transform.translate(
+            offset: Offset(4 * arc, 0),
+            child: Transform.rotate(angle: .08 * arc, child: child),
+          ),
+        };
+      },
+      child: Icon(widget.icon, size: 22, color: color),
+    ),
+  );
+}
+
 class _ConsentRow extends StatelessWidget {
   const _ConsentRow({
     required this.accepted,
@@ -706,54 +944,63 @@ class _ConsentRow extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         MergeSemantics(
-          child: InkWell(
-            onTap: onChanged == null ? null : () => onChanged!(!accepted),
-            borderRadius: BorderRadius.circular(AgamRadius.control),
-            child: AnimatedContainer(
-              duration: duration,
-              curve: AgamMotion.easeOut,
-              padding: const EdgeInsets.fromLTRB(6, 6, 14, 12),
-              decoration: BoxDecoration(
+          // The fill sits under a transparent Material so the ink ripple is
+          // painted on top of it, not hidden behind it.
+          child: AnimatedContainer(
+            duration: duration,
+            curve: AgamMotion.easeOut,
+            decoration: BoxDecoration(
+              color: missing
+                  ? AgamColors.danger.withValues(alpha: .06)
+                  : AgamColors.canvas,
+              borderRadius: BorderRadius.circular(AgamRadius.control),
+              border: Border.all(
                 color: missing
-                    ? AgamColors.danger.withValues(alpha: .06)
-                    : AgamColors.canvas,
-                borderRadius: BorderRadius.circular(AgamRadius.control),
-                border: Border.all(
-                  color: missing
-                      ? AgamColors.danger.withValues(alpha: .5)
-                      : Colors.transparent,
-                ),
+                    ? AgamColors.danger.withValues(alpha: .5)
+                    : Colors.transparent,
               ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Checkbox(
-                    value: accepted,
-                    onChanged: onChanged == null
-                        ? null
-                        : (value) => onChanged!(value ?? false),
-                    activeColor: AgamColors.brand,
-                    side: BorderSide(
-                      color: missing ? AgamColors.danger : AgamColors.subtle,
-                      width: 1.5,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(5),
-                    ),
-                  ),
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 9),
-                      child: Text(
-                        AuthScreen.consentText,
-                        style: AgamText.bodySmall.copyWith(
-                          color: AgamColors.ink,
-                          height: 1.45,
+            ),
+            child: Material(
+              type: MaterialType.transparency,
+              child: InkWell(
+                onTap: onChanged == null ? null : () => onChanged!(!accepted),
+                borderRadius: BorderRadius.circular(AgamRadius.control),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(6, 6, 14, 12),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Checkbox(
+                        value: accepted,
+                        onChanged: onChanged == null
+                            ? null
+                            : (value) => onChanged!(value ?? false),
+                        activeColor: AgamColors.brand,
+                        side: BorderSide(
+                          color: missing
+                              ? AgamColors.danger
+                              : AgamColors.subtle,
+                          width: 1.5,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(5),
                         ),
                       ),
-                    ),
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 9),
+                          child: Text(
+                            AuthScreen.consentText,
+                            style: AgamText.bodySmall.copyWith(
+                              color: AgamColors.ink,
+                              height: 1.45,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ),
