@@ -9,6 +9,7 @@ import '../contracts/models/settings.dart';
 import '../logic/audio/audio_seek_control.dart';
 import 'widgets/agam_components.dart';
 import 'widgets/agam_motion.dart';
+import 'widgets/narration_wave.dart';
 import 'widgets/agam_theme.dart';
 import 'widgets/agam_video_player.dart';
 
@@ -42,10 +43,18 @@ class _PoiDetailScreenState extends State<PoiDetailScreen> {
   bool _navigating = false;
   late PlaybackState _playback;
   StreamSubscription<PlaybackState>? _playbackSubscription;
+  NarrationEnvelope? _waveEnvelope;
 
   @override
   void initState() {
     super.initState();
+    if (_audioAvailable) {
+      unawaited(
+        NarrationEnvelope.load(widget.poi.media.narrationAudio!).then((value) {
+          if (mounted && value != null) setState(() => _waveEnvelope = value);
+        }),
+      );
+    }
     _playback = widget.audio.current;
     _playbackSubscription = widget.audio.state.listen((playback) {
       if (mounted) setState(() => _playback = playback);
@@ -314,14 +323,8 @@ class _PoiDetailScreenState extends State<PoiDetailScreen> {
                 ),
                 child: AnimatedSwitcher(
                   duration: AgamMotion.duration(context, 200),
-                  child: Icon(
-                    playing
-                        ? Icons.graphic_eq_rounded
-                        : Icons.headphones_rounded,
-                    key: ValueKey(playing),
-                    color: AgamColors.cyan,
-                    size: 20,
-                  ),
+                  transitionBuilder: AgamMotion.iconSwap,
+                  child: _narrationGlyph(playing),
                 ),
               ),
               const SizedBox(width: 12),
@@ -492,6 +495,36 @@ class _PoiDetailScreenState extends State<PoiDetailScreen> {
     );
   }
 
+  /// Headphones while idle; while playing, bars that follow the narration's
+  /// loudness. Without an envelope, or with reduced motion, a static
+  /// equaliser icon stands in rather than a fake animation.
+  Widget _narrationGlyph(bool playing) {
+    if (!playing) {
+      return const Icon(
+        Icons.headphones_rounded,
+        key: ValueKey('idle'),
+        color: AgamColors.cyan,
+        size: 20,
+      );
+    }
+    final envelope = _waveEnvelope;
+    if (envelope == null || MediaQuery.disableAnimationsOf(context)) {
+      return const Icon(
+        Icons.graphic_eq_rounded,
+        key: ValueKey('playing'),
+        color: AgamColors.cyan,
+        size: 20,
+      );
+    }
+    return NarrationWave(
+      key: const ValueKey('wave'),
+      envelope: envelope,
+      playing: _playback.status == PlaybackStatus.playing,
+      position: _playback.position,
+      color: AgamColors.cyan,
+    );
+  }
+
   static final _timeStyle = TextStyle(
     color: Colors.white.withValues(alpha: .75),
     fontSize: 12,
@@ -512,10 +545,7 @@ class _PoiDetailScreenState extends State<PoiDetailScreen> {
             dimension: 64,
             child: AnimatedSwitcher(
               duration: AgamMotion.duration(context, 160),
-              transitionBuilder: (child, animation) => ScaleTransition(
-                scale: Tween(begin: .8, end: 1.0).animate(animation),
-                child: FadeTransition(opacity: animation, child: child),
-              ),
+              transitionBuilder: AgamMotion.iconSwap,
               child: Icon(
                 playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
                 key: ValueKey(playing),
@@ -677,10 +707,10 @@ class _PoiDetailScreenState extends State<PoiDetailScreen> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
-                  Icons.check_circle_rounded,
+                Icon(
+                  _facilityIcon(facility),
                   size: 16,
-                  color: AgamColors.success,
+                  color: AgamColors.brand,
                 ),
                 const SizedBox(width: 6),
                 Text(facility, style: AgamText.label.copyWith(fontSize: 13)),
@@ -689,6 +719,32 @@ class _PoiDetailScreenState extends State<PoiDetailScreen> {
           ),
       ],
     );
+  }
+
+  /// Icon for a facility name from the dataset. Names are matched loosely
+  /// so variants like "Toilet Pria" still get the right glyph; anything
+  /// unknown gets a neutral marker instead of a misleading picture.
+  static IconData _facilityIcon(String facility) {
+    final name = facility.toLowerCase();
+    bool has(String word) => name.contains(word);
+    if (has('toilet') || has('wc') || has('kamar mandi')) {
+      return Icons.wc_rounded;
+    }
+    if (has('mushal') || has('musal') || has('masjid') || has('musholla')) {
+      return Icons.mosque_rounded;
+    }
+    if (has('kantin') || has('kafe') || has('makan')) {
+      return Icons.restaurant_rounded;
+    }
+    if (has('apotek') || has('klinik') || has('kesehatan')) {
+      return Icons.local_pharmacy_rounded;
+    }
+    if (has('lab')) return Icons.science_rounded;
+    if (has('kelas') || has('kuliah')) return Icons.school_rounded;
+    if (has('perpustakaan')) return Icons.local_library_rounded;
+    if (has('parkir')) return Icons.local_parking_rounded;
+    if (has('atm')) return Icons.local_atm_rounded;
+    return Icons.place_rounded;
   }
 
   Widget _triviaCard(Poi poi) => Container(
