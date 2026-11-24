@@ -1,28 +1,5 @@
 # Session Handoff — AGAM
 
-## Current — Transisi ganti tujuan di Cari & Rute, 24 November 2026
-
-- Branch `feat/search-destination-transition` dari `dev` @ `6329963`; diuji
-  manual oleh pengguna di pratinjau web.
-- Sebelumnya peta kartu tujuan diberi key per tujuan, sehingga memilih titik
-  lain membangun ulang peta langsung di titik baru dan teks berganti seketika.
-- Kini satu peta hidup selama kartu terbuka (`GlobalKey`), dan
-  `OfflineCampusMapState.flyTo` menggeser kamera A→B: 450–650 ms menurut
-  jarak, kurva `AgamMotion.travel`, zoom turun sedikit di tengah jalan untuk
-  jarak > 80 m. Penanda yang muncul setelah peta siap masuk dengan fade +
-  skala 0,9→1.
-- Teks kartu (nama; jarak/ETA di kartu produk) memakai `AgamArrival` baru:
-  teks lama larut (fade + blur 2 px) selama 85 % waktu tunggu, teks baru
-  muncul pada 55 % waktu terbang kamera. Perubahan dengan id sama (jarak/ETA
-  saat navigasi) diperbarui tanpa animasi. Reduced motion: kamera melompat,
-  teks crossfade singkat.
-- Memilih tujuan dari daftar yang sudah digulir kini menggulir daftar ke atas
-  (360 ms) agar kartu dan perpindahan kamera terlihat.
-- Test `test/ui/search_destination_transition_test.dart` (4 test). Analyze
-  bersih, 412 test lulus. Diperiksa dengan Playwright (390×844, mode demo):
-  Labtek V→VIII, V→I, dan gulir balik dari TVST. Kartu versi produk memakai
-  kode yang sama tetapi tidak tampil di pratinjau demo.
-
 ## Current — Animasi tombol narasi, gelombang audio, ikon fasilitas, 24 November 2026
 
 - Branch `feat/narration-card-motion` dari `dev` @ `cd5753d`, worktree
@@ -56,6 +33,29 @@
   `tools/tiles/test_campus_export.py` butuh `requirements-campus.txt`
   (pmtiles, fiona, dst.) yang tidak dipasang; `ci.yml` kini memasang Python
   3.12 + requirements itu. Perubahan `ci.yml` identik di PR #13.
+
+## Current — Transisi ganti tujuan di Cari & Rute, 24 November 2026
+
+- Branch `feat/search-destination-transition` dari `dev` @ `6329963`; diuji
+  manual oleh pengguna di pratinjau web.
+- Sebelumnya peta kartu tujuan diberi key per tujuan, sehingga memilih titik
+  lain membangun ulang peta langsung di titik baru dan teks berganti seketika.
+- Kini satu peta hidup selama kartu terbuka (`GlobalKey`), dan
+  `OfflineCampusMapState.flyTo` menggeser kamera A→B: 450–650 ms menurut
+  jarak, kurva `AgamMotion.travel`, zoom turun sedikit di tengah jalan untuk
+  jarak > 80 m. Penanda yang muncul setelah peta siap masuk dengan fade +
+  skala 0,9→1.
+- Teks kartu (nama; jarak/ETA di kartu produk) memakai `AgamArrival` baru:
+  teks lama larut (fade + blur 2 px) selama 85 % waktu tunggu, teks baru
+  muncul pada 55 % waktu terbang kamera. Perubahan dengan id sama (jarak/ETA
+  saat navigasi) diperbarui tanpa animasi. Reduced motion: kamera melompat,
+  teks crossfade singkat.
+- Memilih tujuan dari daftar yang sudah digulir kini menggulir daftar ke atas
+  (360 ms) agar kartu dan perpindahan kamera terlihat.
+- Test `test/ui/search_destination_transition_test.dart` (4 test). Analyze
+  bersih, 412 test lulus. Diperiksa dengan Playwright (390×844, mode demo):
+  Labtek V→VIII, V→I, dan gulir balik dari TVST. Kartu versi produk memakai
+  kode yang sama tetapi tidak tampil di pratinjau demo.
 
 ## Current — Dataset fasilitas versi pertama, 24 November 2026
 
