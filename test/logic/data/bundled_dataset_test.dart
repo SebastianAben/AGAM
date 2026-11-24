@@ -172,14 +172,20 @@ void main() {
       }
     });
 
-    test('setiap gedung punya titik akses di dekatnya', () {
+    test('setiap gedung punya titik akses di sekelilingnya', () {
       for (final poi in result.pois) {
         expect(poi.entrances, isNotEmpty, reason: poi.id);
+        final points = {
+          for (final entrance in poi.entrances)
+            (entrance.position.lat, entrance.position.lng),
+        };
+        expect(points, hasLength(poi.entrances.length), reason: poi.id);
         for (final entrance in poi.entrances) {
-          // Titik akses ada di tepi gedung, bukan di gedung lain.
+          // Titik akses ada di dinding gedung yang sama. Gedung terpanjang
+          // (Labtek VII, ±104 m) menaruh titiknya ±98 m dari titik POI.
           expect(
             poi.position.distanceTo(entrance.position),
-            lessThan(40),
+            lessThan(110),
             reason: '${poi.id} ${entrance.label}',
           );
           expect(entrance.label, startsWith('Titik akses'), reason: poi.id);
