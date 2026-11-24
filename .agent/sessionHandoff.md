@@ -69,6 +69,11 @@
 - Merge `origin/dev` (PR #15 dataset fasilitas) untuk PR #13: konflik hanya
   di catatan ini; catatan ini diletakkan di bawah catatan dataset fasilitas
   agar tidak bentrok dengan catatan PR #14.
+- CI PR #13: `agam_video_player.dart` diformat ulang (`dart format`). CI
+  `dev` merah sejak `cd5753d` karena `tools/tiles/test_campus_export.py`
+  butuh `requirements-campus.txt` (pmtiles, fiona, dst.) yang tidak dipasang;
+  `ci.yml` kini memasang Python 3.12 + requirements itu. Perubahan `ci.yml`
+  identik di PR #14.
 
 ## Current — Uji alur Playwright `dev` setelah PR #12 (LB), 24 November 2026
 
