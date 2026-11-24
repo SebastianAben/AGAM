@@ -1,5 +1,14 @@
 # Session Handoff — AGAM
 
+## Current — Konten 10/10 POI dan perangkaian layanan LB asli, 23 November 2026 (LA)
+
+- PB09: 10/10 POI approved di `pois.json` (rincian dan sumber media di implementationPhases PB09; video GKUB/GKUT opsional atas keputusan PM 23 November 2026, PRD §23).
+- `lib/main.dart` (build demo `AGAM_INTERNAL_DEMO`) kini memakai layanan LB asli: `DeviceNavigationController` dengan `UnavailableCampusRouting` (graf jalur kampus belum ada), `RepositoryFacilityService`, `UnavailableRecommendationService`, `UnavailableTrailService`. Factory `navigation` di `createLaServices` menerima `SessionController`. Akun tetap fake di demo (tanpa Firebase, belum ada gerbang login); jalur non-demo tetap terblokir sampai UI10 FE di-merge, lalu memakai `createLaAccountServices`.
+- Verifikasi: analyze bersih, 373 test lulus; APK demo release dibangun ulang setelah `flutter clean` (build sebelumnya gagal karena duplikat Finder `launch_background 2.xml` di `build/`), dipasang di emulator `agam_api34`: onboarding, peta, trigger Labtek V (kartu, foto), chip "Fasilitas belum tersedia", Trail 0/10 dengan tombol nonaktif, daftar Cari & Rute; tanpa crash. Bukan bukti perangkat fisik.
+- Berikutnya: push `LA` dan PR ke `dev`; sambungkan akun asli setelah UI10; keystore rilis (PB19).
+
+---
+
 ## Current — PB10/PB11 Logic LB untuk push, 19 November 2026
 
 Perubahan disiapkan di atas `origin/LB` `9bc83cd`. Checkout lama `LB` pada
