@@ -16,7 +16,8 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 if (-not $Boundary) { $Boundary = Join-Path $PSScriptRoot 'campus-boundary.json' }
-if (-not $Output) { $Output = Join-Path $PSScriptRoot '../../assets/map/ganesha.pmtiles' }
+# Profil lama untuk pembanding. Paket aplikasi diekspor dari ganesha.gpkg.
+if (-not $Output) { $Output = Join-Path $PSScriptRoot '.cache/baseline/ganesha.pmtiles' }
 if (-not $Cache) { $Cache = Join-Path $PSScriptRoot '.cache' }
 $arguments = @('-X', 'utf8', "$PSScriptRoot/tile_pipeline.py", '--boundary', $Boundary,
     '--output', $Output, '--cache', $Cache, '--java', $Java)

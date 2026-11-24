@@ -53,8 +53,8 @@ class ClusterTests(unittest.TestCase):
             path.write_bytes(source.read_bytes())
             cluster_archive(path)
             self.assertEqual(before, contents(path))
-            self.assertEqual(len(before[0]), 13)
-            validate_pmtiles(path, bounds)
+            self.assertEqual(len(before[0]), 85)
+            validate_pmtiles(path, bounds, max_zoom=18)
             self.assertEqual(path.read_bytes(), source.read_bytes())
 
     def test_truncated_archive_rejected_without_rewrite(self):

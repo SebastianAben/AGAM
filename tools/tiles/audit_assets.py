@@ -5,14 +5,18 @@ import json
 from pathlib import Path
 import zipfile
 
-from tile_pipeline import load_boundary, validate_pmtiles
+from tile_pipeline import digest, load_boundary, validate_pmtiles
 
 
 def audit(root: Path, apk: Path | None = None) -> dict:
     assets = root / 'assets/map'
     manifest = json.loads((assets / 'ganesha.manifest.json').read_text(encoding='utf-8'))
     bounds, _ = load_boundary(root / 'tools/tiles/campus-boundary.json')
-    actual = validate_pmtiles(assets / 'ganesha.pmtiles', bounds)
+    actual = validate_pmtiles(assets / 'ganesha.pmtiles', bounds, max_zoom=18)
+    graph = root / 'assets/routing/ganesha-walk-demo.geojson'
+    if (digest(graph) != manifest['graph']['sha256'] or
+            digest(root / 'tools/tiles/ganesha.gpkg') != manifest['masterSha256']):
+        raise ValueError('Graf atau master berbeda dari manifest.')
     for key, value in actual.items():
         if manifest['output'].get(key) != value:
             raise ValueError(f'Manifest berbeda dari arsip: {key}')
@@ -26,7 +30,7 @@ def audit(root: Path, apk: Path | None = None) -> dict:
     if style.get('glyphs') or style.get('sprite'):
         raise ValueError('Kandidat style memerlukan aset tambahan yang belum diaudit.')
     if style['sources'] != {
-        'openmaptiles': {'type': 'vector', 'tiles': [], 'minzoom': 12, 'maxzoom': 16}
+        'openmaptiles': {'type': 'vector', 'tiles': [], 'minzoom': 12, 'maxzoom': 18}
     }:
         raise ValueError('Binding kandidat berubah; audit ulang provider offline.')
 
@@ -37,6 +41,11 @@ def audit(root: Path, apk: Path | None = None) -> dict:
                 entry = f'assets/flutter_assets/assets/map/{name}'
                 if archive.read(entry) != (assets / name).read_bytes():
                     raise ValueError(f'Aset APK berbeda dari source: {name}')
+                bundled.append(entry)
+            entry = 'assets/flutter_assets/assets/routing/' + graph.name
+            if entry in archive.namelist():
+                if archive.read(entry) != graph.read_bytes():
+                    raise ValueError('Graf dalam APK berbeda dari master.')
                 bundled.append(entry)
     return {
         'archive': actual,

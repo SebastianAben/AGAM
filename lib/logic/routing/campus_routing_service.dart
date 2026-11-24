@@ -7,8 +7,11 @@ import '../../contracts/contracts.dart';
 /// share vertices explicitly in the GeoJSON, so bridges are not joined by
 /// an incidental geometric crossing.
 class CampusRoutingService implements RoutingService {
-  CampusRoutingService.fromGeoJson(String source)
+  CampusRoutingService.fromGeoJson(String source, {this.graphOnly = false})
     : _edges = _readEdges(jsonDecode(source));
+
+  /// Rute demo hanya berisi ruas graf sampai titik proyeksi tujuan.
+  final bool graphOnly;
 
   final List<(GeoPoint, GeoPoint)> _edges;
   static const _maxSnapM = 25.0;
@@ -46,8 +49,10 @@ class CampusRoutingService implements RoutingService {
       }
     }
     final route = _shortestPath(graph, start.point, end.point);
-    if (from != route.first) route.insert(0, from);
-    if (to != route.last) route.add(to);
+    if (!graphOnly) {
+      if (from != route.first) route.insert(0, from);
+      if (to != route.last) route.add(to);
+    }
     return _describe(route);
   }
 

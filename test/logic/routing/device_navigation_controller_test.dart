@@ -170,6 +170,45 @@ void main() {
     expect(controller.current.route, isNull);
   });
 
+  test(
+    'demo arrives at the snapped path endpoint instead of the POI center',
+    () async {
+      // Synthetic POI center is about 20 m away from the end of the footpath.
+      const demoTarget = NavigationTarget(
+        id: 'synthetic-center',
+        name: 'Pusat gedung sintetis',
+        kind: NavigationTargetKind.poi,
+        point: GeoPoint(.00018, .001),
+        isPlaceholderPoint: true,
+      );
+      final session = _Session();
+      final location = _Location()..add(start);
+      final controller = DeviceNavigationController(
+        location: location,
+        routing: CampusRoutingService.fromGeoJson(
+          graph([
+            [start, corner],
+          ]),
+          graphOnly: true,
+        ),
+        map: map,
+        session: session,
+        arriveAtRouteEnd: true,
+      );
+      addTearDown(location.controller.close);
+      addTearDown(session.controller.close);
+      addTearDown(controller.stop);
+      await session.start(SessionMode.navigation);
+      await controller.start(demoTarget);
+      expect(controller.current.status, NavigationStatus.onRoute);
+      expect(controller.current.route!.path, [start, corner]);
+
+      location.add(corner);
+      await Future<void>.delayed(Duration.zero);
+      expect(controller.current.status, NavigationStatus.arrived);
+    },
+  );
+
   test('a calculation finishing after stop cannot revive navigation', () async {
     final session = _Session();
     final location = _Location()..add(start);

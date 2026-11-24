@@ -1,5 +1,25 @@
 # Session Handoff — AGAM
 
+## Peta HD dan graf jalan kaki PB04/PB11 — 24 November 2026
+
+- Paket LB memuat PMTiles native z12–18, rasterisasi lokal 512 px, bounds
+  dari header PMTiles, serta style atap, dinding dan bayangan skematis.
+  GeoPackage menghasilkan tile dan graf draf dengan 1.256 ruas dari layer
+  `walk`. Dijkstra graf-saja dan deteksi tiba di titik akhir snap dapat
+  dipilih oleh bootstrap demo. Rute standar memakai perilaku sebelumnya.
+- Varian integrasi yang memasang kamera terbatas dan banner area sudah diuji
+  di emulator. UI banner dan kamera adalah perubahan FE. Registrasi aset
+  graf serta wiring sesi demo mengikuti integrasi LA. Graf draf menunggu
+  survei akses dan pintu masuk sebelum dipakai untuk acceptance F06.
+- Paket ini bertumpu pada `origin/LB` sebelumnya (`eb87816`). Progres
+  worktree LB lama dipertahankan. Keputusan batas layanan produk terbaru
+  ada di `dev` (`b76cdce`). PB04 dan PB11 tetap `in_progress`.
+  Pemakaian AI material dicakup PB20.
+- Pada basis LB, analyzer bersih, 378 tes Flutter dan 23 tes pipeline
+  lulus. Audit sumber mencocokkan graf dengan layer `walk` pada tile z18.
+  Audit APK memeriksa empat aset dari build demo terintegrasi yang sudah
+  ada. Build Android basis LB dan uji lapangan belum dijalankan pada sesi ini.
+
 ## Current — PB10/PB11 Logic LB untuk push, 19 November 2026
 
 Perubahan disiapkan di atas `origin/LB` `9bc83cd`. Checkout lama `LB` pada

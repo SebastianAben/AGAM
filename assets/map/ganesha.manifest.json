@@ -1,43 +1,12 @@
 {
-  "schemaVersion": 1,
-  "generatedAtUtc": "2026-11-04T13:06:52.501358+00:00",
-  "generator": {
-    "name": "Planetiler",
-    "version": "0.10.2",
-    "jarSha256": "f310bd0413e2e4512b27f4046d418664e8e1d3bf31603c2a70e23de06c167e4d",
-    "url": "https://github.com/onthegomap/planetiler/releases/download/v0.10.2/planetiler.jar",
-    "profile": "OpenMapTiles",
-    "java": "java version \"21.0.12\" 2026-07-21 LTS\nJava(TM) SE Runtime Environment (build 21.0.12+7-LTS-205)\nJava HotSpot(TM) 64-Bit Server VM (build 21.0.12+7-LTS-205, mixed mode, sharing)"
-  },
+  "schemaVersion": 2,
+  "generator": "AGAM GeoPackage → MVT + GeoJSON",
+  "status": "draft — belum diverifikasi lapangan",
   "source": {
     "url": "https://download.geofabrik.de/asia/indonesia/java-latest.osm.pbf",
-    "filename": "java-latest.osm.pbf",
     "sha256": "091e9183554ac4a91b399726dd85e6d1050ea4fe4b1f0b772962c3764a195d3c",
-    "sizeBytes": 899224839
+    "replicationTimestamp": "2026-11-03T21:24:23Z"
   },
-  "supportSources": [
-    {
-      "filename": "water-polygons-split-3857.zip",
-      "configuredUrl": "https://ftp.fau.de/mirrors/openstreetmapdata.com-archive/2026-10-31/water-polygons-split-3857.zip",
-      "originNote": "Configured generator URL; an operator-supplied cache may predate this URL.",
-      "sizeBytes": 931892733,
-      "sha256": "99619ac05f2d19771d522c868232b2a0373b86925d2c60fed9173bd31b7658e2"
-    },
-    {
-      "filename": "natural_earth_vector.sqlite.zip",
-      "configuredUrl": "https://naciscdn.org/naturalearth/packages/natural_earth_vector.sqlite.zip",
-      "originNote": "Configured generator URL; an operator-supplied cache may predate this URL.",
-      "sizeBytes": 434210731,
-      "sha256": "375da61836d4779dffa8b87887bc4faa94dac77745ba0ee3914bd7cbedf40a02"
-    },
-    {
-      "filename": "lake_centerline.shp.zip",
-      "configuredUrl": "https://github.com/acalcutt/osm-lakelines/releases/download/v12/lake_centerline.shp.zip",
-      "originNote": "Configured generator URL; an operator-supplied cache may predate this URL.",
-      "sizeBytes": 80906805,
-      "sha256": "6c900507c88fc9f5b5a386f90fd0a42d0495e8755a03d075538fb9a6801a3192"
-    }
-  ],
   "boundary": {
     "status": "verified_osm_snapshot",
     "osmType": "way",
@@ -58,53 +27,72 @@
     107.61454265,
     -6.88552795
   ],
-  "attribution": "© OpenMapTiles © OpenStreetMap contributors",
   "sourceLicense": "ODbL-1.0",
-  "sourceLicenseUrl": "https://www.openstreetmap.org/copyright",
-  "profileLicense": "CC-BY for cartography/schema; BSD for code",
-  "profileLicenseUrl": "https://github.com/openmaptiles/openmaptiles/blob/master/LICENSE.md",
+  "attribution": "<a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors (ODbL)</a> <a href=\"https://openmaptiles.org/\">© OpenMapTiles</a>",
+  "masterSha256": "5d945f5d29714a1f482342c969b7d9e9664a48f282295b9af693c458963b55c7",
+  "layers": {
+    "building": 683,
+    "green": 92,
+    "transportation": 333,
+    "walk": 1256,
+    "sidewalk": 318,
+    "gate": 73,
+    "crossing": 56,
+    "poi": 10,
+    "label": 10
+  },
+  "graph": {
+    "filename": "ganesha-walk-demo.geojson",
+    "sha256": "c2dcc076cd768508fcc2e2657c07bbfd14bc3df23ff559684765d64653df7200",
+    "vertices": 1170,
+    "edges": 1256,
+    "componentSizes": [
+      985,
+      65,
+      32,
+      19,
+      14,
+      10,
+      9,
+      8,
+      4,
+      4,
+      4,
+      4,
+      3,
+      3,
+      2,
+      2,
+      2
+    ]
+  },
   "output": {
     "filename": "ganesha.pmtiles",
-    "sizeBytes": 1022885,
-    "sha256": "6af43dfb1be0f854480ab45caa5dadc672e865134d50cddf43a316fc97934792",
+    "sizeBytes": 516943,
+    "sha256": "258afdf66661caa95b0a90ee1bc8d29f6998c3b81815ee86f03777227feda6cb",
     "bounds": [
-      107.6063593,
-      -6.8954553,
+      107.6063594,
+      -6.8954554,
       107.6145426,
-      -6.8855279
+      -6.885528
     ],
-    "attributionHtml": "<a href=\"https://www.openmaptiles.org/\" target=\"_blank\">&copy; OpenMapTiles</a> <a href=\"https://www.openstreetmap.org/copyright\" target=\"_blank\">&copy; OpenStreetMap contributors</a>",
+    "attributionHtml": "<a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors (ODbL)</a> <a href=\"https://openmaptiles.org/\">© OpenMapTiles</a>",
     "minZoom": 12,
-    "maxZoom": 16,
-    "addressedTiles": 13,
-    "tileEntries": 13,
-    "tileContents": 13,
+    "maxZoom": 18,
+    "addressedTiles": 85,
+    "tileEntries": 85,
+    "tileContents": 85,
     "featureCountsAcrossUniqueTiles": {
-      "boundary": 25,
-      "building": 99,
-      "housenumber": 773,
-      "landcover": 517,
-      "landuse": 742,
-      "place": 619,
-      "poi": 10293,
-      "transportation": 5703,
-      "transportation_name": 956,
-      "water": 108,
-      "waterway": 893,
-      "aerodrome_label": 2,
-      "aeroway": 40,
-      "mountain_peak": 14,
-      "park": 2,
-      "water_name": 5
+      "green": 818,
+      "transportation": 2629,
+      "walk": 9057,
+      "gate": 511,
+      "building_shadow": 1600,
+      "building_wall": 1642,
+      "building_roof": 1610,
+      "crossing": 392,
+      "poi": 70,
+      "building": 3462
     }
-  },
-  "limitations": [
-    "Batas layanan produk dan pengujian perangkat/field test belum selesai.",
-    "Batas engineering OSM bukan survei resmi."
-  ],
-  "postprocess": {
-    "name": "AGAM deterministic clustering",
-    "version": 1,
-    "inputSha256": "8501f70bcc5d8b2624a4eaa12074006b99a4631d9deba21a5b91496087e844f3"
   }
 }

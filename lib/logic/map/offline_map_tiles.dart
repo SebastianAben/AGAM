@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/services.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:pmtiles/pmtiles.dart' as pm;
 import 'package:vector_tile_renderer/vector_tile_renderer.dart' as vector;
 
@@ -9,12 +10,21 @@ import '../../contracts/models/map.dart';
 /// Rasterisasi vektor seluruh arsip kecil AGAM saat load, hanya di memori.
 /// Tidak menyimpan cache tile/timestamp akses yang dapat menjadi jejak lokasi.
 class OfflineMapTiles {
-  OfflineMapTiles._(this.images, this.background, this.minZoom, this.maxZoom);
+  OfflineMapTiles._(
+    this.images,
+    this.background,
+    this.minZoom,
+    this.maxZoom,
+    this.southWest,
+    this.northEast,
+  );
 
   final Map<(int, int, int), Uint8List> images;
   final Uint8List background;
   final int minZoom;
   final int maxZoom;
+  final LatLng southWest;
+  final LatLng northEast;
 
   // Reuse the same bundled pixels across Explore, destination and reroutes.
   // The cache key contains only asset names.
@@ -71,7 +81,8 @@ class OfflineMapTiles {
           entries.fold<int>(0, (n, e) => n + e.runLength) > 256) {
         throw const FormatException('Arsip melampaui batas peta lokal AGAM.');
       }
-      final renderer = vector.ImageRenderer(theme: theme, scale: 1);
+      // Rasterisasi ulang dari geometri vektor, 512 px untuk tile 256 dp.
+      final renderer = vector.ImageRenderer(theme: theme, scale: 2);
       final factory = vector.TileFactory(theme, const vector.Logger.noop());
       Future<Uint8List> render(vector.VectorTile tile, double zoom) async {
         final image = await renderer.render(
@@ -105,6 +116,8 @@ class OfflineMapTiles {
         background,
         archive.minZoom,
         archive.maxZoom,
+        archive.minPosition,
+        archive.maxPosition,
       );
     } finally {
       await archive.close();
