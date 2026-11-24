@@ -9,6 +9,7 @@ import '../contracts/models/geo.dart';
 import '../contracts/models/navigation.dart';
 import '../contracts/models/session.dart';
 import 'poi_detail_screen.dart';
+import 'widgets/agam_arrival.dart';
 import 'widgets/agam_components.dart';
 import 'widgets/agam_motion.dart';
 import 'widgets/agam_theme.dart';
@@ -58,6 +59,15 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
   List<Facility> _facilities = const [];
   List<SearchResult> _results = const [];
   SearchResult? _destination;
+  // One map lives in the destination card while it is open, so switching
+  // destinations moves its camera instead of rebuilding it at the new place.
+  final _cardMap = GlobalKey<OfflineCampusMapState>();
+  // The destination card sits at the top of the list; choosing a place from
+  // further down scrolls back so the card and its camera move are in view.
+  final _list = ScrollController();
+  // How long the card's text waits before naming a new destination: just past
+  // the middle of the camera's flight, so the name lands with its marker.
+  Duration _arriveAfter = Duration.zero;
   NavigationState _navigation = const NavigationState.idle();
   FacilityCategory? _facilityFilter;
   int _searchRequest = 0;
@@ -106,6 +116,7 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
       ..removeListener(_runSearch)
       ..dispose();
     _focus.dispose();
+    _list.dispose();
     _poiSubscription?.cancel();
     _facilitySubscription?.cancel();
     _navigationSubscription?.cancel();
@@ -171,21 +182,41 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
   }
 
   void _selectDestination(SearchResult result) {
-    if (widget.internalDemo) {
-      if (result.kind != SearchResultKind.poi) {
-        _showMessage('Pencarian fasilitas belum tersedia.');
-        return;
-      }
-      setState(() {
-        _destination = result;
-        _error = null;
-      });
+    if (widget.internalDemo && result.kind != SearchResultKind.poi) {
+      _showMessage('Pencarian fasilitas belum tersedia.');
       return;
     }
+    _travelTo(result);
     setState(() {
       _destination = result;
       _error = null;
     });
+    _revealCard();
+  }
+
+  /// Scrolls back to the destination card. It is shorter than the camera's
+  /// flight, so the card is in view before the new marker settles.
+  void _revealCard() {
+    if (!_list.hasClients || _list.offset <= 0) return;
+    final duration = AgamMotion.duration(context, 360);
+    if (duration == Duration.zero) {
+      _list.jumpTo(0);
+    } else {
+      _list.animateTo(0, duration: duration, curve: AgamMotion.drawer);
+    }
+  }
+
+  /// Flies the open card's map to [result]; a card opening fresh starts
+  /// there, so it needs no flight.
+  void _travelTo(SearchResult result) {
+    final point = _pointFor(result);
+    final map = _cardMap.currentState;
+    if (_destination == null || _destination!.id == result.id) return;
+    if (point == null || map == null) {
+      _arriveAfter = Duration.zero;
+      return;
+    }
+    _arriveAfter = map.flyTo(point) * .55;
   }
 
   Future<void> _openPoiDetail(Poi poi) async {
@@ -336,6 +367,7 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
             _searchHeader(),
             Expanded(
               child: CustomScrollView(
+                controller: _list,
                 physics: const ClampingScrollPhysics(),
                 keyboardDismissBehavior:
                     ScrollViewKeyboardDismissBehavior.onDrag,
@@ -693,7 +725,7 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
           SizedBox(
             height: 188,
             child: OfflineCampusMap(
-              key: ValueKey(poi.id),
+              key: _cardMap,
               config: widget.services.map,
               initialFocus: poi.position,
               pois: [poi],
@@ -707,7 +739,11 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(poi.name, style: AgamText.title),
+                AgamArrival(
+                  id: poi.id,
+                  arriveAfter: _arriveAfter,
+                  child: Text(poi.name, style: AgamText.title),
+                ),
                 const SizedBox(height: 16),
                 // The demo has no campus graph, so "Rute" explains itself.
                 const AgamRouteButton(
@@ -797,7 +833,7 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
             SizedBox(
               height: 168,
               child: OfflineCampusMap(
-                key: ValueKey('route-${destination.id}'),
+                key: _cardMap,
                 config: widget.services.map,
                 initialFocus: point,
                 pois: [?_poiFor(destination)],
@@ -833,46 +869,56 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
+                  child: AgamArrival(
+                    id: destination.id,
+                    arriveAfter: _arriveAfter,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          destination.name,
+                          style: AgamText.headline.copyWith(
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          distance == null ? '— m' : '${distance.round()} m',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: .75),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                AgamArrival(
+                  id: destination.id,
+                  arriveAfter: _arriveAfter,
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        destination.name,
-                        style: AgamText.headline.copyWith(color: Colors.white),
+                        eta == null ? '—' : '${eta.inMinutes}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 26,
+                          height: 1,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.6,
+                        ),
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        distance == null ? '— m' : '${distance.round()} m',
+                        'menit',
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: .75),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
+                          fontSize: 12,
                         ),
                       ),
                     ],
                   ),
-                ),
-                Column(
-                  children: [
-                    Text(
-                      eta == null ? '—' : '${eta.inMinutes}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 26,
-                        height: 1,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: -0.6,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'menit',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: .75),
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
                 ),
               ],
             ),

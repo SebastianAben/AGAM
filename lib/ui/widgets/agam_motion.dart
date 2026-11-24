@@ -7,6 +7,10 @@ abstract final class AgamMotion {
   static const easeOut = Cubic(0.23, 1, 0.32, 1);
   static const drawer = Cubic(0.32, 0.72, 0, 1);
 
+  /// Ease-in-out for things travelling across the screen (a map camera moving
+  /// between two places): it leaves gently, cruises and settles.
+  static const travel = Cubic(0.65, 0, 0.35, 1);
+
   static Duration duration(BuildContext context, [int milliseconds = 220]) =>
       MediaQuery.disableAnimationsOf(context)
       ? Duration.zero

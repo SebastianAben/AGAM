@@ -61,16 +61,50 @@ class OfflineCampusMapState extends State<OfflineCampusMap>
     if (_ready) _animateCamera(_latLng(point), 17, _controller.camera.rotation);
   }
 
+  /// Travels the camera from where it is to [point] as one continuous move,
+  /// so the viewer sees where the new place lies relative to the old one.
+  ///
+  /// Longer trips take longer (450–650 ms) and lift the zoom a little at
+  /// mid-flight so the campus between both places stays readable. Returns
+  /// the flight time: zero before the map is ready or under reduced motion.
+  Duration flyTo(GeoPoint point) {
+    _pendingCenter = point;
+    if (!_ready) return Duration.zero;
+    final camera = _controller.camera;
+    final target = _latLng(point);
+    final metres = const Distance().as(LengthUnit.Meter, camera.center, target);
+    final duration = AgamMotion.duration(
+      context,
+      (420 + metres * .35).clamp(450, 650).round(),
+    );
+    _animateCamera(
+      target,
+      17,
+      camera.rotation,
+      duration: duration,
+      curve: AgamMotion.travel,
+      lift: metres < 80 ? 0 : (metres / 500).clamp(0.0, .8),
+    );
+    return duration;
+  }
+
   void resetNorth() {
     if (_ready) {
       _animateCamera(_controller.camera.center, _controller.camera.zoom, 0);
     }
   }
 
-  void _animateCamera(LatLng target, double zoom, double rotation) {
+  void _animateCamera(
+    LatLng target,
+    double zoom,
+    double rotation, {
+    Duration? duration,
+    Curve curve = AgamMotion.drawer,
+    double lift = 0,
+  }) {
     _motion.stop();
     if (_cameraTick case final tick?) _motion.removeListener(tick);
-    final duration = AgamMotion.duration(context);
+    duration ??= AgamMotion.duration(context);
     if (duration == Duration.zero) {
       _controller.move(target, zoom);
       _controller.rotate(rotation);
@@ -79,14 +113,16 @@ class OfflineCampusMapState extends State<OfflineCampusMap>
     final from = _controller.camera;
     _motion.duration = duration;
     _cameraTick = () {
-      final t = AgamMotion.drawer.transform(_motion.value);
+      final raw = _motion.value;
+      final t = curve.transform(raw);
       _controller.move(
         LatLng(
           from.center.latitude + (target.latitude - from.center.latitude) * t,
           from.center.longitude +
               (target.longitude - from.center.longitude) * t,
         ),
-        from.zoom + (zoom - from.zoom) * t,
+        // The lift peaks at mid-flight and is gone on arrival.
+        from.zoom + (zoom - from.zoom) * t - lift * 4 * raw * (1 - raw),
       );
       _controller.rotate(from.rotation + (rotation - from.rotation) * t);
     };
@@ -181,10 +217,14 @@ class OfflineCampusMapState extends State<OfflineCampusMap>
                         width: 116,
                         height: 70,
                         alignment: const Alignment(0, .5),
-                        child: _PoiMarker(
-                          poi: poi,
-                          selected: poi.id == widget.selectedPoiId,
-                          onTap: () => widget.onSelectPoi(poi),
+                        child: _MarkerEntrance(
+                          key: ValueKey('poi-${poi.id}'),
+                          animate: _ready,
+                          child: _PoiMarker(
+                            poi: poi,
+                            selected: poi.id == widget.selectedPoiId,
+                            onTap: () => widget.onSelectPoi(poi),
+                          ),
                         ),
                       ),
                     if (widget.highlight case final highlight?)
@@ -193,7 +233,14 @@ class OfflineCampusMapState extends State<OfflineCampusMap>
                         width: 116,
                         height: 70,
                         alignment: const Alignment(0, .5),
-                        child: _HighlightMarker(highlight: highlight),
+                        child: _MarkerEntrance(
+                          key: ValueKey(
+                            'highlight-${highlight.point.lat},'
+                            '${highlight.point.lng}',
+                          ),
+                          animate: _ready,
+                          child: _HighlightMarker(highlight: highlight),
+                        ),
                       ),
                     if (widget.userPosition case final position?)
                       Marker(
@@ -259,6 +306,36 @@ class _MemoryMapProvider extends TileProvider {
 
 /// A round badge on a white ring with the building name in a pill below.
 /// The selected POI grows and turns cyan, scaling from the pin's base.
+/// A marker that appears after the map is on screen grows in from 90 % and
+/// fades in from its tip, so it reads as placed on the ground. Markers
+/// present when the map first draws are shown as they are.
+class _MarkerEntrance extends StatelessWidget {
+  const _MarkerEntrance({
+    super.key,
+    required this.animate,
+    required this.child,
+  });
+
+  final bool animate;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => TweenAnimationBuilder<double>(
+    tween: Tween(begin: animate ? 0 : 1, end: 1),
+    duration: AgamMotion.duration(context, 240),
+    curve: AgamMotion.easeOut,
+    child: child,
+    builder: (context, t, child) => Opacity(
+      opacity: t,
+      child: Transform.scale(
+        scale: .9 + .1 * t,
+        alignment: Alignment.bottomCenter,
+        child: child,
+      ),
+    ),
+  );
+}
+
 class _PoiMarker extends StatelessWidget {
   const _PoiMarker({
     required this.poi,
