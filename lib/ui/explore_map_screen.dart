@@ -1167,13 +1167,10 @@ class _PoiSheet extends StatelessWidget {
                         spacing: 8,
                         runSpacing: 8,
                         children: [
+                          // The facility service only returns approved,
+                          // non-placeholder entries, so names show as-is.
                           for (final facility in facilities)
-                            AgamPill(
-                              facility.name.contains('(contoh)')
-                                  ? facility.name
-                                  : '${facility.name} · contoh',
-                              icon: Icons.place_rounded,
-                            ),
+                            AgamPill(facility.name, icon: Icons.place_rounded),
                         ],
                       ),
                     ],
