@@ -300,49 +300,57 @@ class _AuthScreenState extends State<AuthScreen> {
             children: [
               Expanded(
                 child: ColoredBox(
-                  // Navy behind the sheet's rounded corners.
-                  color: AgamColors.brandDeep,
+                  // The sheet overlaps the header (see _Sheet), so its
+                  // rounded corners sit on the header ground, glow included.
+                  color: Colors.white,
                   child: CustomScrollView(
                     controller: _scroll,
                     physics: const ClampingScrollPhysics(),
                     keyboardDismissBehavior:
                         ScrollViewKeyboardDismissBehavior.onDrag,
                     slivers: [
+                      // Header and sheet share one box: inside a viewport an
+                      // earlier sliver paints over a later one, so the sheet
+                      // could not overlap the header across two slivers.
                       SliverToBoxAdapter(
-                        child: _Header(
-                          child: _PageSwap(
-                            forward: _register,
-                            alignment: Alignment.bottomLeft,
-                            child: _register
-                                ? _HeaderContent(
-                                    key: ValueKey('$page-header'),
-                                    title: 'Buat akun AGAM',
-                                    leading: _RoundBack(
-                                      onPressed: _busy
-                                          ? null
-                                          : () => _showPage(register: false),
-                                    ),
-                                  )
-                                : const _HeaderContent(
-                                    key: ValueKey('login-header'),
-                                    title: 'Selamat datang',
-                                    leading: _Brand(),
-                                  ),
-                          ),
-                        ),
-                      ),
-                      SliverToBoxAdapter(
-                        child: _Sheet(
-                          child: _PageSwap(
-                            forward: _register,
-                            alignment: Alignment.topCenter,
-                            child: KeyedSubtree(
-                              key: ValueKey('$page-form'),
-                              child: _register
-                                  ? _buildRegister()
-                                  : _buildLogin(),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _Header(
+                              child: _PageSwap(
+                                forward: _register,
+                                alignment: Alignment.bottomLeft,
+                                child: _register
+                                    ? _HeaderContent(
+                                        key: ValueKey('$page-header'),
+                                        title: 'Buat akun AGAM',
+                                        leading: _RoundBack(
+                                          onPressed: _busy
+                                              ? null
+                                              : () =>
+                                                    _showPage(register: false),
+                                        ),
+                                      )
+                                    : const _HeaderContent(
+                                        key: ValueKey('login-header'),
+                                        title: 'Selamat datang',
+                                        leading: _Brand(),
+                                      ),
+                              ),
                             ),
-                          ),
+                            _Sheet(
+                              child: _PageSwap(
+                                forward: _register,
+                                alignment: Alignment.topCenter,
+                                child: KeyedSubtree(
+                                  key: ValueKey('$page-form'),
+                                  child: _register
+                                      ? _buildRegister()
+                                      : _buildLogin(),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                       // White filler so the sheet runs to the action bar on
@@ -448,7 +456,7 @@ class _Header extends StatelessWidget {
     return AgamGround(
       radius: 0,
       colors: const [AgamColors.brandDeep, AgamColors.brandDeep],
-      padding: EdgeInsets.fromLTRB(24, top + 24, 24, 44),
+      padding: EdgeInsets.fromLTRB(24, top + 24, 24, 44 + AgamRadius.sheet),
       child: SizedBox(width: double.infinity, child: child),
     );
   }
@@ -597,16 +605,22 @@ class _Sheet extends StatelessWidget {
 
   final Widget child;
 
+  // Pulled up by the corner radius so the rounded corners are drawn over
+  // the header's gradient and glow instead of a flat backdrop, which left a
+  // visible seam where the glow was clipped.
   @override
-  Widget build(BuildContext context) => Container(
-    decoration: const BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.vertical(
-        top: Radius.circular(AgamRadius.sheet),
+  Widget build(BuildContext context) => Transform.translate(
+    offset: const Offset(0, -AgamRadius.sheet),
+    child: Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AgamRadius.sheet),
+        ),
       ),
+      padding: const EdgeInsets.fromLTRB(20, 28, 20, 24),
+      child: child,
     ),
-    padding: const EdgeInsets.fromLTRB(20, 28, 20, 24),
-    child: child,
   );
 }
 

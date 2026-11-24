@@ -1,5 +1,16 @@
 # Session Handoff — AGAM
 
+## Current — Perbaikan sambungan header dan sheet UI10, 24 November 2026
+
+- Di layar Masuk/Daftar, glow cyan kiri bawah `AgamGround` terpotong di batas
+  header sementara sudut sheet berada di atas latar navy polos, sehingga
+  tampak garis/beda warna di kiri. Kini header dan sheet berada dalam satu
+  sliver (viewport menggambar sliver awal di atas sliver berikutnya) dan
+  sheet ditarik naik sebesar radius sheet, sehingga sudutnya duduk di atas
+  gradien dan glow header yang sama. Latar di belakang scroll kini putih.
+- Branch `fix/auth-header-seam` dari `dev` @ `b76cdce`; belum di-commit.
+  Analyze bersih, 388 test lulus; dicek lewat render golden sementara.
+
 ## Current — Pemeriksaan sambungan `dev` setelah PR #9 (LA) dan #11 (redesign), 24 November 2026
 
 - Basis `dev` @ `1cf202e`: analyze bersih, 387 test lulus.
