@@ -233,16 +233,13 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
   Future<void> _loadFacilities() async {
     final poi = _selectedPoi;
     if (poi == null || widget.internalDemo) return;
+    // Ask for every facility, then keep the nearest one per category.
     final facilities = await widget.services.facilities.nearby(
       from: poi.position,
-      limit: 4,
+      limit: 1000,
     );
     if (mounted) {
-      setState(
-        () => _nearbyFacilities = facilities
-            .map((item) => item.facility)
-            .toList(),
-      );
+      setState(() => _nearbyFacilities = nearestPerCategory(facilities));
     }
   }
 

@@ -25,6 +25,11 @@
 - PRD §22 dan implementationPhases (PB10) diperbarui.
 - Terbuka: jarak/ETA tetap "—" karena routing belum ada; letak persis
   fasilitas dan verifikasi lapangan.
+- Lanjutan: label "· contoh" di "Fasilitas sekitar" panel POI dihapus
+  (`a42859a`). Panel kini menampilkan satu fasilitas terdekat per kategori,
+  maks. 4 (`nearestPerCategory` di `facility_labels.dart`); TVST: Toilet
+  TVST, Kantin Labtek X & XI, Musala Labtek VII, Tata Usaha STEI. Test
+  `test/ui/nearest_facilities_test.dart`.
 
 ## Current — Uji alur Playwright `dev` setelah PR #12 (LB), 24 November 2026
 
