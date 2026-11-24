@@ -1,5 +1,22 @@
 # Session Handoff — AGAM
 
+## Current — Merge `dev` ke `LB` untuk PR LB → dev, 24 November 2026
+
+- Konflik PR LB → `dev` hanya di catatan sesi ini; kedua catatan dipertahankan.
+  Kode LB (tile HD z12–18, graf draf, `graphOnly`, `arriveAtRouteEnd`)
+  tergabung tanpa konflik dengan `dev` @ `8964f7b` (batas layanan produk,
+  wiring trigger produk, perbaikan header UI10).
+- Merge tanpa konflik teks tetap merusak build: commit LB `eb87816` menghapus
+  `UnavailableTrailService`, padahal `main.dart` di `dev` (PR #9 LA) masih
+  memakainya. Kelas itu dikembalikan ke `account_visit_store.dart` agar
+  perilaku `dev` tidak berubah (trail belum tersedia). `DeviceTrailService`
+  (LB) tetap utuh dan menunggu disambungkan LA di bootstrap (akun, sesi,
+  navigasi, log `trailCompleted`; urutan dari `trailOrder` di `pois.json`).
+- Verifikasi hasil merge: analyze bersih, 393 test lulus.
+- Graf draf `assets/routing/ganesha-walk-demo.geojson` belum didaftarkan di
+  `pubspec.yaml` dan belum dipakai `main.dart`; routing tetap
+  `UnavailableCampusRouting` sampai integrasi LA.
+
 ## Current — Perbaikan sambungan header dan sheet UI10, 24 November 2026
 
 - Di layar Masuk/Daftar, glow cyan kiri bawah `AgamGround` terpotong di batas
@@ -253,6 +270,26 @@ PBI tidak berubah. Onboarding tidak disentuh. Belum commit/push.
 - Berikutnya: push `LA` dan PR ke `dev`; sambungkan akun asli setelah UI10; keystore rilis (PB19).
 
 ---
+## Peta HD dan graf jalan kaki PB04/PB11 — 24 November 2026
+
+- Paket LB memuat PMTiles native z12–18, rasterisasi lokal 512 px, bounds
+  dari header PMTiles, serta style atap, dinding dan bayangan skematis.
+  GeoPackage menghasilkan tile dan graf draf dengan 1.256 ruas dari layer
+  `walk`. Dijkstra graf-saja dan deteksi tiba di titik akhir snap dapat
+  dipilih oleh bootstrap demo. Rute standar memakai perilaku sebelumnya.
+- Varian integrasi yang memasang kamera terbatas dan banner area sudah diuji
+  di emulator. UI banner dan kamera adalah perubahan FE. Registrasi aset
+  graf serta wiring sesi demo mengikuti integrasi LA. Graf draf menunggu
+  survei akses dan pintu masuk sebelum dipakai untuk acceptance F06.
+- Paket ini bertumpu pada `origin/LB` sebelumnya (`eb87816`). Progres
+  worktree LB lama dipertahankan. Keputusan batas layanan produk terbaru
+  ada di `dev` (`b76cdce`). PB04 dan PB11 tetap `in_progress`.
+  Pemakaian AI material dicakup PB20.
+- Pada basis LB, analyzer bersih, 378 tes Flutter dan 23 tes pipeline
+  lulus. Audit sumber mencocokkan graf dengan layer `walk` pada tile z18.
+  Audit APK memeriksa empat aset dari build demo terintegrasi yang sudah
+  ada. Build Android basis LB dan uji lapangan belum dijalankan pada sesi ini.
+
 
 ## Current — PB10/PB11 Logic LB untuk push, 19 November 2026
 

@@ -1,5 +1,8 @@
 # Pipeline tile AGAM (PB04-LB-01)
 
+Bagian [paket peta jalan kaki](#paket-peta-jalan-kaki-agam) berisi langkah
+regenerasi aset aplikasi. Langkah Planetiler di bawah membuat arsip pembanding.
+
 Jalankan dari root repository, menggunakan Python **3.11+** dan Java **21+**.
 PowerShell **5.1+** adalah entry point; Docker/FVM tidak diperlukan untuk pipeline.
 
@@ -37,8 +40,8 @@ Manifest mencatat postprocess dan checksum output akhirnya.
 Demo internal memakai `flutter_map 7.0.2` + `vector_tile_renderer 5.2.0` dan
 `pmtiles 1.3.0`. `OfflineMapTiles` membaca arsip APK, merender seluruh tile kecil
 AGAM ke PNG di memori, lalu `TileProvider` lokal memasoknya ke peta. Tidak ada
-cache tile ke filesystem atau fallback jaringan; max native zoom 16 dioverzoom
-hingga 20. Layer `VectorTileLayer` bawaan `vector_map_tiles` tidak dipakai
+cache tile ke filesystem atau fallback jaringan. Paket jalan kaki memiliki
+zoom native 12–18. Layer `VectorTileLayer` bawaan `vector_map_tiles` tidak dipakai
 karena tetap menulis cache ke disk meskipun TTL nol.
 
 ```powershell
@@ -47,10 +50,9 @@ fvm flutter build apk --debug --dart-define=AGAM_INTERNAL_DEMO=true
 python -X utf8 tools/tiles/audit_assets.py --apk build/app/outputs/flutter-apk/app-debug.apk
 ```
 
-Flag default `false`: aplikasi menampilkan gerbang login belum tersedia (PB21).
-Demo menampilkan label internal, fokus Explore/Labtek V, dan tidak membuka
-fitur routing/trail/fasilitas fake. Area demo memakai bounds engineering
-coverage OSM PRD §9.3; batas layanan produk dan acceptance lapangan masih TBD.
+Demo menampilkan label internal dan fokus Explore/Labtek V. Cakupan peta
+mengikuti bounds engineering OSM pada PRD §9.3. Aktivasi routing mengikuti
+bootstrap dan konfigurasi area layanan pada build terintegrasi.
 
 Unduhan pertama mencakup PBF Jawa (~899 MB saat inspeksi 4 November 2026),
 JAR (~93 MB), serta sumber ocean/Natural Earth/lake centerline (~1,45 GB pada sesi ini) untuk profil OpenMapTiles.
@@ -72,11 +74,35 @@ yang dikonfigurasi. Jika cache diisi manual, URL konfigurasi belum membuktikan
 asal file tersebut; identitas yang dapat diperiksa adalah checksum. Cache ZIP
 existing juga tidak di-refresh otomatis saat URL override berubah.
 
-Output: `assets/map/ganesha.pmtiles` dan `assets/map/ganesha.manifest.json`.
+Arsip dan manifest Planetiler default berada di `tools/tiles/.cache/baseline/`.
 Cache diabaikan Git; aset final dan provenance batas dapat direview. Default
 extract bernama `latest` **tidak di-refresh otomatis** bila cache sudah ada.
 Untuk hasil yang dapat diaudit, simpan PBF sumber sesuai checksum manifest;
 download baru dari URL yang sama tidak dijamin memiliki isi yang sama.
+
+## Paket peta jalan kaki AGAM
+
+Peta aplikasi memakai `ganesha.gpkg` sebagai sumber layer `walk` untuk
+PMTiles dan graf demo. Jalankan dari root repository.
+
+```powershell
+python -m pip install -r tools/tiles/requirements-campus.txt
+python -X utf8 tools/tiles/export_campus.py
+python -X utf8 tools/tiles/audit_assets.py
+python -m unittest discover -s tools/tiles
+```
+
+`build_campus.py --source <snapshot.osm.pbf>` membangun ulang master dari
+snapshot PBF terkunci. `build-tiles.ps1` menghasilkan arsip pembanding di
+`tools/tiles/.cache/baseline/`. Paket aplikasi mencakup zoom native 12–18
+dan rasterisasi 512 px. Atap, dinding dan bayangan diturunkan dari tapak
+OSM sebagai efek visual. Graf demo berisi ruas jalan kaki dua arah dari
+layer yang sama dengan garis putih peta dan berstatus draf.
+
+`audit_assets.py --apk <file.apk>` memeriksa tiga aset peta dalam APK dan
+memverifikasi byte graf demo bila ikut dibundel. Daftar `bundledEntries`
+menunjukkan aset yang diperiksa. Pendaftaran graf dan bootstrap demo
+mengikuti integrasi LA. Kontrol kamera dan penanda area mengikuti FE.
 
 ## Batas dan lisensi
 
@@ -111,6 +137,5 @@ paksa di tengah publikasi membutuhkan pemeriksaan manual file `.bak`.
 File `.part` dari proses yang dihentikan paksa bukan cache valid dan boleh dihapus
 setelah memastikan proses unduh sudah berhenti.
 
-Build ini belum mendaftarkan aset pada `pubspec.yaml`, belum membuat style AGAM
-atau `MapConfig`, dan belum membuktikan tampilan offline di Android. Status dan
-evidence aktual ada pada [handoff](../../.agent/sessionHandoff.md).
+Status integrasi dan hasil verifikasi ada di
+[handoff](../../.agent/sessionHandoff.md).

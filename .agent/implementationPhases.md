@@ -344,6 +344,10 @@ Progres trail, POI dikunjungi, dan pengaturan disimpan per akun (PRD §15.1). Im
 
 ### PB04 — Explore Map dengan tile vektor dibundel
 
+- Paket LB pada 24 November 2026 menyiapkan style peta jalan kaki dengan
+  kedalaman skematis, tile native z12–18, PNG 512 px dan bounds yang dapat
+  dipakai kamera FE. PB04 tetap `in_progress`.
+
 - **Penyesuaian APK (16 November 2026):** kontrol utara/pusat lokasi/lapisan POI kini berfungsi pada peta lokal; bentuk/posisi FE dipertahankan. Watermark mode uji 8 px dan kredit peta 9 px dipisah dari kanvas/header ke footer. Regresi kontrol, footer 320/430 px dan pencarian-ke-peta lulus; 257 test, analyze, build demo/audit/signature lulus. APK `d54d2b51…24b515` terpasang di OPPO, hash perangkat cocok, cold start command sukses. Visual/playback/manual dan field belum terkonfirmasi; bukan completion PB04.
 
 - **Perapian UI demo (16 November 2026):** chip Mode uji di header, kredit OSM/ODbL dan OpenMapTiles tetap terlihat/bertautan, kontrol kanan dikembalikan langsung ke FE `5db4dd4` (39/42 px, gap 7 px, inset 12 px). Copy dummy diringkas dengan label tetap. Format/analyze, 257 test Flutter serta regresi UI 320/430 px lulus; build demo dan audit APK lulus. Runtime Android terbaru belum diuji; status PBI tetap `in_progress`. Evidence/hash ada di [rencana demo §6](demo-apk-temporary-plan.md#6-progress-log).
@@ -508,6 +512,10 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
 - **Status:** `in_progress` — logic pencarian produk tersedia di `SearchService`; pengujian UI lintas branch dan acceptance fasilitas masih menunggu integrasi FE/data tim konten.
 
 ### PB11 — Navigasi jalan kaki di perangkat
+
+- Paket LB pada 24 November 2026 menyiapkan graf draf dari layer jalur putih,
+  Dijkstra yang dibatasi ruas graf dan deteksi tiba di ujung rute demo.
+  Integrasi bootstrap dan verifikasi lapangan tertunda. PB11 tetap `in_progress`.
 
 - **Track:** LB (graf, `RoutingService`, `NavigationController`), FE (UI06), LA (sesi Navigasi) · **Requirement:** F06, A01
 - **Dependency eksternal:** koordinat pintu masuk (survei).

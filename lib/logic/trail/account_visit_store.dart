@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../contracts/contracts.dart';
@@ -32,10 +34,37 @@ class AccountVisitStore {
   });
 
   Future<void> clear(String uid) => _enqueue((preferences) async {
-    if (!await preferences.remove(_key(uid))) {
+    final visitsRemoved = await preferences.remove(_key(uid));
+    final trailRemoved = await preferences.remove(_trailKey(uid));
+    if (!visitsRemoved || !trailRemoved) {
       throw StateError('Progres belum dapat dihapus.');
     }
   });
+
+  static String _trailKey(String uid) => 'account.$uid.trailProgress';
+
+  Future<({Set<String> ids, DateTime? date})> readTrail(String uid) =>
+      _enqueue((preferences) async {
+        final raw = preferences.getString(_trailKey(uid));
+        if (raw == null) return (ids: <String>{}, date: null);
+        final data = jsonDecode(raw) as Map<String, dynamic>;
+        return (
+          ids: (data['ids'] as List).whereType<String>().toSet(),
+          date: DateTime.tryParse(data['date'] as String? ?? ''),
+        );
+      });
+
+  Future<void> saveTrail(String uid, Set<String> ids, DateTime? date) =>
+      _enqueue((preferences) async {
+        final saved = await preferences.setString(
+          _trailKey(uid),
+          jsonEncode({
+            'ids': ids.toList(),
+            'date': date?.toIso8601String().split('T').first,
+          }),
+        );
+        if (!saved) throw StateError('Progres Trail belum dapat disimpan.');
+      });
 
   Future<T> _enqueue<T>(Future<T> Function(SharedPreferences) action) {
     final next = _pending.then((_) async => action(await _preferences));
@@ -44,7 +73,9 @@ class AccountVisitStore {
   }
 }
 
-/// Trail is unavailable until the content team supplies an official order.
+/// Trail is unavailable until it is wired in bootstrap. `main.dart` still
+/// uses this until `DeviceTrailService` (LB) is connected by LA; restored
+/// when merging `dev` into `LB` so both builds keep compiling.
 class UnavailableTrailService implements TrailService {
   const UnavailableTrailService();
 

@@ -111,10 +111,7 @@ void main() {
     );
     expect(File(source.tilesAssetPath).readAsBytesSync()[96], 1);
     final style = jsonDecode(File(source.styleAssetPath).readAsStringSync());
-    expect(
-      style['metadata']['agam:status'],
-      'integrated_memory_renderer_pending_device_test',
-    );
+    expect(style['metadata']['agam:status'], 'draft_walk_network');
     expect(style['sources']['openmaptiles']['tiles'], isEmpty);
     expect(style.containsKey('glyphs'), isFalse);
     expect(style.containsKey('sprite'), isFalse);

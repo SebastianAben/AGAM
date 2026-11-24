@@ -209,7 +209,7 @@ def decompress(data: bytes, compression: int) -> bytes:
     raise ValueError('Hanya compression none/gzip didukung validator pipeline.')
 
 
-def validate_pmtiles(path: Path, bounds: list[float]) -> dict:
+def validate_pmtiles(path: Path, bounds: list[float], max_zoom: int = MAX_ZOOM) -> dict:
     """Periksa seluruh directory dan payload MVT, bukan hanya magic/header."""
     size = path.stat().st_size
     with path.open('rb') as stream:
@@ -225,8 +225,8 @@ def validate_pmtiles(path: Path, bounds: list[float]) -> dict:
         if root_off + root_len > 16384 or not root_len or not tile_len:
             raise ValueError('Root/tile section PMTiles invalid.')
         internal, tile_compression, tile_type, min_z, max_z = header[97:102]
-        if tile_type != 1 or (min_z, max_z) != (MIN_ZOOM, MAX_ZOOM):
-            raise ValueError('PMTiles wajib MVT dengan zoom 12-16.')
+        if tile_type != 1 or (min_z, max_z) != (MIN_ZOOM, max_zoom):
+            raise ValueError(f'PMTiles wajib MVT dengan zoom {MIN_ZOOM}-{max_zoom}.')
         if not min_z <= header[118] <= max_z:
             raise ValueError('Center zoom PMTiles di luar rentang.')
         actual_bounds = [v / 1e7 for v in struct.unpack_from('<4i', header, 102)]
@@ -259,8 +259,8 @@ def validate_pmtiles(path: Path, bounds: list[float]) -> dict:
                     if relative + length > tile_len:
                         raise ValueError('Tile pointer di luar section.')
                     if not ((4 ** MIN_ZOOM - 1) // 3 <= tile_id and
-                            tile_id + run <= (4 ** (MAX_ZOOM + 1) - 1) // 3):
-                        raise ValueError('Tile ID di luar zoom 12-16.')
+                            tile_id + run <= (4 ** (max_zoom + 1) - 1) // 3):
+                        raise ValueError('Tile ID di luar zoom konfigurasi.')
                     entries.append((tile_id, run, relative, length))
 
         visit(root_off, root_len)

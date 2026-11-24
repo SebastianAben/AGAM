@@ -10,12 +10,14 @@ class DeviceNavigationController implements NavigationController {
     required this._routing,
     required this._map,
     required this._session,
+    this.arriveAtRouteEnd = false,
   });
 
   final LocationService _location;
   final RoutingService _routing;
   final MapConfig _map;
   final SessionController _session;
+  final bool arriveAtRouteEnd;
   final _states = StreamController<NavigationState>.broadcast();
 
   StreamSubscription<LocationFix>? _positions;
@@ -36,7 +38,8 @@ class DeviceNavigationController implements NavigationController {
     final generation = ++_generation;
     _detach();
     _progressM = 0;
-    if (_session.current.mode != SessionMode.navigation ||
+    final mode = _session.current.mode;
+    if ((mode != SessionMode.navigation && mode != SessionMode.trail) ||
         !_map.isInsideCampus(target.point)) {
       _publish(NavigationState(status: NavigationStatus.error, target: target));
       return;
@@ -45,7 +48,7 @@ class DeviceNavigationController implements NavigationController {
       NavigationState(status: NavigationStatus.calculating, target: target),
     );
     _sessions = _session.state.listen((state) {
-      if (generation == _generation && state.mode != SessionMode.navigation) {
+      if (generation == _generation && state.mode != mode) {
         unawaited(stop());
       }
     });
@@ -74,8 +77,7 @@ class DeviceNavigationController implements NavigationController {
       return;
     }
     final route = _current.route;
-    final remaining = point.distanceTo(target.point);
-    if (route != null && remaining <= kArrivalDistanceM) {
+    if (route != null && _isAtDestination(point, target, route)) {
       _arrive(target, route);
       return;
     }
@@ -107,7 +109,7 @@ class DeviceNavigationController implements NavigationController {
       final next = await _routing.route(from: point, to: target.point);
       if (generation != _generation) return;
       _progressM = 0;
-      if (remaining <= kArrivalDistanceM) {
+      if (_isAtDestination(point, target, next)) {
         _arrive(target, next);
       } else {
         _updateRoute(target, next, 0);
@@ -123,7 +125,20 @@ class DeviceNavigationController implements NavigationController {
     }
   }
 
+  bool _isAtDestination(
+    GeoPoint position,
+    NavigationTarget target,
+    WalkingRoute route,
+  ) {
+    final endpoint = arriveAtRouteEnd && route.path.isNotEmpty
+        ? route.path.last
+        : target.point;
+    return position.distanceTo(endpoint) <= kArrivalDistanceM;
+  }
+
   void _arrive(NavigationTarget target, WalkingRoute route) {
+    final mode = _session.current.mode;
+    final generation = _generation;
     _detach();
     _publish(
       NavigationState(
@@ -136,7 +151,7 @@ class DeviceNavigationController implements NavigationController {
     );
     // The session remains explicit and can be ended from UI07 or Settings.
     _sessions = _session.state.listen((state) {
-      if (state.mode != SessionMode.navigation) unawaited(stop());
+      if (generation == _generation && state.mode != mode) unawaited(stop());
     });
   }
 
