@@ -9,6 +9,7 @@ import 'logic/map/agam_map_config.dart';
 import 'logic/routing/campus_routing_service.dart';
 import 'logic/routing/device_navigation_controller.dart';
 import 'logic/search/poi_search_service.dart';
+import 'logic/search/recommendation_bootstrap.dart';
 import 'logic/search/repository_facility_service.dart';
 import 'logic/trail/account_visit_store.dart';
 import 'logic/trail/trail_bootstrap.dart';
@@ -52,8 +53,8 @@ Future<RoutingService> _loadCampusRouting() async =>
 /// Build produk: Firebase, akun asli dengan gerbang login (UI10), batas
 /// layanan Kampus Ganesha + 200 m (PRD §9.3), dan layanan asli LA/LB yang
 /// sama dengan demo. Routing memakai graf jalur kampus yang dibundel; trail
-/// memakai urutan keliling dari dataset. Rekomendasi yang belum disambungkan
-/// memakai layanan berstatus "belum tersedia", bukan data palsu.
+/// memakai urutan keliling dari dataset. Rekomendasi (F07) memakai trail dan
+/// penyimpanan kunjungan yang sama.
 ///
 /// Seperti demo, permintaan buka POI dan aksi dari notifikasi trigger
 /// diteruskan ke UI; tanpa ini notifikasi POI tidak membuka kartunya.
@@ -77,6 +78,20 @@ _createProductionAppServices() async {
   // One store for trail progress, so deleting the account clears it too.
   final trailVisits = AccountVisitStore();
   final account = await createLaAccountServices(la, trailVisits: trailVisits);
+  String? currentUid() => account.auth.current.account?.uid;
+  final trail = createDeviceTrailService(
+    pois: la.pois,
+    location: la.location,
+    session: la.session,
+    navigation: la.navigation,
+    map: map,
+    activity: account.activity,
+    currentUid: currentUid,
+    accounts: account.auth.state,
+    routingAvailable: true,
+    visits: trailVisits,
+  );
+  final facilities = RepositoryFacilityService(la.pois);
 
   final services = AppServices(
     permissions: la.permissions,
@@ -92,20 +107,15 @@ _createProductionAppServices() async {
     routing: routing,
     navigation: la.navigation,
     search: PoiSearchService(pois: la.pois),
-    recommendations: const UnavailableRecommendationService(),
-    trail: createDeviceTrailService(
+    recommendations: createRecommendationService(
       pois: la.pois,
-      location: la.location,
-      session: la.session,
-      navigation: la.navigation,
-      map: map,
-      activity: account.activity,
-      currentUid: () => account.auth.current.account?.uid,
-      accounts: account.auth.state,
-      routingAvailable: true,
+      facilities: facilities,
       visits: trailVisits,
+      currentUid: currentUid,
+      trail: trail,
     ),
-    facilities: RepositoryFacilityService(la.pois),
+    trail: trail,
+    facilities: facilities,
   );
   return (
     services,
@@ -117,9 +127,8 @@ _createProductionAppServices() async {
 }
 
 /// Demo memakai seluruh layanan asli LA dan LB, termasuk routing pada graf
-/// jalur kampus yang dibundel dan trail keliling. Rekomendasi yang belum
-/// disambungkan memakai layanan asli berstatus "belum tersedia", bukan data
-/// palsu.
+/// jalur kampus yang dibundel, trail keliling, dan rekomendasi (F07) yang
+/// berbagi trail serta penyimpanan kunjungan.
 /// Akun demo tetap fake karena demo tidak menjalankan Firebase; gerbang login
 /// hanya ada di build produk.
 Future<
@@ -142,6 +151,24 @@ _createAppServices() async {
   // Akun asli (createLaAccountServices) dipasang di jalur produksi bersama
   // gerbang login FE; demo tetap fake.
   final activity = FakeActivityLogger();
+  // The demo has no login: a synthetic uid keeps trail progress in local
+  // storage only, like a signed-in account. Trail and recommendations share
+  // one store so they see the same visits.
+  String? currentUid() => 'internal-demo';
+  final visits = AccountVisitStore();
+  final trail = createDeviceTrailService(
+    pois: la.pois,
+    location: la.location,
+    session: la.session,
+    navigation: la.navigation,
+    map: map,
+    activity: activity,
+    currentUid: currentUid,
+    accounts: const Stream.empty(),
+    routingAvailable: true,
+    visits: visits,
+  );
+  final facilities = RepositoryFacilityService(la.pois);
 
   return (
     AppServices(
@@ -158,21 +185,15 @@ _createAppServices() async {
       routing: routing,
       navigation: la.navigation,
       search: PoiSearchService(pois: la.pois),
-      recommendations: const UnavailableRecommendationService(),
-      trail: createDeviceTrailService(
+      recommendations: createRecommendationService(
         pois: la.pois,
-        location: la.location,
-        session: la.session,
-        navigation: la.navigation,
-        map: map,
-        activity: activity,
-        // The demo has no login: a synthetic uid keeps trail progress in
-        // local storage only, like a signed-in account.
-        currentUid: () => 'internal-demo',
-        accounts: const Stream.empty(),
-        routingAvailable: true,
+        facilities: facilities,
+        visits: visits,
+        currentUid: currentUid,
+        trail: trail,
       ),
-      facilities: RepositoryFacilityService(la.pois),
+      trail: trail,
+      facilities: facilities,
     ),
     la.triggerResponder.viewRequests,
     (id, action) => la.triggerResponder.handleAction(
