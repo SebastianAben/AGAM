@@ -57,6 +57,8 @@ WIDE_M = 8.0
 MERGE_M = 5.0
 PASSAGE_ANGLE = 20.0
 PASSAGE_MAX_M = 60.0
+REMOVE_M = 4.0
+SNAP_M = 25.0  # same snap limit as CampusRoutingService
 SIDES = ['utara', 'timur laut', 'timur', 'tenggara',
          'selatan', 'barat daya', 'barat', 'barat laut']
 
@@ -243,7 +245,21 @@ def read_passages(path):
     return out
 
 
-def plan(graph_path, pois_path, buildings_path, passages_path=None):
+def read_overrides(path):
+    """Map corrections: access points to add and candidates to remove."""
+    if not path or not Path(path).exists():
+        return {'add': [], 'remove': []}
+    document = json.loads(Path(path).read_text(encoding='utf-8'))
+    return {'add': document.get('add', []), 'remove': document.get('remove', [])}
+
+
+def link(adjacency, a, b, length):
+    adjacency.setdefault(a, []).append((b, length))
+    adjacency.setdefault(b, []).append((a, length))
+
+
+def plan(graph_path, pois_path, buildings_path, passages_path=None,
+         overrides_path=None):
     adjacency, edges = load_graph(graph_path)
     base_network, piece_count = main_network(adjacency)
     with fiona.open(buildings_path, layer='building') as source:
@@ -251,21 +267,53 @@ def plan(graph_path, pois_path, buildings_path, passages_path=None):
                       polygon_m(f['geometry'])) for f in source]
     document = json.loads(Path(pois_path).read_text(encoding='utf-8'))
     outlines = poi_outlines(document, buildings)
+    names = {poi['id']: poi['name'] for poi, _, _ in outlines}
+    overrides = read_overrides(overrides_path)
 
     # Passages: keep the verified ones from the file, find candidates again.
     kept = [p for p in read_passages(passages_path) if p['verified']]
     passages = kept + [p for p in find_passages(adjacency, base_network, outlines)
                        if not any({p['from'], p['to']} == {k['from'], k['to']}
                                   for k in kept)]
-    for i, p in enumerate(sorted(passages, key=lambda p: (p['poi'], p['from']))):
-        p.setdefault('label', f"Lorong {p['name']}")
-        p['id'] = f"PSG-{p['poi']}-{i + 1}"
-        adjacency.setdefault(p['from'], []).append((p['to'], p['length']))
-        adjacency.setdefault(p['to'], []).append((p['from'], p['length']))
+    for p in passages:
+        link(adjacency, p['from'], p['to'], p['length'])
     network, _ = main_network(adjacency)
     # Access points come from walkways only, never from a passage itself.
     main_edges = [e for e in edges if e[0] in network]
     other_edges = [e for e in edges if e[0] not in network]
+    segments = [(LineString([to_m(*a), to_m(*b)]), (a, b)) for a, b in main_edges]
+
+    # Access points added on the map. One within SNAP_M of a walkway is reached
+    # by snapping to it; a farther one gets a passage to the nearest node.
+    manual = {}
+    for add in overrides['add']:
+        here = node((add['lng'], add['lat']))
+        m = to_m(*here)
+        distance, segment, edge = min(
+            ((s.distance(Point(m)), s, e) for s, e in segments),
+            key=lambda t: (round(t[0], 3), t[2]))
+        entry = {'m': m, 'manual': True}
+        if distance <= SNAP_M:
+            proj = nearest_points(segment, Point(m))[0]
+            entry.update(edge=edge, proj=(proj.x, proj.y), offset=distance)
+        else:
+            target = min(network, key=lambda n: (math.dist(m, to_m(*n)), n))
+            if not any({here, target} == {k['from'], k['to']} for k in kept):
+                passages.append({'poi': add['poi'], 'name': names[add['poi']],
+                                 'from': here, 'to': target,
+                                 'length': math.dist(m, to_m(*target)),
+                                 'verified': False,
+                                 'label': f"Lorong {names[add['poi']]} (koreksi peta)"})
+            link(adjacency, here, target, math.dist(m, to_m(*target)))
+            entry.update(node=here)
+        manual.setdefault(add['poi'], []).append(entry)
+    for i, p in enumerate(sorted(passages, key=lambda p: (p['poi'], p['from']))):
+        p.setdefault('label', f"Lorong {p['name']}")
+        p['id'] = f"PSG-{p['poi']}-{i + 1}"
+    removed = {}
+    for r in overrides['remove']:
+        removed.setdefault(r['poi'], []).append(to_m(r['lng'], r['lat']))
+    used_removals = set()
 
     results = []
     for poi, parts, outline in outlines:
@@ -275,11 +323,21 @@ def plan(graph_path, pois_path, buildings_path, passages_path=None):
         if not found:
             limit = WIDE_M
             found = touches(main_edges, outline, limit)
-        points = []
+        points, dropped = [], []
         for distance, point, edge in merge(found):
+            hits = [r for r in removed.get(poi['id'], []) if math.dist(point, r) <= REMOVE_M]
+            if hits:
+                used_removals.update(hits)
+                dropped.append(to_deg(*point))
+                continue
             bearing, label = side(middle, point)
             points.append({'point': to_deg(*point), 'm': point, 'edge': edge,
                            'wall_m': distance, 'bearing': bearing, 'side': label})
+        for entry in manual.get(poi['id'], []):
+            bearing, label = side(middle, entry['m'])
+            points.append({**entry, 'point': to_deg(*entry['m']),
+                           'wall_m': outline.boundary.distance(Point(entry['m'])),
+                           'bearing': bearing, 'side': label})
         points.sort(key=lambda p: (p['bearing'], p['point']))
         counts = {}
         for p in points:
@@ -295,14 +353,28 @@ def plan(graph_path, pois_path, buildings_path, passages_path=None):
         results.append({'id': poi['id'], 'name': poi['name'],
                         'buildings': [(sid, name) for sid, name, _ in parts],
                         'limit': limit, 'points': points, 'detached': detached,
+                        'dropped': dropped,
                         'passages': [p for p in passages if p['poi'] == poi['id']]})
+
+    # A removal that matches no candidate (e.g. after the graph changed) would
+    # otherwise be ignored silently and the wrong point could come back.
+    for poi_id, points in removed.items():
+        for r in points:
+            if r not in used_removals:
+                print(f'PERINGATAN: koreksi hapus {poi_id} {to_deg(*r)[1]}, '
+                      f'{to_deg(*r)[0]} tidak cocok dengan kandidat mana pun')
 
     # Shortest walk between any access point of one POI and any of another.
     def sources(entry):
         out = []
         for p in entry['points']:
+            if 'node' in p:
+                out.append((p['node'], 0.0))
+                continue
             a, b = p['edge']
-            out += [(a, math.dist(p['m'], to_m(*a))), (b, math.dist(p['m'], to_m(*b)))]
+            base, extra = p.get('proj', p['m']), p.get('offset', 0.0)
+            out += [(a, math.dist(base, to_m(*a)) + extra),
+                    (b, math.dist(base, to_m(*b)) + extra)]
         return out
 
     ids = [r['id'] for r in results]
@@ -319,10 +391,14 @@ def plan(graph_path, pois_path, buildings_path, passages_path=None):
     first, rest = ids[0], ids[1:]
     loop = min(((first,) + perm for perm in itertools.permutations(rest)),
                key=lambda order: (loop_length(order), order))
-    # Same length both ways; walk it so the neighbour with the higher ID comes
-    # second, which keeps the direction chosen on 24 November 2026
-    # (Labtek V, then Labtek VIII).
-    if loop[1] < loop[-1]:
+    # Same length both ways; always walk it counter-clockwise on the map (east,
+    # then north, then west), the direction chosen on 24 November 2026
+    # (Labtek V, then Labtek VIII). Signed area > 0 means counter-clockwise.
+    centre = {poi['id']: to_m(poi['lng'], poi['lat']) for poi, _, _ in outlines}
+    ring = [centre[i] for i in loop]
+    area = sum(x1 * y2 - x2 * y1
+               for (x1, y1), (x2, y2) in zip(ring, ring[1:] + ring[:1]))
+    if area < 0:
         loop = (loop[0],) + tuple(reversed(loop[1:]))
     return {'pieces': piece_count, 'network_nodes': len(network),
             'base_network_nodes': len(base_network),
@@ -381,9 +457,11 @@ def write_passages(path, result):
     document = {
         'type': 'FeatureCollection',
         'description': (
-            'Lorong tembus lantai 1 yang menyambung selasar terputus ke jaringan '
-            'jalan kaki. Setiap ruas menghubungkan dua simpul yang sudah ada di '
-            'ganesha-walk-demo.geojson. Dibuat oleh tools/routing/'
+            'Lorong tembus lantai 1 yang menyambung selasar terputus, atau titik '
+            'akses hasil koreksi peta yang jauh dari jalur, ke jaringan jalan kaki. '
+            'Satu ujung selalu simpul ganesha-walk-demo.geojson; ujung lainnya simpul '
+            'graf atau titik akses POI (entrances[] di pois.json), yang harus '
+            'ditambahkan routing sebagai simpul baru. Dibuat oleh tools/routing/'
             'plan_access_points.py; verified=false berarti belum dicek di lapangan.'),
         'features': features,
     }
@@ -430,7 +508,8 @@ def check_list(result):
         for p in r['points']:
             lng, lat = p['point']
             lines.append(
-                f"| {p['label']} | {lat} | {lng} | {p['wall_m']:.1f} m | "
+                f"| {p['label']}{' (koreksi peta)' if p.get('manual') else ''} | "
+                f"{lat} | {lng} | {p['wall_m']:.1f} m | "
                 f"[buka](https://www.google.com/maps?q={lat},{lng}) | "
                 '☐ Cocok ☐ Hapus |')
         for d, (lng, lat) in r['detached']:
@@ -439,6 +518,10 @@ def check_list(result):
                 f'{lng} | {d:.1f} m | '
                 f'[buka](https://www.google.com/maps?q={lat},{lng}) | '
                 '☐ Jalur nyata, perlu disambung ☐ Abaikan |')
+        if r['dropped']:
+            gone = '; '.join(f'{lat}, {lng}' for lng, lat in r['dropped'])
+            lines.append(f'| Dihapus pada koreksi peta (bukan jalan masuk): {gone} '
+                         '| | | | | |')
         for p in r['passages']:
             (lng1, lat1), (lng2, lat2) = p['from'], p['to']
             state = 'sudah dicek' if p['verified'] else 'kandidat'
@@ -492,10 +575,13 @@ def main():
                         help='fill entrances[] and trailOrder in the POI file')
     parser.add_argument('--passages', default='assets/routing/passages.geojson',
                         help='passage file: read for verified passages, written with --write')
+    parser.add_argument('--overrides', default='tools/routing/access_overrides.json',
+                        help='map corrections: access points to add and remove')
     parser.add_argument('--check-list', help='write the field check list here')
     args = parser.parse_args()
 
-    result = plan(args.graph, args.pois, args.buildings, args.passages)
+    result = plan(args.graph, args.pois, args.buildings, args.passages,
+                  args.overrides)
     print(f"Graf: {result['nodes']} simpul, {result['pieces']} potongan; "
           f"jaringan utama {result['base_network_nodes']} simpul, "
           f"{result['network_nodes']} dengan lorong")
@@ -504,7 +590,9 @@ def main():
         print(f"  {p['id']} {p['label']:<30} {p['length']:4.0f} m ({state})")
     for r in result['pois']:
         extra = f" (batas {r['limit']:.0f} m)" if r['limit'] > TOUCH_M else ''
-        print(f"  {r['id']} {r['name']:<26} {len(r['points'])} titik akses, "
+        manual = sum(1 for p in r['points'] if p.get('manual'))
+        print(f"  {r['id']} {r['name']:<26} {len(r['points'])} titik akses "
+              f"({manual} koreksi, {len(r['dropped'])} dihapus), "
               f"{len(r['detached'])} jalur terputus{extra}")
         for p in r['points']:
             print(f"      {p['label']:<30} {p['wall_m']:4.1f} m  "

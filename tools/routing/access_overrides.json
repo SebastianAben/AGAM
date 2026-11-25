@@ -1,0 +1,77 @@
+{
+  "description": "Koreksi titik akses dari peninjauan peta oleh pengguna, 25 November 2026. \"add\": titik akses yang ditambahkan; \"remove\": kandidat hitungan script yang bukan jalan masuk (kandidat dalam 4 m dari titik ini dibuang). Dibaca oleh tools/routing/plan_access_points.py setiap kali dijalankan. Belum dicek di lapangan, jadi titik tambahan tetap verified: false.",
+  "add": [
+    {
+      "poi": "P01",
+      "lat": -6.8904541,
+      "lng": 107.6102388
+    },
+    {
+      "poi": "P02",
+      "lat": -6.8900353,
+      "lng": 107.6101898
+    },
+    {
+      "poi": "P02",
+      "lat": -6.8902806,
+      "lng": 107.6101858
+    },
+    {
+      "poi": "P03",
+      "lat": -6.8902589,
+      "lng": 107.6105248
+    },
+    {
+      "poi": "P04",
+      "lat": -6.8904492,
+      "lng": 107.6105068
+    },
+    {
+      "poi": "P05",
+      "lat": -6.889121,
+      "lng": 107.6094236
+    },
+    {
+      "poi": "P06",
+      "lat": -6.8903994,
+      "lng": 107.609086
+    },
+    {
+      "poi": "P06",
+      "lat": -6.8906619,
+      "lng": 107.608862
+    }
+  ],
+  "remove": [
+    {
+      "poi": "P08",
+      "lat": -6.8889855,
+      "lng": 107.6098625
+    },
+    {
+      "poi": "P08",
+      "lat": -6.8891099,
+      "lng": 107.6102697
+    },
+    {
+      "poi": "P09",
+      "lat": -6.889275,
+      "lng": 107.6099848
+    },
+    {
+      "poi": "P09",
+      "lat": -6.8894024,
+      "lng": 107.6102777
+    },
+    {
+      "poi": "P09",
+      "lat": -6.8894107,
+      "lng": 107.6098625
+    },
+    {
+      "poi": "P09",
+      "lat": -6.8895506,
+      "lng": 107.609854
+    }
+  ]
+}
