@@ -3,7 +3,13 @@ import 'dart:async';
 import 'package:agam/contracts/contracts.dart';
 
 // Fixture sintetis, dipakai hanya untuk pengujian.
-final syntheticPois = List.generate(10, (i) {
+final syntheticPois = _syntheticPois(verified: true);
+
+/// Sama dengan [syntheticPois], tetapi titik aksesnya kandidat yang belum
+/// diverifikasi di lapangan, seperti seluruh titik akses dataset saat ini.
+final unverifiedSyntheticPois = _syntheticPois(verified: false);
+
+List<Poi> _syntheticPois({required bool verified}) => List.generate(10, (i) {
   final point = GeoPoint(-6.89, 107.608 + i * .0005);
   return Poi(
     id: 'synthetic-$i',
@@ -13,7 +19,7 @@ final syntheticPois = List.generate(10, (i) {
     position: point,
     radiusM: 15,
     entrances: [
-      PoiEntrance(position: point, label: 'Pintu sintetis', verified: true),
+      PoiEntrance(position: point, label: 'Pintu sintetis', verified: verified),
     ],
     description: '',
     function: '',

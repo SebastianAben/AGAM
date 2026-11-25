@@ -46,40 +46,52 @@ class _OrientationTrailScreenState extends State<OrientationTrailScreen> {
   NavigationState _navigation = const NavigationState.idle();
   final _subscriptions = <StreamSubscription<dynamic>>[];
 
+  /// The demo shows the repository order as a layout sample only while its
+  /// trail service has no official order; nothing can be started from it.
+  bool _samplePreview = false;
+
   @override
   void initState() {
     super.initState();
-    _progress = widget.internalDemo
-        ? const TrailProgress(order: [], visited: {}, active: false)
-        : widget.services.trail.current;
+    _progress = widget.services.trail.current;
     _subscriptions.add(
       widget.services.pois.watchPois().listen((pois) {
         if (!mounted) return;
         setState(() {
           _pois = pois;
-          if (widget.internalDemo) {
-            // Urutan repository hanya untuk tata letak contoh, bukan trail resmi.
-            _progress = TrailProgress(
-              order: pois.map((poi) => poi.id).toList(),
-              visited: const {},
-              active: false,
-            );
-          }
+          _showSampleIfNeeded();
         });
       }),
     );
-    if (!widget.internalDemo) {
-      _subscriptions.add(
-        widget.services.trail.progress.listen((progress) {
-          if (mounted) setState(() => _progress = progress);
-        }),
-      );
-      _subscriptions.add(
-        widget.services.navigation.state.listen((state) {
-          if (mounted) setState(() => _navigation = state);
-        }),
-      );
+    _subscriptions.add(
+      widget.services.trail.progress.listen((progress) {
+        if (!mounted) return;
+        setState(() {
+          _progress = progress;
+          _samplePreview = false;
+          _showSampleIfNeeded();
+        });
+      }),
+    );
+    _subscriptions.add(
+      widget.services.navigation.state.listen((state) {
+        if (mounted) setState(() => _navigation = state);
+      }),
+    );
+  }
+
+  void _showSampleIfNeeded() {
+    if (!widget.internalDemo ||
+        (!_samplePreview && _progress.order.isNotEmpty)) {
+      return;
     }
+    // Urutan repository hanya untuk tata letak contoh, bukan trail resmi.
+    _samplePreview = true;
+    _progress = TrailProgress(
+      order: _pois.map((poi) => poi.id).toList(),
+      visited: const {},
+      active: false,
+    );
   }
 
   @override
@@ -126,36 +138,44 @@ class _OrientationTrailScreenState extends State<OrientationTrailScreen> {
       _navigation.status == NavigationStatus.arrived;
 
   Future<void> _continueTrail([Poi? destination]) async {
-    if (widget.internalDemo) {
+    if (_samplePreview) {
       _message('Trail belum tersedia.');
       return;
     }
     if (_busy) return;
-    final targetPoi = destination ?? _nextPoi;
-    if (targetPoi == null) {
-      _message('Semua POI pada daftar contoh sudah selesai.');
+    if (destination == null && _nextPoi == null) {
+      _message('Semua gedung pada trail sudah dikunjungi.');
       return;
     }
 
     setState(() => _busy = true);
     try {
       await widget.services.trail.start();
+      // The first start picks the nearest POI and rotates the order, so the
+      // next stop is read only after start().
+      final targetPoi =
+          destination ?? _poiById(widget.services.trail.current.nextPoiId);
+      if (targetPoi == null) return;
       await widget.services.session.start(SessionMode.trail);
       await widget.services.navigation.start(NavigationTarget.poi(targetPoi));
       if (mounted) {
         _message(
           targetPoi.hasSurveyedEntrance
-              ? 'Rute contoh menuju ${targetPoi.name} dimulai.'
-              : 'Titik masuk ${targetPoi.name} belum disurvei. Rute contoh memakai titik tengah gedung.',
+              ? 'Rute menuju ${targetPoi.name} dimulai.'
+              : targetPoi.entrances.isEmpty
+              ? 'Rute menuju ${targetPoi.name} memakai titik tengah gedung.'
+              : 'Rute menuju titik akses ${targetPoi.name} (belum diverifikasi di lapangan).',
         );
       }
+    } on StateError {
+      if (mounted) _message('Trail belum dapat dimulai.');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 
   Future<void> _endTrail() async {
-    if (widget.internalDemo) return;
+    if (_samplePreview) return;
     await widget.services.navigation.stop();
     await widget.services.session.end();
     await widget.services.trail.stop();
@@ -169,7 +189,7 @@ class _OrientationTrailScreenState extends State<OrientationTrailScreen> {
           audio: widget.services.audio,
           settings: widget.services.settings,
           checkedIn: _progress.visited.contains(poi.id),
-          navigationAvailable: !widget.internalDemo,
+          navigationAvailable: !_samplePreview,
           onNavigate: () => _continueTrail(poi),
         ),
       ),
@@ -178,7 +198,7 @@ class _OrientationTrailScreenState extends State<OrientationTrailScreen> {
 
   void _showCheckInStatus(Poi poi, {required bool checkedIn}) {
     _message(
-      widget.internalDemo
+      _samplePreview
           ? 'Check-in belum tersedia.'
           : checkedIn
           ? 'Check-in ${poi.name} sudah tercatat otomatis.'
@@ -283,7 +303,7 @@ class _OrientationTrailScreenState extends State<OrientationTrailScreen> {
                               done: _progress.visited.contains(visible[i].id),
                               isArrived: _hasArrivedAt(visible[i]),
                               isNext:
-                                  !widget.internalDemo &&
+                                  !_samplePreview &&
                                   visible[i].id == _progress.nextPoiId,
                               isActive: _progress.active,
                               expanded: _detailPoiId == visible[i].id,
@@ -294,9 +314,11 @@ class _OrientationTrailScreenState extends State<OrientationTrailScreen> {
                                     ? null
                                     : visible[i].id,
                               ),
-                              onRoute: widget.internalDemo
+                              // Only the next stop has this button; the
+                              // service may still pick the nearest start.
+                              onRoute: _samplePreview
                                   ? null
-                                  : () => _continueTrail(visible[i]),
+                                  : () => _continueTrail(),
                               onCheckIn: () => _showCheckInStatus(
                                 visible[i],
                                 checkedIn: _progress.visited.contains(
@@ -314,10 +336,11 @@ class _OrientationTrailScreenState extends State<OrientationTrailScreen> {
             ),
           ),
           _TrailBottomArea(
-            nextPoi: widget.internalDemo ? null : nextPoi,
-            internalDemo: widget.internalDemo,
+            nextPoi: _samplePreview ? null : nextPoi,
+            internalDemo: _samplePreview,
             busy: _busy,
             isActive: _progress.active,
+            hasProgress: completed > 0,
             navigation: _navigation,
             onContinue: _continueTrail,
             onEnd: _endTrail,
@@ -777,6 +800,7 @@ class _TrailBottomArea extends StatelessWidget {
     required this.internalDemo,
     required this.busy,
     required this.isActive,
+    required this.hasProgress,
     required this.navigation,
     required this.onContinue,
     required this.onEnd,
@@ -786,6 +810,10 @@ class _TrailBottomArea extends StatelessWidget {
   final bool internalDemo;
   final bool busy;
   final bool isActive;
+
+  /// Before the first check-in the start is still the nearest POI, picked
+  /// when the trail starts, so the button does not name a stop yet.
+  final bool hasProgress;
   final NavigationState navigation;
   final Future<void> Function([Poi?]) onContinue;
   final Future<void> Function() onEnd;
@@ -794,7 +822,7 @@ class _TrailBottomArea extends StatelessWidget {
   Widget build(BuildContext context) {
     final buttonText = isActive
         ? 'Lanjutkan Trail: ${nextPoi?.name ?? 'selesai'}'
-        : nextPoi == null
+        : nextPoi == null || !hasProgress
         ? 'Mulai Trail'
         : 'Mulai Trail: ${nextPoi!.name}';
     final remaining = navigation.remainingDistanceM;
