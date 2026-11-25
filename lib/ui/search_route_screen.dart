@@ -102,7 +102,18 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
     });
     _navigation = widget.services.navigation.current;
     _navigationSubscription = widget.services.navigation.state.listen((value) {
-      if (mounted) setState(() => _navigation = value);
+      if (!mounted) return;
+      final arrived =
+          value.status == NavigationStatus.arrived &&
+          _navigation.status != NavigationStatus.arrived;
+      setState(() => _navigation = value);
+      // The arrival card replaces the route card at the top of the list;
+      // bring it into view if the list was scrolled down meanwhile.
+      if (arrived) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _revealCard();
+        });
+      }
     });
     _facilityFilter = widget.initialFacility;
     if (_facilityFilter != null) _logOnce(ActivityFeature.facilities);
@@ -229,17 +240,28 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
     _arriveAfter = map.flyTo(point) * .55;
   }
 
-  Future<void> _openPoiDetail(Poi poi) async {
+  /// [onArrival] opens the detail without `featureUsed`: right after arriving
+  /// its time would match the arrival at the POI (PRD §15.5, rules §5.1).
+  Future<void> _openPoiDetail(Poi poi, {bool onArrival = false}) async {
     await Navigator.of(context).push<void>(
       AgamMotion.route(
-        (_) => PoiDetailScreen(
-          activity: widget.services.activity,
+        (context) => PoiDetailScreen(
+          activity: onArrival ? null : widget.services.activity,
           poi: poi,
           audio: widget.services.audio,
           settings: widget.services.settings,
           checkedIn: false,
-          navigationAvailable: false,
-          onNavigate: () async => _showMessage('Navigasi belum tersedia.'),
+          onNavigate: () async {
+            Navigator.of(context).pop();
+            final result = SearchResult(
+              kind: SearchResultKind.poi,
+              id: poi.id,
+              name: poi.name,
+              score: 1,
+            );
+            _selectDestination(result);
+            await _startRoute(result);
+          },
         ),
       ),
     );
@@ -812,9 +834,11 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
     );
   }
 
+  // During navigation the marker sits where the route ends: the access point
+  // the controller chose, not necessarily the target's first entrance.
   GeoPoint? _pointFor(SearchResult result) =>
       _navigation.target?.id == result.id
-      ? _navigation.target!.point
+      ? (_navigation.route?.path.lastOrNull ?? _navigation.target!.point)
       : _poiFor(result)?.position ?? _facilityFor(result)?.position;
 
   Widget _routeCard(SearchResult destination, {required bool activeRoute}) {
@@ -1002,7 +1026,9 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
       kind: _navigation.target?.kind ?? NavigationTargetKind.poi,
       voice: widget.services.voice,
       onFinish: _stopRoute,
-      onOpenDetail: poi == null ? null : () => _openPoiDetail(poi),
+      onOpenDetail: poi == null
+          ? null
+          : () => _openPoiDetail(poi, onArrival: true),
       map: point == null
           ? null
           : OfflineCampusMap(

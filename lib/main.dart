@@ -11,6 +11,7 @@ import 'logic/routing/device_navigation_controller.dart';
 import 'logic/search/poi_search_service.dart';
 import 'logic/search/repository_facility_service.dart';
 import 'logic/trail/account_visit_store.dart';
+import 'logic/trail/trail_bootstrap.dart';
 import 'ui/app.dart';
 import 'logic/session/trigger_notifier.dart';
 import 'firebase_options.dart';
@@ -50,9 +51,9 @@ Future<RoutingService> _loadCampusRouting() async =>
 
 /// Build produk: Firebase, akun asli dengan gerbang login (UI10), batas
 /// layanan Kampus Ganesha + 200 m (PRD §9.3), dan layanan asli LA/LB yang
-/// sama dengan demo. Routing memakai graf jalur kampus yang dibundel. Fitur
-/// yang belum disambungkan (trail, rekomendasi) memakai layanan berstatus
-/// "belum tersedia", bukan data palsu.
+/// sama dengan demo. Routing memakai graf jalur kampus yang dibundel; trail
+/// memakai urutan keliling dari dataset. Rekomendasi yang belum disambungkan
+/// memakai layanan berstatus "belum tersedia", bukan data palsu.
 ///
 /// Seperti demo, permintaan buka POI dan aksi dari notifikasi trigger
 /// diteruskan ke UI; tanpa ini notifikasi POI tidak membuka kartunya.
@@ -73,7 +74,9 @@ _createProductionAppServices() async {
       session: session,
     ),
   );
-  final account = await createLaAccountServices(la);
+  // One store for trail progress, so deleting the account clears it too.
+  final trailVisits = AccountVisitStore();
+  final account = await createLaAccountServices(la, trailVisits: trailVisits);
 
   final services = AppServices(
     permissions: la.permissions,
@@ -90,7 +93,18 @@ _createProductionAppServices() async {
     navigation: la.navigation,
     search: PoiSearchService(pois: la.pois),
     recommendations: const UnavailableRecommendationService(),
-    trail: const UnavailableTrailService(),
+    trail: createDeviceTrailService(
+      pois: la.pois,
+      location: la.location,
+      session: la.session,
+      navigation: la.navigation,
+      map: map,
+      activity: account.activity,
+      currentUid: () => account.auth.current.account?.uid,
+      accounts: account.auth.state,
+      routingAvailable: true,
+      visits: trailVisits,
+    ),
     facilities: RepositoryFacilityService(la.pois),
   );
   return (
@@ -103,8 +117,9 @@ _createProductionAppServices() async {
 }
 
 /// Demo memakai seluruh layanan asli LA dan LB, termasuk routing pada graf
-/// jalur kampus yang dibundel. Fitur yang belum disambungkan memakai layanan
-/// asli berstatus "belum tersedia", bukan data palsu: trail dan rekomendasi.
+/// jalur kampus yang dibundel dan trail keliling. Rekomendasi yang belum
+/// disambungkan memakai layanan asli berstatus "belum tersedia", bukan data
+/// palsu.
 /// Akun demo tetap fake karena demo tidak menjalankan Firebase; gerbang login
 /// hanya ada di build produk.
 Future<
@@ -144,7 +159,19 @@ _createAppServices() async {
       navigation: la.navigation,
       search: PoiSearchService(pois: la.pois),
       recommendations: const UnavailableRecommendationService(),
-      trail: const UnavailableTrailService(),
+      trail: createDeviceTrailService(
+        pois: la.pois,
+        location: la.location,
+        session: la.session,
+        navigation: la.navigation,
+        map: map,
+        activity: activity,
+        // The demo has no login: a synthetic uid keeps trail progress in
+        // local storage only, like a signed-in account.
+        currentUid: () => 'internal-demo',
+        accounts: const Stream.empty(),
+        routingAvailable: true,
+      ),
       facilities: RepositoryFacilityService(la.pois),
     ),
     la.triggerResponder.viewRequests,

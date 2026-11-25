@@ -292,14 +292,18 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
     try {
       await Navigator.of(context).push(
         AgamMotion.route<void>(
-          (_) => PoiDetailScreen(
+          (context) => PoiDetailScreen(
             poi: poi,
             activity: fromTrigger ? null : widget.services.activity,
             audio: widget.services.audio,
             settings: widget.services.settings,
             checkedIn: false,
-            navigationAvailable: !widget.internalDemo,
-            onNavigate: () async => _showNotice('Navigasi belum tersedia.'),
+            navigationAvailable: widget.onRoute != null,
+            // The route card lives on the search page, as from the panel.
+            onNavigate: () async {
+              Navigator.of(context).pop();
+              widget.onRoute?.call(poi);
+            },
           ),
         ),
       );
@@ -540,9 +544,7 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
                                           _poiAction(poi, TriggerAction.view),
                                       onListen: () =>
                                           _poiAction(poi, TriggerAction.listen),
-                                      routeAvailable:
-                                          !widget.internalDemo &&
-                                          widget.onRoute != null,
+                                      routeAvailable: widget.onRoute != null,
                                       onRoute: () => widget.onRoute?.call(poi),
                                       audio: widget.services.audio,
                                     ),

@@ -4,6 +4,8 @@ import 'package:agam/contracts/contracts.dart';
 import 'package:agam/contracts/fakes/fake_lb_services.dart';
 import 'package:agam/logic/map/agam_map_config.dart';
 import 'package:agam/ui/app.dart';
+import 'package:agam/ui/poi_detail_screen.dart';
+import 'package:agam/ui/search_route_screen.dart';
 import 'package:agam/ui/widgets/agam_components.dart';
 import 'package:agam/ui/widgets/agam_motion.dart';
 import 'package:flutter/material.dart';
@@ -111,15 +113,6 @@ void main() {
       await tester.pump();
     }
     await tester.pumpAndSettle();
-    Future<void> expectExplained() async {
-      await tester.pump();
-      expect(find.text('Rute belum tersedia.'), findsWidgets);
-      expect(services.session.current.mode, SessionMode.none);
-      ScaffoldMessenger.of(tester.element(find.byType(Scaffold).last))
-          .hideCurrentSnackBar();
-      await tester.pumpAndSettle();
-    }
-
     // Map: the POI card.
     await tester.tap(
       find.byWidgetPredicate(
@@ -127,8 +120,14 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    // The map card hands the POI to the search page as the destination.
     await tester.tap(find.text('Rute'));
-    await expectExplained();
+    await tester.pumpAndSettle();
+    expect(find.byType(SearchRouteScreen), findsOneWidget);
+    expect(find.text('Tutup pilihan'), findsOneWidget);
+    expect(services.session.current.mode, SessionMode.none);
+    await tester.tap(find.byTooltip('Back'));
+    await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Tutup informasi'));
     await tester.pumpAndSettle();
     // Search: the destination card.
@@ -172,8 +171,18 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Lihat Detail POI'));
     await tester.pumpAndSettle();
+    // Rute on the detail closes it and starts the route from the search page.
     await tester.tap(find.text('Rute'));
-    await expectExplained();
+    await tester.pumpAndSettle();
+    expect(find.byType(PoiDetailScreen), findsNothing);
+    expect(services.session.current.mode, SessionMode.navigation);
+    expect(services.navigation.current.status, NavigationStatus.onRoute);
+    // Stopping settles outside the fake clock, like the tile decoding above.
+    await tester.runAsync(() async {
+      await services.navigation.stop();
+      await services.session.end();
+    });
+    await tester.pump(const Duration(seconds: 1));
     await tester.pumpWidget(const SizedBox.shrink());
   });
 

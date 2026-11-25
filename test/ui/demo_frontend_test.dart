@@ -282,7 +282,8 @@ void main() {
     await tester.pumpAndSettle();
     final detail = tester.widget<PoiDetailScreen>(find.byType(PoiDetailScreen));
     expect(detail.poi.id, 'P01');
-    expect(detail.navigationAvailable, isFalse);
+    // The demo routes too: Rute on the detail starts navigation.
+    expect(detail.navigationAvailable, isTrue);
     await tester.pumpWidget(const SizedBox.shrink());
     await services.session.end();
   });

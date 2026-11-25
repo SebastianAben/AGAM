@@ -176,6 +176,38 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.byType(PoiDetailScreen), findsOneWidget);
+    // Opened right at arrival: no featureUsed, its time would match the
+    // arrival at the POI (PRD §15.5, rules §5.1).
+    expect(
+      tester.widget<PoiDetailScreen>(find.byType(PoiDetailScreen)).activity,
+      isNull,
+    );
+
+    await _tearDown(tester);
+  });
+
+  testWidgets('tiba menggulir daftar kembali ke kartu tiba', (tester) async {
+    final navigation = _ManualNavigation(
+      _state(NavigationStatus.onRoute, poiTarget),
+    );
+    final services = _services(navigation, FakeVoiceGuidance());
+    await _show(tester, services);
+    final list = find.descendant(
+      of: find.byType(CustomScrollView),
+      matching: find.byType(Scrollable),
+    );
+    double offset() => tester.state<ScrollableState>(list).position.pixels;
+    await tester.drag(list, const Offset(0, -600));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(offset(), greaterThan(0));
+
+    navigation.emit(_state(NavigationStatus.arrived, poiTarget));
+    await tester.pump();
+    // The scroll starts after the arrival frame, then runs for 360 ms.
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(offset(), 0);
+    expect(find.text('Lihat Detail POI').hitTestable(), findsOneWidget);
 
     await _tearDown(tester);
   });

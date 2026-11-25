@@ -7,6 +7,7 @@ import 'package:device_info_plus/device_info_plus.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../la_bootstrap.dart';
+import '../trail/account_visit_store.dart';
 import 'activity_recorders.dart';
 import 'auth_gateway.dart';
 import 'device_auth_service.dart';
@@ -38,7 +39,13 @@ class LaAccountServices {
 ///   dan data lokal milik akun;
 /// - akun yang keluar dari luar aplikasi (mis. dinonaktifkan) ikut
 ///   mengakhiri sesi.
-Future<LaAccountServices> createLaAccountServices(LaServices la) async {
+///
+/// [trailVisits] is the trail store the app uses; deleting the account also
+/// clears its visited POIs and trail start on this device (PRD §16).
+Future<LaAccountServices> createLaAccountServices(
+  LaServices la, {
+  AccountVisitStore? trailVisits,
+}) async {
   late final DeviceAuthService auth;
   final activity = FirestoreActivityLogger(
     currentUid: () => auth.current.account?.uid,
@@ -63,7 +70,10 @@ Future<LaAccountServices> createLaAccountServices(LaServices la) async {
       await la.session.end();
     },
     deleteRemoteLogs: activity.deleteAllFor,
-    clearLocalData: la.settings.clearAccount,
+    clearLocalData: (uid) async {
+      await la.settings.clearAccount(uid);
+      await trailVisits?.clear(uid);
+    },
   );
 
   await auth.restore();
