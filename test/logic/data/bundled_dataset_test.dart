@@ -188,7 +188,12 @@ void main() {
             lessThan(110),
             reason: '${poi.id} ${entrance.label}',
           );
-          expect(entrance.label, startsWith('Titik akses'), reason: poi.id);
+          // Kandidat memakai label buatan script; titik yang sudah dicek di
+          // lapangan boleh berlabel bebas (mis. "Pintu timur").
+          if (!entrance.verified) {
+            expect(entrance.label, startsWith('Titik akses'), reason: poi.id);
+          }
+          expect(entrance.label.trim(), isNotEmpty, reason: poi.id);
         }
         expect(poi.navigationPoint, poi.entrances.first.position);
         // Navigasi ke kandidat tetap ditandai belum memenuhi F06.

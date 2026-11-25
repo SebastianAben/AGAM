@@ -22,7 +22,11 @@
   hanya untuk titik terverifikasi; `navigationPoint` memakai kandidat. Codec
   hanya menerima `true` eksplisit. Seed Firestore tidak menyaring field.
 - Temuan untuk WP2/WP4: graf draf 17 potongan; WP2 harus memuat
-  `passages.geojson` sebagai ruas tambahan dan menyebut lorong kandidat di arahan. Navigasi harus memilih titik akses terdekat dari
+  `passages.geojson` sebagai ruas tambahan dan menyebut lorong kandidat di arahan.
+  Beberapa titik akses hanya terjangkau lewat lorong (mis. titik pertama Labtek
+  VIII = ujung selasar; juga Labtek VII sisi tenggara, Labtek VI sisi selatan,
+  Labtek V sisi barat laut). Acceptance WP2: rute ke titik akses terdekat (bukan
+  `navigationPoint`) dan test bahwa rute ke seluruh 39 titik akses berhasil. Navigasi harus memilih titik akses terdekat dari
   `entrances[]`, bukan `navigationPoint` (titik pertama).
   `DeviceTrailService._canRoute` menolak titik kandidat, jadi trail tidak bisa
   dimulai sebelum aturan itu disesuaikan. Pesan "Pintu masuk belum disurvei"
