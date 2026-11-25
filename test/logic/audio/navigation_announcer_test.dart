@@ -36,6 +36,30 @@ class _RecordingVoice extends FakeVoiceGuidance {
   Future<void> stop() async => stops++;
 }
 
+/// Menghitung panggilan; [gate] menahan pemeriksaan suara agar urutan
+/// kejadian dapat diatur.
+class _CountingVoice implements VoiceGuidance {
+  _CountingVoice({required this.available});
+
+  final bool available;
+  Completer<void>? gate;
+  int checks = 0;
+  int speakCalls = 0;
+
+  @override
+  Future<bool> isAvailable() async {
+    checks++;
+    await gate?.future;
+    return available;
+  }
+
+  @override
+  Future<void> speak(String text) async => speakCalls++;
+
+  @override
+  Future<void> stop() async {}
+}
+
 RouteStep _step(Maneuver maneuver, String text) => RouteStep(
   maneuver: maneuver,
   instruction: text,
@@ -159,14 +183,65 @@ void main() {
     expect(audio.current.status, PlaybackStatus.idle);
   });
 
+  // PRD §10 [CL] 24 November 2026: tiba di fasilitas diumumkan dengan TTS
+  // (sebelumnya hanya konfirmasi visual).
   test(
-    'tiba di fasilitas: tanpa file audio, hanya konfirmasi visual',
+    'tiba di fasilitas: kalimat tiba dibacakan TTS, tanpa file audio',
     () async {
+      await emit(_onRoute(route, 1, target: _facilityTarget));
       await emit(_status(NavigationStatus.arrived, target: _facilityTarget));
+      expect(voice.spoken, ['Belok kiri', 'Anda telah tiba di SINTETIS']);
+      expect(voice.stops, 1);
       expect(audio.current.status, PlaybackStatus.idle);
-      expect(voice.spoken, isEmpty);
     },
   );
+
+  test(
+    'tiba di fasilitas tanpa suara id-ID: tidak ada yang dibacakan',
+    () async {
+      final silent = _CountingVoice(available: false);
+      await announcer.dispose();
+      announcer = NavigationAnnouncer(
+        navigation: navigation,
+        voice: silent,
+        audio: audio,
+      )..start();
+      await emit(_status(NavigationStatus.arrived, target: _facilityTarget));
+      expect(silent.checks, 1);
+      expect(silent.speakCalls, 0);
+      expect(audio.current.status, PlaybackStatus.idle);
+    },
+  );
+
+  test('tiba di POI: hanya file audio, kalimat tiba tidak dibacakan', () async {
+    await emit(_status(NavigationStatus.arrived));
+    expect(voice.spoken, isEmpty);
+    expect(audio.current.clip?.kind, AudioClipKind.arrival);
+  });
+
+  test('status tiba berulang di fasilitas diumumkan sekali', () async {
+    await emit(_status(NavigationStatus.arrived, target: _facilityTarget));
+    await emit(_status(NavigationStatus.arrived, target: _facilityTarget));
+    await emit(_status(NavigationStatus.arrived, target: _facilityTarget));
+    expect(voice.spoken, ['Anda telah tiba di SINTETIS']);
+  });
+
+  test('navigasi berakhir saat suara diperiksa: tidak dibacakan', () async {
+    final slow = _CountingVoice(available: true);
+    await announcer.dispose();
+    announcer = NavigationAnnouncer(
+      navigation: navigation,
+      voice: slow,
+      audio: audio,
+    )..start();
+    slow.gate = Completer<void>();
+    navigation.emit(_status(NavigationStatus.arrived, target: _facilityTarget));
+    await pumpEventQueue();
+    await emit(const NavigationState.idle());
+    slow.gate!.complete();
+    await pumpEventQueue();
+    expect(slow.speakCalls, 0);
+  });
 
   test('navigasi dihentikan: TTS berhenti dan langkah dilupakan', () async {
     await emit(_onRoute(route, 0));
