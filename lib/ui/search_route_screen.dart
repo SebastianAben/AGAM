@@ -13,6 +13,7 @@ import 'widgets/agam_arrival.dart';
 import 'widgets/agam_components.dart';
 import 'widgets/agam_motion.dart';
 import 'widgets/agam_theme.dart';
+import 'widgets/arrival_card.dart';
 import 'widgets/facility_labels.dart';
 import 'widgets/offline_campus_map.dart';
 
@@ -376,9 +377,8 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
                     sliver: SliverList.list(
                       children: [
-                        AnimatedSize(
-                          duration: AgamMotion.duration(context, 280),
-                          curve: AgamMotion.easeOut,
+                        AgamAnimatedSize(
+                          milliseconds: 280,
                           alignment: Alignment.topCenter,
                           child: selected == null
                               ? const SizedBox(width: double.infinity)
@@ -813,6 +813,7 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
       : _poiFor(result)?.position ?? _facilityFor(result)?.position;
 
   Widget _routeCard(SearchResult destination, {required bool activeRoute}) {
+    if (_hasArrivedAt(destination)) return _arrivalCard(destination);
     if (widget.internalDemo) return _demoPoiCard(destination);
     final route = _navigation.route;
     final step = _navigation.currentStep;
@@ -977,6 +978,43 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  bool _hasArrivedAt(SearchResult destination) =>
+      _navigation.status == NavigationStatus.arrived &&
+      _navigation.target?.id == destination.id;
+
+  /// The destination card once navigation reports arrival. The map keeps
+  /// its key, so it carries over from the route card without moving.
+  Widget _arrivalCard(SearchResult destination) {
+    final poi = _poiFor(destination);
+    final facility = _facilityFor(destination);
+    final point = _pointFor(destination);
+    return ArrivalCard(
+      name: _navigation.target?.name ?? destination.name,
+      kind: _navigation.target?.kind ?? NavigationTargetKind.poi,
+      voice: widget.services.voice,
+      onFinish: _stopRoute,
+      onOpenDetail: poi == null ? null : () => _openPoiDetail(poi),
+      map: point == null
+          ? null
+          : OfflineCampusMap(
+              key: _cardMap,
+              config: widget.services.map,
+              initialFocus: point,
+              pois: [?poi],
+              selectedPoiId: destination.id,
+              highlight: facility == null
+                  ? null
+                  : MapHighlight(
+                      point: facility.position,
+                      label: facility.name,
+                      icon: facilityIcon(facility.category),
+                    ),
+              onSelectPoi: _openPoiDetail,
+              attributionPadding: const EdgeInsets.all(8),
+            ),
     );
   }
 
