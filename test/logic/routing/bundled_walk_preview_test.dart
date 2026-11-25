@@ -32,10 +32,16 @@ void main() {
     },
   );
 
-  test('Labtek V ke VI terputus pada graf draft', () async {
-    await expectLater(
-      routing.route(from: pois['P01']!, to: pois['P02']!),
-      throwsA(isA<RouteUnavailableException>()),
-    );
-  });
+  test(
+    'Labtek V ke VI hanya menempel ke jaringan utama, bukan selasar terpisah',
+    () async {
+      // Dulu pusat Labtek V menempel ke selasar terpisah sehingga rute gagal.
+      // Acuan terpisah: komponen terpanjang graf, proyeksi lokal dan Dijkstra
+      // heap Python.
+      final route = await routing.route(from: pois['P01']!, to: pois['P02']!);
+      expect(route.distanceM, closeTo(315.4, .2));
+      expect(route.path.first.distanceTo(pois['P01']!), closeTo(22.9, .2));
+      expect(route.path.last.distanceTo(pois['P02']!), closeTo(21.9, .2));
+    },
+  );
 }

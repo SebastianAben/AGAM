@@ -89,14 +89,10 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
     ) {
       if (mounted) setState(() => _facilities = value);
     });
-    if (!widget.internalDemo) {
-      _navigation = widget.services.navigation.current;
-      _navigationSubscription = widget.services.navigation.state.listen((
-        value,
-      ) {
-        if (mounted) setState(() => _navigation = value);
-      });
-    }
+    _navigation = widget.services.navigation.current;
+    _navigationSubscription = widget.services.navigation.state.listen((value) {
+      if (mounted) setState(() => _navigation = value);
+    });
     _facilityFilter = widget.initialFacility;
     if (widget.initialDestination case final poi?) {
       _destination = SearchResult(
@@ -245,10 +241,6 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
   }
 
   Future<void> _startRoute(SearchResult result) async {
-    if (widget.internalDemo) {
-      _showMessage('Graf rute kampus belum tersedia.');
-      return;
-    }
     if (_routing) return;
     final poi = _poiFor(result);
     final facility = _facilityFor(result);
@@ -284,7 +276,7 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
         setState(() => _destination = result);
         if (target.isPlaceholderPoint) {
           _showMessage(
-            'Rute pratinjau menuju titik gedung. Pintu masuk belum disurvei.',
+            'Rute menuju titik akses yang belum diverifikasi di lapangan.',
           );
         }
       }
@@ -308,7 +300,7 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
   }
 
   Future<void> _stopRoute() async {
-    if (widget.internalDemo) {
+    if (widget.internalDemo && _navigation.status == NavigationStatus.idle) {
       setState(() => _destination = null);
       return;
     }
@@ -331,7 +323,6 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
   @override
   Widget build(BuildContext context) {
     final activeRoute =
-        !widget.internalDemo &&
         _navigation.status != NavigationStatus.idle &&
         _navigation.status != NavigationStatus.error;
     final currentTarget = _navigation.target;
@@ -745,11 +736,11 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
                   child: Text(poi.name, style: AgamText.title),
                 ),
                 const SizedBox(height: 16),
-                // The demo has no campus graph, so "Rute" explains itself.
-                const AgamRouteButton(
-                  available: false,
-                  onPressed: null,
+                AgamRouteButton(
+                  available: true,
                   primary: true,
+                  onPressed: _routing ? null : () => _startRoute(destination),
+                  busy: _routing,
                 ),
                 const SizedBox(height: 10),
                 AgamTonalButton(
@@ -813,7 +804,8 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
       : _poiFor(result)?.position ?? _facilityFor(result)?.position;
 
   Widget _routeCard(SearchResult destination, {required bool activeRoute}) {
-    if (widget.internalDemo) return _demoPoiCard(destination);
+    // An active route shows its progress in the regular card.
+    if (widget.internalDemo && !activeRoute) return _demoPoiCard(destination);
     final route = _navigation.route;
     final step = _navigation.currentStep;
     final eta = _navigation.remainingEta ?? route?.eta;
@@ -1009,16 +1001,12 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
   Widget _routeIcon(SearchResult result) => IconButton(
     tooltip: 'Rute',
     icon: const Icon(Icons.directions_rounded),
-    color: widget.internalDemo ? AgamColors.subtle : AgamColors.brand,
+    color: AgamColors.brand,
     style: IconButton.styleFrom(
       backgroundColor: AgamColors.fill,
       fixedSize: const Size(44, 44),
     ),
-    onPressed: _routing
-        ? null
-        : widget.internalDemo
-        ? () => _showMessage(AgamRouteButton.unavailableMessage)
-        : () => _startRoute(result),
+    onPressed: _routing ? null : () => _startRoute(result),
   );
 
   Widget _emptyCard(

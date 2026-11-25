@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:agam/contracts/contracts.dart';
+import 'package:agam/contracts/fakes/fake_lb_services.dart';
 import 'package:agam/logic/map/agam_map_config.dart';
 import 'package:agam/ui/app.dart';
 import 'package:agam/ui/widgets/agam_components.dart';
@@ -55,17 +58,25 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
-  testWidgets('Rute sits on the map, search card and detail; demo explains', (
+  testWidgets('Rute sits on the map, search card and detail; demo routes', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(430, 900);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     final fake = AppServices.fake(tick: const Duration(hours: 1));
+    // SYNTHETIC: a fix already in memory, so "Rute" need not wait for GPS.
+    final location = _HeldLocation(
+      LocationFix(
+        position: const GeoPoint(-6.8905, 107.6100),
+        accuracyM: 5,
+        timestamp: DateTime(2026),
+      ),
+    );
     // The fake map points at placeholder tiles; markers need the real ones.
     final services = AppServices(
       permissions: fake.permissions,
-      location: fake.location,
+      location: location,
       pois: fake.pois,
       session: fake.session,
       audio: fake.audio,
@@ -75,7 +86,10 @@ void main() {
       activity: fake.activity,
       map: AgamMapConfig.internalDemo(),
       routing: fake.routing,
-      navigation: fake.navigation,
+      navigation: FakeNavigationController(
+        location: location,
+        routing: fake.routing,
+      ),
       search: fake.search,
       recommendations: fake.recommendations,
       trail: fake.trail,
@@ -126,8 +140,33 @@ void main() {
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('Rute'));
     await tester.pumpAndSettle();
+    // The search card routes on the bundled graph in the demo too.
     await tester.tap(find.text('Rute'));
-    await expectExplained();
+    await tester.pumpAndSettle();
+    expect(services.session.current.mode, SessionMode.navigation);
+    expect(services.navigation.current.status, NavigationStatus.onRoute);
+    expect(find.text('Navigasi sedang berjalan'), findsOneWidget);
+    // Fake POIs have no verified access point.
+    expect(
+      find.text('Rute menuju titik akses yang belum diverifikasi di lapangan.'),
+      findsOneWidget,
+    );
+    ScaffoldMessenger.of(tester.element(find.byType(Scaffold).last))
+        .hideCurrentSnackBar();
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byTooltip('Akhiri rute'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Akhiri rute'));
+    // Stopping settles outside the fake clock, like the tile decoding above.
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 50)),
+    );
+    await tester.pumpAndSettle();
+    expect(services.session.current.mode, SessionMode.none);
+    await tester.enterText(find.byType(TextField), 'labtek 5');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Labtek V').last);
+    await tester.pumpAndSettle();
     // Detail: the bottom action.
     await tester.ensureVisible(find.text('Lihat Detail POI'));
     await tester.pumpAndSettle();
@@ -194,4 +233,16 @@ void main() {
       closeTo(tester.getCenter(find.text('Selesai')).dx, 1),
     );
   });
+}
+
+class _HeldLocation implements LocationService {
+  _HeldLocation(this.lastFix);
+
+  @override
+  final LocationFix? lastFix;
+
+  final _positions = StreamController<LocationFix>.broadcast();
+
+  @override
+  Stream<LocationFix> get positions => _positions.stream;
 }

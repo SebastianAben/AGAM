@@ -209,6 +209,176 @@ void main() {
     },
   );
 
+  test('snaps only to the main network, never to an isolated piece', () async {
+    // The short piece is 5.6 m from the destination, the main path 16.7 m.
+    const destination = GeoPoint(.00015, .0005);
+    final routing = CampusRoutingService.fromGeoJson(
+      graph([
+        [start, corner],
+        [const GeoPoint(.0002, .0005), const GeoPoint(.0002, .0006)],
+      ]),
+    );
+    final route = await routing.route(from: start, to: destination);
+    expect(route.path, [start, const GeoPoint(0, .0005), destination]);
+    expect(route.distanceM, closeTo(55.6 + 16.68, .1));
+  });
+
+  test('passages join new access points and are named in the steps', () async {
+    const door = GeoPoint(.0002, .001); // 22.24 m north of the corner.
+    String passage({required bool verified}) => jsonEncode({
+      'type': 'FeatureCollection',
+      'features': [
+        {
+          'type': 'Feature',
+          'properties': {'id': 'SYNTHETIC', 'verified': verified},
+          'geometry': {
+            'type': 'LineString',
+            'coordinates': [
+              [corner.lng, corner.lat],
+              [door.lng, door.lat],
+            ],
+          },
+        },
+      ],
+    });
+    for (final verified in [false, true]) {
+      final routing = CampusRoutingService.fromGeoJson(
+        graph([
+          [start, corner],
+        ]),
+        passages: passage(verified: verified),
+      );
+      final route = await routing.route(from: start, to: door);
+      expect(route.path, [start, corner, door]);
+      expect(route.steps[1].maneuver, Maneuver.turnLeft);
+      expect(
+        route.steps[1].instruction,
+        verified
+            ? 'Belok kiri, lewat lorong dalam gedung.'
+            : 'Belok kiri, lewat lorong dalam gedung (belum diverifikasi).',
+      );
+    }
+  });
+
+  group('access point candidates', () {
+    // B is 222.4 m east along the path; A is only 55.6 m north in a straight
+    // line but 500.4 m away on foot.
+    const a = GeoPoint(.0005, 0);
+    const b = GeoPoint(0, .002);
+    const candidates = NavigationTarget(
+      id: 'synthetic-building',
+      name: 'Gedung sintetis',
+      kind: NavigationTargetKind.poi,
+      point: a,
+      isPlaceholderPoint: true,
+      candidates: [a, b],
+    );
+    late _Location location;
+    late _Session session;
+    late _CountingRouting routing;
+    late DeviceNavigationController controller;
+
+    setUp(() async {
+      location = _Location();
+      session = _Session();
+      routing = _CountingRouting(
+        CampusRoutingService.fromGeoJson(
+          graph([
+            [start, b],
+            [b, const GeoPoint(.0005, .002), a],
+          ]),
+        ),
+      );
+      controller = DeviceNavigationController(
+        location: location,
+        routing: routing,
+        map: map,
+        session: session,
+      );
+      await session.start(SessionMode.navigation);
+      location.add(start);
+      await controller.start(candidates);
+    });
+
+    tearDown(() async {
+      await controller.stop();
+      await location.controller.close();
+      await session.controller.close();
+    });
+
+    test('routes to the shortest walk, not the nearest straight line', () {
+      expect(routing.calls, 2);
+      final route = controller.current.route!;
+      expect(controller.current.status, NavigationStatus.onRoute);
+      expect(route.path.last, b);
+      expect(route.distanceM, closeTo(222.39, .1));
+    });
+
+    test('reroutes to the access point that is now nearest on foot', () async {
+      location.add(const GeoPoint(.0005, .001)); // 55.6 m off the route.
+      await Future<void>.delayed(Duration.zero);
+      expect(routing.calls, 4);
+      expect(controller.current.status, NavigationStatus.onRoute);
+      expect(controller.current.route!.path.last, a);
+      expect(controller.current.route!.distanceM, closeTo(111.2, .1));
+    });
+
+    test(
+      'arrives within 15 m of any candidate, not only the routed one',
+      () async {
+        location.add(const GeoPoint(.0004, .00001)); // 11.2 m from A.
+        await Future<void>.delayed(Duration.zero);
+        expect(controller.current.status, NavigationStatus.arrived);
+        expect(controller.current.route!.path.last, b);
+      },
+    );
+  });
+
+  test('targets keep the contract for facilities and POI access points', () {
+    const metadata = ContentMetadata.placeholder();
+    final facility = NavigationTarget.facility(
+      const Facility(
+        id: 'F-SYNTHETIC',
+        name: 'Toilet sintetis',
+        category: FacilityCategory.toilet,
+        position: corner,
+        description: 'SINTETIS',
+        metadata: metadata,
+      ),
+    );
+    expect(facility.point, corner);
+    expect(facility.candidates, isEmpty);
+    expect(facility.isPlaceholderPoint, isFalse);
+
+    Poi poi(List<PoiEntrance> entrances) => Poi(
+      id: 'P-SYNTHETIC',
+      name: 'SINTETIS',
+      aliases: const [],
+      category: PoiCategory.lecture,
+      position: start,
+      radiusM: 15,
+      entrances: entrances,
+      description: 'SINTETIS',
+      function: 'SINTETIS',
+      facilities: const [],
+      trivia: 'SINTETIS',
+      media: const PoiMedia(),
+      metadata: metadata,
+    );
+    final withEntrances = NavigationTarget.poi(
+      poi(const [
+        PoiEntrance(position: corner, label: 'SINTETIS 1'),
+        PoiEntrance(position: north, label: 'SINTETIS 2'),
+      ]),
+    );
+    expect(withEntrances.point, corner);
+    expect(withEntrances.candidates, [corner, north]);
+    expect(withEntrances.isPlaceholderPoint, isTrue);
+    final centre = NavigationTarget.poi(poi(const []));
+    expect(centre.point, start);
+    expect(centre.candidates, isEmpty);
+  });
+
   test('a calculation finishing after stop cannot revive navigation', () async {
     final session = _Session();
     final location = _Location()..add(start);
