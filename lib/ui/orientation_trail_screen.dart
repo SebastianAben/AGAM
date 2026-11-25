@@ -314,9 +314,11 @@ class _OrientationTrailScreenState extends State<OrientationTrailScreen> {
                                     ? null
                                     : visible[i].id,
                               ),
+                              // Only the next stop has this button; the
+                              // service may still pick the nearest start.
                               onRoute: _samplePreview
                                   ? null
-                                  : () => _continueTrail(visible[i]),
+                                  : () => _continueTrail(),
                               onCheckIn: () => _showCheckInStatus(
                                 visible[i],
                                 checkedIn: _progress.visited.contains(

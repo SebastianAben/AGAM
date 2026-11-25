@@ -55,6 +55,36 @@ class _UnavailableNavigation implements NavigationController {
       throw StateError('Demo accessed navigation: ${invocation.memberName}');
 }
 
+/// Synthetic trail whose start() rotates the loop, like the first start of
+/// the device trail service near another stop.
+class _RotatingTrail implements TrailService {
+  _RotatingTrail(this._before, this._after);
+
+  final List<String> _before;
+  final List<String> _after;
+  final _changes = StreamController<TrailProgress>.broadcast();
+  late TrailProgress _current = TrailProgress(
+    order: _before,
+    visited: const {},
+    active: false,
+  );
+
+  @override
+  TrailProgress get current => _current;
+  @override
+  Stream<TrailProgress> get progress => _changes.stream;
+  @override
+  Future<void> start() async {
+    _current = TrailProgress(order: _after, visited: const {}, active: true);
+    _changes.add(_current);
+  }
+
+  @override
+  Future<void> stop() async {}
+  @override
+  Future<void> reset() async {}
+}
+
 class _RecordingNavigation implements NavigationController {
   final _states = StreamController<NavigationState>.broadcast();
   @override
@@ -186,6 +216,39 @@ void main() {
       findsOneWidget,
     );
     expect(find.textContaining('belum disurvei'), findsNothing);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await services.navigation.stop();
+    await services.session.end();
+  });
+
+  testWidgets('next stop route goes to the start picked by the service', (
+    tester,
+  ) async {
+    final before = [for (final poi in unverifiedSyntheticPois) poi.id];
+    final after = [...before.skip(6), ...before.take(6)];
+    final services = demoServices(
+      pois: FakePoiRepository(pois: unverifiedSyntheticPois, facilities: []),
+      trail: (_) => _RotatingTrail(before, after),
+      navigation: _RecordingNavigation(),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: OrientationTrailScreen(services: services, internalDemo: true),
+      ),
+    );
+    await tester.pumpAndSettle();
+    // Before the first start the card of trailOrder 1 is the next stop.
+    await tester.tap(find.widgetWithText(FilledButton, 'Rute'));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    expect(services.navigation.current.target?.id, after.first);
+    expect(
+      find.text(
+        'Rute menuju titik akses ${unverifiedSyntheticPois[6].name} '
+        '(belum diverifikasi di lapangan).',
+      ),
+      findsOneWidget,
+    );
     await tester.pumpWidget(const SizedBox.shrink());
     await services.navigation.stop();
     await services.session.end();
