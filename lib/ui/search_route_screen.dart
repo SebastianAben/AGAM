@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../contracts/app_services.dart';
+import '../contracts/models/activity.dart';
 import '../contracts/models/content.dart';
 import '../contracts/models/discovery.dart';
 import '../contracts/models/geo.dart';
@@ -78,6 +79,15 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
   StreamSubscription<List<Poi>>? _poiSubscription;
   StreamSubscription<List<Facility>>? _facilitySubscription;
   StreamSubscription<NavigationState>? _navigationSubscription;
+  // `featureUsed` (PRD §15.5) is logged at most once per feature per visit:
+  // `search` when a typed search first returns results, `facilities` when a
+  // facility category first filters the page. Only the feature is sent.
+  final _loggedFeatures = <ActivityFeature>{};
+
+  void _logOnce(ActivityFeature feature) {
+    if (!_loggedFeatures.add(feature)) return;
+    widget.services.activity.log(ActivityEvent.featureUsed(feature: feature));
+  }
 
   @override
   void initState() {
@@ -95,6 +105,7 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
       if (mounted) setState(() => _navigation = value);
     });
     _facilityFilter = widget.initialFacility;
+    if (_facilityFilter != null) _logOnce(ActivityFeature.facilities);
     if (widget.initialDestination case final poi?) {
       _destination = SearchResult(
         kind: SearchResultKind.poi,
@@ -145,6 +156,7 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
       );
       if (mounted && request == _searchRequest) {
         setState(() => _results = result);
+        if (result.isNotEmpty) _logOnce(ActivityFeature.search);
       }
     } catch (_) {
       if (mounted && request == _searchRequest) {
@@ -161,6 +173,7 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
     setState(() {
       _facilityFilter = _facilityFilter == category ? null : category;
     });
+    if (_facilityFilter != null) _logOnce(ActivityFeature.facilities);
     _runSearch();
   }
 
@@ -220,6 +233,7 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
     await Navigator.of(context).push<void>(
       AgamMotion.route(
         (_) => PoiDetailScreen(
+          activity: widget.services.activity,
           poi: poi,
           audio: widget.services.audio,
           settings: widget.services.settings,

@@ -186,6 +186,7 @@ class _OrientationTrailScreenState extends State<OrientationTrailScreen> {
       AgamMotion.route(
         (_) => PoiDetailScreen(
           poi: poi,
+          activity: widget.services.activity,
           audio: widget.services.audio,
           settings: widget.services.settings,
           checkedIn: _progress.visited.contains(poi.id),

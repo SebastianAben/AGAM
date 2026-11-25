@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../contracts/app_services.dart';
+import '../contracts/models/activity.dart';
 import '../contracts/models/content.dart';
 import '../contracts/models/audio.dart';
 import '../contracts/models/location.dart';
@@ -72,6 +73,8 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
   bool _sessionActive = false;
   bool _showDetail = false;
   String? _triggeredPoiId;
+  // A POI the user opened from the map panel, not from a trigger.
+  String? _panelViewId;
   bool _changingSession = false;
   bool _openingDetail = false;
   bool _appVisible = true;
@@ -272,11 +275,18 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
   }
 
   Future<void> _openPoiById(String id) async {
+    // Requests come from a trigger's "Lihat", unless the user asked for this
+    // POI from the map panel and the request was routed through
+    // [ExploreMapScreen.onPoiAction].
+    final fromPanel = _panelViewId == id;
+    _panelViewId = null;
     final poi = await widget.services.pois.poiById(id);
-    if (mounted && poi != null) _openDetail(poi);
+    if (mounted && poi != null) _openDetail(poi, fromTrigger: !fromPanel);
   }
 
-  Future<void> _openDetail(Poi poi) async {
+  /// [fromTrigger] opens the detail without `featureUsed`: right after a
+  /// trigger its time would match the arrival at the POI (PRD §15.5).
+  Future<void> _openDetail(Poi poi, {bool fromTrigger = false}) async {
     if (_openingDetail) return;
     _openingDetail = true;
     try {
@@ -284,6 +294,7 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
         AgamMotion.route<void>(
           (_) => PoiDetailScreen(
             poi: poi,
+            activity: fromTrigger ? null : widget.services.activity,
             audio: widget.services.audio,
             settings: widget.services.settings,
             checkedIn: false,
@@ -309,6 +320,7 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
   }
 
   Future<void> _poiAction(Poi poi, TriggerAction action) async {
+    final fromTrigger = _triggeredPoiId == poi.id;
     if (action == TriggerAction.skip) {
       _activeTriggerIds.remove(poi.id);
       setState(() {
@@ -330,9 +342,23 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
           return;
         }
       }
+      // A fresh start from a POI the user picked on the map; never from the
+      // trigger card, whose time would match the arrival (PRD §15.5).
+      if (action == TriggerAction.listen && !fromTrigger) {
+        widget.services.activity.log(
+          const ActivityEvent.featureUsed(feature: ActivityFeature.narration),
+        );
+      }
       final onAction = widget.onPoiAction;
       if (onAction != null) {
-        await onAction(poi.id, action);
+        if (action == TriggerAction.view && !fromTrigger) _panelViewId = poi.id;
+        try {
+          await onAction(poi.id, action);
+        } finally {
+          // The view request has been delivered by now (or was dropped); a
+          // later notification "Lihat" must not count as a panel open.
+          _panelViewId = null;
+        }
       } else {
         switch (action) {
           case TriggerAction.listen:
@@ -340,7 +366,7 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
               AudioClip(poiId: poi.id, kind: AudioClipKind.narration),
             );
           case TriggerAction.view:
-            if (mounted) _openDetail(poi);
+            if (mounted) _openDetail(poi, fromTrigger: fromTrigger);
           case TriggerAction.skip:
             if (audio.current.clip?.poiId == poi.id &&
                 audio.current.clip?.kind == AudioClipKind.prompt) {
