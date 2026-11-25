@@ -507,9 +507,15 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
                 left: 16,
                 right: 16,
                 bottom: 16,
+                // The stack stays below the map controls, so a tall
+                // recommendation scrolls instead of covering them.
+                top:
+                    (widget.onOpenSearch == null ? 12 : 126) +
+                    _MapControls.height +
+                    12,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     const MapAttribution(),
                     const SizedBox(height: 10),
@@ -530,32 +536,35 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
                         null => const SizedBox(width: double.infinity),
                       },
                     ),
-                    // UI07 after a closed panel: a dismissible card that
-                    // never covers more than half the map.
-                    RecommendationPresence(
-                      child: switch (_recommendation) {
-                        final view? => Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: ConstrainedBox(
-                            constraints: BoxConstraints(
-                              maxHeight: constraints.maxHeight * .5,
-                            ),
-                            child: SingleChildScrollView(
-                              child: RecommendationCard(
-                                view: view,
-                                floating: true,
-                                routeAvailable: widget.onRoute != null,
-                                onRoute: (poi) {
-                                  setState(_clearRecommendation);
-                                  widget.onRoute?.call(poi);
-                                },
-                                onDismiss: () => setState(_clearRecommendation),
+                    // UI07 after a closed panel: a dismissible card, at most
+                    // half the map and never over the map controls.
+                    Flexible(
+                      child: RecommendationPresence(
+                        child: switch (_recommendation) {
+                          final view? => Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: ConstrainedBox(
+                              constraints: BoxConstraints(
+                                maxHeight: constraints.maxHeight * .5,
+                              ),
+                              child: SingleChildScrollView(
+                                child: RecommendationCard(
+                                  view: view,
+                                  floating: true,
+                                  routeAvailable: widget.onRoute != null,
+                                  onRoute: (poi) {
+                                    setState(_clearRecommendation);
+                                    widget.onRoute?.call(poi);
+                                  },
+                                  onDismiss: () =>
+                                      setState(_clearRecommendation),
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                        null => null,
-                      },
+                          null => null,
+                        },
+                      ),
                     ),
                     _SessionCard(
                       active: _sessionActive,
@@ -800,6 +809,9 @@ class _MapControls extends StatelessWidget {
     required this.onCenter,
     required this.onLayers,
   });
+
+  /// Three 48 px buttons and two 1 px dividers.
+  static const height = 3 * 48.0 + 2;
 
   final bool showPois;
   final IconData locationIcon;

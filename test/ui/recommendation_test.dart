@@ -139,8 +139,8 @@ List<FeatureUsedEvent> _featureUsed(AppServices services) =>
         .whereType<FeatureUsedEvent>()
         .toList();
 
-void _phone(WidgetTester tester, {double height = 900}) {
-  tester.view.physicalSize = Size(430, height);
+void _phone(WidgetTester tester, {double height = 900, double width = 430}) {
+  tester.view.physicalSize = Size(width, height);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
 }
@@ -293,8 +293,10 @@ void main() {
       WidgetTester tester,
       _StubRecommendations recommendations, {
       bool reduceMotion = false,
+      Size size = const Size(430, 900),
+      bool searchBar = false,
     }) async {
-      _phone(tester);
+      _phone(tester, width: size.width, height: size.height);
       final session = _Session();
       final services = _services(
         recommendations: recommendations,
@@ -305,7 +307,11 @@ void main() {
       await session.start(SessionMode.explore);
       await tester.pumpWidget(
         _app(
-          ExploreMapScreen(services: services, onRoute: routed.add),
+          ExploreMapScreen(
+            services: services,
+            onRoute: routed.add,
+            onOpenSearch: searchBar ? (_) {} : null,
+          ),
           reduceMotion: reduceMotion,
         ),
       );
@@ -366,6 +372,34 @@ void main() {
       session.fire(_next.id);
       await _frames(tester);
       expect(_card, findsNothing);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+
+    testWidgets('ponsel kecil: kartu tidak menutupi kontrol peta', (
+      tester,
+    ) async {
+      // 360×640 minus the shell's bottom bar, with the search bar shown as
+      // in the app, so the controls sit below it.
+      await openPanel(
+        tester,
+        _StubRecommendations(
+          Recommendation(
+            poiIds: [_next.id, _later.id, fakePois[3].id],
+            nearbyFacilities: _full().nearbyFacilities,
+          ),
+        ),
+        size: const Size(360, 560),
+        searchBar: true,
+      );
+      await tester.tap(find.byTooltip('Tutup informasi'));
+      await _frames(tester);
+      expect(_card, findsOneWidget);
+      final controls = tester.getRect(
+        find.byTooltip('Sembunyikan penanda POI'),
+      );
+      expect(tester.getRect(_card).top, greaterThan(controls.bottom));
+      expect(tester.takeException(), isNull);
 
       await tester.pumpWidget(const SizedBox.shrink());
     });
