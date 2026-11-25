@@ -374,7 +374,7 @@ Project Firebase `agam-9e704` dibuat PM pada 15 November 2026: Firestore (Standa
 | `login`, `logout` | — | |
 | `appOpen` | `appVersion`, `androidVersion`, `deviceModel` | Hanya saat aplikasi dibuka dari keadaan tertutup (cold start), bukan setiap kembali ke foreground. Membuka aplikasi dari notifikasi trigger tidak boleh meninggalkan jejak waktu trigger |
 | `modeStart`, `modeEnd` | `mode` (`explore` \| `navigation` \| `trail`); `modeEnd` ditambah `durationMin` (dibulatkan ke 5 menit) | Tanggal saja, tanpa jam, dan tanpa alasan berakhir. Jam selesai Trail sama dengan jam tiba di POI terakhir; alasan auto-end mengungkap bahwa pengguna keluar kampus |
-| `featureUsed` | `feature` (`search` \| `poiCard` \| `narration` \| `facilities`) | Tanpa ID POI, kata kunci pencarian, atau tujuan |
+| `featureUsed` | `feature` (`search` \| `poiCard` \| `narration` \| `facilities`) | Tanpa ID POI, kata kunci pencarian, atau tujuan. Tidak dicatat untuk aksi yang berasal dari trigger POI atau dari kartu tiba (Lihat/Dengarkan, autoplay), karena waktunya bertepatan dengan kedatangan di POI (rules §5.1; keputusan 25 November 2026) |
 | `trailCompleted` | — | Tanggal saja, tanpa jam, karena waktu selesai trail sama dengan waktu tiba di POI terakhir |
 
 Field umum: `uid`, `type`, dan waktu. Waktu berupa `at` (timestamp perangkat) untuk `signUp`, `login`, `logout`, `appOpen`, dan `featureUsed`; berupa `date` (YYYY-MM-DD, tanpa jam) untuk `modeStart`, `modeEnd`, dan `trailCompleted`. Event yang waktunya dapat bertepatan dengan kedatangan di POI tertentu hanya boleh membawa tanggal.
@@ -504,7 +504,7 @@ Perubahan berikut wajib dicatat PM pada Change Log PRD resmi.
 | Routing | Tidak dirinci | Di perangkat dengan graf jalur kampus | Server routing menerima lokasi pengguna (A01, NG04) |
 | Media | Firestore + JSON lokal (tidak dirinci) | Media dibundel di APK; Firestore hanya data teks | Offline dan bebas ketergantungan penyimpanan cloud |
 | F03 / tabel POI — video GKUB & GKUT | Video narasi wajib untuk GKUB dan GKUT | Video opsional; konten GKUB/GKUT boleh disetujui tanpa video dan video ditampilkan bila tersedia | Keputusan PM 23 November 2026 (disampaikan pemilik konten) |
-| Sumber suara | `flutter_tts` untuk narasi, prompt, arahan | Narasi & prompt = file audio; TTS hanya arahan navigasi | Konsistensi suara dan kemandirian dari data TTS perangkat |
+| Sumber suara | `flutter_tts` untuk narasi, prompt, arahan | Narasi & prompt = file audio; TTS untuk arahan navigasi dan pengumuman tiba di fasilitas (24 November 2026) | Konsistensi suara dan kemandirian dari data TTS perangkat |
 | Mode aplikasi | Tidak dirinci | Empat mode (§6) dan auto-end 30 menit | Memperjelas kapan lokasi dibaca dan trigger aktif |
 | PB17 | Cache konten & tile peta saat offline | Tile sudah dibundel sejak S1; PB17 menjadi verifikasi offline konten | Keputusan tile |
 | Akun pengguna | Tidak disebut di requirement, backlog, maupun sprint plan | Login wajib (email + password), role Mahasiswa ITB/Pengunjung, hapus akun (§4, §16) | Pencatatan jumlah pengguna dan success metric oleh tim (keputusan PM 6 November 2026) |

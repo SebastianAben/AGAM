@@ -92,7 +92,7 @@ Ini adalah aturan terpenting di proyek ini.
 | Routing | Graf jalur kampus (GeoJSON) + Dijkstra/A* di perangkat |
 | Data | Firestore (aplikasi membaca konten; hanya menulis profil sendiri dan log aktivitas) + JSON bawaan + cache lokal |
 | Akun | Firebase Auth email + password; login wajib (keputusan PM 6 November 2026) |
-| Audio | File audio untuk narasi/prompt/tiba; `flutter_tts` hanya untuk arahan navigasi |
+| Audio | File audio untuk narasi/prompt/tiba POI; `flutter_tts` untuk arahan navigasi dan pengumuman tiba di fasilitas (keputusan 24 November 2026, PRD §10) |
 | CI/CD | GitHub Actions → GitHub Releases |
 
 Dilarang menambahkan tanpa keputusan PM:

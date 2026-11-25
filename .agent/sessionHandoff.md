@@ -1,5 +1,46 @@
 # Session Handoff — AGAM
 
+## Current — Gelombang 1: routing, tiba, trail, rekomendasi, akun, 25 November 2026
+
+- Branch integrasi `feat/field-test-wave1` dari `dev` @ `5cc955c`, berisi merge
+  WP2 `feat/access-point-routing`, WP3 `feat/arrival-feedback`, WP4
+  `feat/trail-nearest-start`, WP6 `feat/account-delete-logs`, WP5
+  `feat/recommendations-ui07`, plus commit penghubung. Dikerjakan paralel oleh
+  subagent di worktree terpisah; konflik hanya di `demo_frontend_test.dart` dan
+  satu blok `search_route_screen.dart`.
+- WP2 routing: graf + `passages.geojson` dimuat dari aset di build produk dan
+  demo; titik hanya ditempel ke jaringan terhubung terpanjang; tujuan = titik
+  akses terdekat menurut jarak jalan kaki (kontrak `NavigationTarget.candidates`,
+  perlu review LA/LB/FE); tiba ≤15 m dari titik akses mana pun; arahan lorong
+  kandidat "(belum diverifikasi)". `pubspec.yaml` (LA) mendaftarkan dua aset graf.
+- WP3 tiba: TTS "Anda telah tiba di {fasilitas}" bila suara `id-ID` ada; kartu
+  tiba di Cari & Rute; `AgamAnimatedSize` memperbaiki crash `AnimatedSize`
+  berdurasi nol saat reduced motion di layar itu (7 pemakaian lain belum).
+- WP4 trail: mulai dari POI terdekat, titik awal per akun, kandidat titik akses
+  diterima, `trailCompleted` sekali; layar Trail berjalan di demo.
+- WP5 rekomendasi: UI07 "Lanjut ke mana?" di bawah kartu tiba dan di peta
+  setelah panel ditutup; Rute satu ketukan (`startRouteOnOpen` /
+  `onStartRoute`); tanpa log.
+- WP6 akun & log: hapus akun di UI09; `featureUsed` untuk search, poiCard,
+  narration, facilities. Keputusan PM: aksi dari trigger/kartu tiba tidak
+  dicatat (PRD §15.5, rules §5.1).
+- Penghubung: trail dan rekomendasi di `main.dart` kedua build; satu
+  `AccountVisitStore` dipakai trail, rekomendasi, dan hapus akun
+  (`createLaAccountServices(trailVisits:)`); Rute di panel peta/detail aktif di
+  demo; penanda rute di titik akses yang dipilih.
+- Dokumen: rules §2 tabel Audio dan PRD §23 "Sumber suara" (TTS juga untuk tiba
+  di fasilitas), PRD §15.5 baris `featureUsed`, implementationPhases (rekap 18
+  `in_progress`/4 `planned`; PB11, PB12, PB14, PB15, PB16, PB21, PB22).
+- Verifikasi: format/analyze bersih, 467 test lulus. Belum: build APK, uji
+  emulator/perangkat, tes lapangan.
+- Terbuka: kunjungan Explore tidak dicatat ke `AccountVisitStore`;
+  `DeviceAuthService.deleteAccount` bisa gagal setengah jalan; status suara
+  `id-ID` di-cache sampai aplikasi dibuka ulang; rekomendasi di layar sangat
+  pendek dan pergantian kartu tiba saat trail auto-route belum diuji; kelas
+  `UnavailableRecommendationService` kini tak terpakai; `recommendation_bootstrap.dart`
+  (folder LB) perlu review LB; CI `dev` `5cc955c` gagal di build APK (diduga
+  sementara, perlu re-run); PB13 eyes-free belum dimulai.
+
 ## Current — Gelombang 0: titik akses, urutan trail, dan dokumen, 24 November 2026
 
 - Branch `feat/access-points-trail-data` dari `dev` @ `bc42624`, worktree
