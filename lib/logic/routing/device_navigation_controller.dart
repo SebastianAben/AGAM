@@ -106,7 +106,7 @@ class DeviceNavigationController implements NavigationController {
       ),
     );
     try {
-      final next = await _routing.route(from: point, to: target.point);
+      final next = await _nearestRoute(point, target);
       if (generation != _generation) return;
       _progressM = 0;
       if (_isAtDestination(point, target, next)) {
@@ -125,15 +125,39 @@ class DeviceNavigationController implements NavigationController {
     }
   }
 
+  /// The access points this target may be reached at (PRD §11).
+  static List<GeoPoint> _destinations(NavigationTarget target) =>
+      target.candidates.isEmpty ? [target.point] : target.candidates;
+
+  /// Routes to every access point and keeps the shortest walk, so a nearer
+  /// door behind a wall does not win over one that is closer on foot.
+  Future<WalkingRoute> _nearestRoute(
+    GeoPoint from,
+    NavigationTarget target,
+  ) async {
+    WalkingRoute? best;
+    RouteUnavailableException? failure;
+    for (final to in _destinations(target)) {
+      try {
+        final route = await _routing.route(from: from, to: to);
+        if (best == null || route.distanceM < best.distanceM) best = route;
+      } on RouteUnavailableException catch (error) {
+        failure = error;
+      }
+    }
+    return best ?? (throw failure!);
+  }
+
   bool _isAtDestination(
     GeoPoint position,
     NavigationTarget target,
     WalkingRoute route,
   ) {
-    final endpoint = arriveAtRouteEnd && route.path.isNotEmpty
-        ? route.path.last
-        : target.point;
-    return position.distanceTo(endpoint) <= kArrivalDistanceM;
+    if (arriveAtRouteEnd && route.path.isNotEmpty) {
+      return position.distanceTo(route.path.last) <= kArrivalDistanceM;
+    }
+    return _destinations(target)
+        .any((point) => position.distanceTo(point) <= kArrivalDistanceM);
   }
 
   void _arrive(NavigationTarget target, WalkingRoute route) {

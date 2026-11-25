@@ -56,6 +56,7 @@ class NavigationTarget {
     required this.kind,
     required this.point,
     required this.isPlaceholderPoint,
+    this.candidates = const [],
   });
 
   factory NavigationTarget.poi(Poi poi) => NavigationTarget(
@@ -64,6 +65,9 @@ class NavigationTarget {
     kind: NavigationTargetKind.poi,
     point: poi.navigationPoint,
     isPlaceholderPoint: !poi.hasSurveyedEntrance,
+    candidates: List.unmodifiable([
+      for (final entrance in poi.entrances) entrance.position,
+    ]),
   );
 
   factory NavigationTarget.facility(Facility facility) => NavigationTarget(
@@ -82,6 +86,13 @@ class NavigationTarget {
   /// `true` jika [point] adalah titik tengah gedung atau titik akses yang
   /// belum dicek di lapangan. Navigasi ke titik ini belum memenuhi F06.
   final bool isPlaceholderPoint;
+
+  /// Titik akses yang boleh dituju. Kosong: navigasi ke [point].
+  ///
+  /// Bila berisi, navigasi menuju kandidat dengan jarak jalan kaki terpendek
+  /// (dihitung ulang setiap reroute) dan pengguna dianggap tiba ≤15 m dari
+  /// kandidat mana pun (PRD §11).
+  final List<GeoPoint> candidates;
 }
 
 enum NavigationStatus {
