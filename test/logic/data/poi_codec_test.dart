@@ -62,13 +62,18 @@ void main() {
       expect(poi.aliases, ['labtek 5', 'lab 5']);
     });
 
-    test('pintu masuk yang disurvei dipakai sebagai titik navigasi', () {
+    test('titik akses terverifikasi dipakai sebagai titik navigasi', () {
       final issues = <PoiDecodeIssue>[];
       final poi = decodePoi(
         validPoi(
           overrides: {
             'entrances': [
-              {'lat': -6.8901, 'lng': 107.6102, 'label': 'Pintu utara'},
+              {
+                'lat': -6.8901,
+                'lng': 107.6102,
+                'label': 'Pintu utara',
+                'verified': true,
+              },
             ],
           },
         ),
@@ -79,6 +84,37 @@ void main() {
       expect(poi.hasSurveyedEntrance, isTrue);
       expect(poi.navigationPoint, const GeoPoint(-6.8901, 107.6102));
       expect(poi.entrances.single.label, 'Pintu utara');
+      expect(poi.entrances.single.verified, isTrue);
+    });
+
+    test('titik akses kandidat dipakai untuk rute tanpa dianggap disurvei', () {
+      for (final verified in <Object?>[false, null, 'true', 1]) {
+        final issues = <PoiDecodeIssue>[];
+        final poi = decodePoi(
+          validPoi(
+            overrides: {
+              'entrances': [
+                {
+                  'lat': -6.8901,
+                  'lng': 107.6102,
+                  'label': 'Titik akses sisi utara',
+                  'verified': ?verified,
+                },
+              ],
+            },
+          ),
+          issues,
+        )!;
+
+        expect(issues, isEmpty, reason: '$verified');
+        expect(poi.entrances.single.verified, isFalse, reason: '$verified');
+        expect(poi.hasSurveyedEntrance, isFalse, reason: '$verified');
+        expect(
+          poi.navigationPoint,
+          const GeoPoint(-6.8901, 107.6102),
+          reason: '$verified',
+        );
+      }
     });
 
     test('tanpa pintu masuk, titik navigasi jatuh ke titik tengah gedung', () {

@@ -1,5 +1,48 @@
 # Session Handoff — AGAM
 
+## Current — Gelombang 0: titik akses, urutan trail, dan dokumen, 24 November 2026
+
+- Branch `feat/access-points-trail-data` dari `dev` @ `bc42624`, worktree
+  `.claude/worktrees/wave0`. Bagian pertama rencana kerja menuju tes lapangan
+  25 November 2026 (WP0 dokumen + WP1 data); WP2–WP6 menyusul.
+- Keputusan pengguna 24 November 2026, dicatat [CL] di PRD: tujuan rute
+  menjadi *titik akses* (F06/§11), tiba di fasilitas diumumkan dengan TTS
+  (§10), trail berupa keliling yang dimulai dari POI terdekat (F08/§12).
+- `tools/routing/plan_access_points.py` (fiona + shapely, deterministik, idempoten):
+  titik akses = titik pada ruas jaringan utama graf yang menempel ke poligon gedung OSM
+  (≤4 m dari dinding, 8 m bila kosong, digabung bila <5 m), lalu dikoreksi pengguna
+  lewat peta 25 November (8 tambah, 6 hapus; `tools/routing/access_overrides.json`):
+  41 kandidat untuk 10 gedung, semuanya `verified: false`. Empat kandidat lorong di
+  `assets/routing/passages.geojson` (Labtek V, VII, VIII dari selasar; Labtek X dari
+  koreksi peta, ujungnya titik akses, bukan simpul graf); aset ini belum didaftarkan di `pubspec.yaml` (dikerjakan WP2). Titik
+  dan lorong `verified: true` tidak ditimpa saat script dijalankan ulang. Urutan trail = keliling terpendek dengan jarak
+  antar-POI diukur di antara titik akses terdekat. Mengisi `entrances[]` (satu titik
+  per baris) dan `trailOrder` 1–10 di `pois.json`, serta menulis daftar cek
+  `task-implementation/backend/PB11-access-point-field-check.md`.
+- Kontrak: `PoiEntrance.verified` (default `false`); `hasSurveyedEntrance`
+  hanya untuk titik terverifikasi; `navigationPoint` memakai kandidat. Codec
+  hanya menerima `true` eksplisit. Seed Firestore tidak menyaring field.
+- Temuan untuk WP2/WP4: graf draf 17 potongan; WP2 harus memuat
+  `passages.geojson` sebagai ruas tambahan dan menyebut lorong kandidat di arahan.
+  Beberapa titik akses hanya terjangkau lewat lorong (mis. titik pertama Labtek
+  VIII = ujung selasar; juga Labtek VII sisi tenggara, Labtek VI sisi selatan,
+  Labtek V sisi barat laut). Acceptance WP2: rute ke titik akses terdekat (bukan
+  `navigationPoint`) dan test bahwa rute ke seluruh 41 titik akses berhasil.
+  Titik koreksi di sudut gedung berjarak 7–13 m dari jalur; routing menempelkannya
+  (batas 25 m). Label kandidat dapat bernomor tidak berurutan setelah ada titik
+  terverifikasi (kosmetik). Navigasi harus memilih titik akses terdekat dari
+  `entrances[]`, bukan `navigationPoint` (titik pertama).
+  `DeviceTrailService._canRoute` menolak titik kandidat, jadi trail tidak bisa
+  dimulai sebelum aturan itu disesuaikan. Pesan "Pintu masuk belum disurvei"
+  di `search_route_screen.dart` perlu diganti saat routing disambungkan.
+- `implementationPhases.md`: rekap 24 November (17 `in_progress`, 5
+  `planned`), PB03 seed otomatis berjalan, PB09/PB11/PB12/PB15/PB21/PB22
+  diperbarui sesuai kode `dev`. PRD §22: titik akses, urutan trail, Firebase,
+  dan konten diperbarui.
+- Test: kandidat titik akses di dataset, urutan trail 1–10, codec `verified`,
+  lorong menghubungkan simpul graf yang ada (`passages_data_test.dart`).
+  Analyze bersih, 416 test lulus.
+
 ## Current — Onboarding crash di layar pendek, 24 November 2026
 
 - Branch `fix/onboarding-small-height` dari `dev` @ `6329963`.

@@ -172,20 +172,43 @@ void main() {
       }
     });
 
-    test(
-      'pintu masuk belum disurvei; navigasi memakai titik tengah gedung',
-      () {
-        for (final poi in result.pois) {
-          expect(poi.hasSurveyedEntrance, isFalse, reason: poi.id);
-          expect(poi.navigationPoint, poi.position, reason: poi.id);
-        }
-      },
-    );
-
-    test('urutan trail belum ditetapkan', () {
+    test('setiap gedung punya titik akses di sekelilingnya', () {
       for (final poi in result.pois) {
-        expect(poi.trailOrder, isNull, reason: poi.id);
+        expect(poi.entrances, isNotEmpty, reason: poi.id);
+        final points = {
+          for (final entrance in poi.entrances)
+            (entrance.position.lat, entrance.position.lng),
+        };
+        expect(points, hasLength(poi.entrances.length), reason: poi.id);
+        for (final entrance in poi.entrances) {
+          // Titik akses ada di dinding gedung yang sama. Gedung terpanjang
+          // (Labtek VII, ±104 m) menaruh titiknya ±98 m dari titik POI.
+          expect(
+            poi.position.distanceTo(entrance.position),
+            lessThan(110),
+            reason: '${poi.id} ${entrance.label}',
+          );
+          // Kandidat memakai label buatan script; titik yang sudah dicek di
+          // lapangan boleh berlabel bebas (mis. "Pintu timur").
+          if (!entrance.verified) {
+            expect(entrance.label, startsWith('Titik akses'), reason: poi.id);
+          }
+          expect(entrance.label.trim(), isNotEmpty, reason: poi.id);
+        }
+        expect(poi.navigationPoint, poi.entrances.first.position);
+        // Navigasi ke kandidat tetap ditandai belum memenuhi F06.
+        expect(
+          poi.hasSurveyedEntrance,
+          poi.entrances.any((entrance) => entrance.verified),
+          reason: poi.id,
+        );
       }
+    });
+
+    test('urutan trail memakai 1–10 tepat satu kali', () {
+      final orders = [for (final poi in result.pois) poi.trailOrder];
+      expect(orders, everyElement(isNotNull));
+      expect(orders.toSet(), {for (var i = 1; i <= 10; i++) i});
     });
 
     test('dataset fasilitas disetujui dan merujuk POI yang ada', () {

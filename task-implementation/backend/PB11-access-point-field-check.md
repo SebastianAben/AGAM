@@ -1,0 +1,150 @@
+# PB11 — Daftar cek titik akses di lapangan
+
+Dibuat oleh `tools/routing/plan_access_points.py` dari data OSM yang juga digambar di peta: poligon gedung (`tools/tiles/ganesha.gpkg`) dan graf jalan kaki (`assets/routing/ganesha-walk-demo.geojson`). Titik akses adalah titik pada jalur yang menempel ke gedung (≤4 m dari dinding; 8 m bila tidak ada yang sedekat itu), digabung bila berjarak <5 m. Totalnya 41 kandidat untuk 10 gedung; semuanya belum diverifikasi (`verified: false`). Navigasi akan menuju titik akses terdekat milik gedung tujuan.
+
+## Cara cek
+
+1. Buka link peta tiap baris, lalu berdiri di titik tersebut.
+2. Tandai **Cocok** bila dari titik itu orang memang masuk ke gedung (pintu atau sisi lantai 1 yang terbuka).
+3. Tandai **Hapus** bila titik itu bukan jalan masuk (misalnya pagar, jendela, atau tembok tertutup).
+4. Bila ada jalan masuk yang tidak tercantum, berdiri di sana dan catat koordinatnya (Google Maps: tekan lama titik biru, salin angka) beserta sisi gedungnya.
+5. Setelah dicek, `pois.json` dikoreksi dan `verified` diubah menjadi `true` per titik.
+
+## P01 — Labtek V
+
+Poligon OSM: Labtek V (way/119419735).
+
+| Titik | Lat | Lng | Jarak ke dinding | Peta | Hasil cek |
+| --- | --- | --- | --- | --- | --- |
+| Titik akses sisi timur 1 (koreksi peta) | -6.8904541 | 107.6102388 | 0.9 m | [buka](https://www.google.com/maps?q=-6.8904541,107.6102388) | ☐ Cocok ☐ Hapus |
+| Titik akses sisi timur 2 | -6.8906313 | 107.6102478 | 0.0 m | [buka](https://www.google.com/maps?q=-6.8906313,107.6102478) | ☐ Cocok ☐ Hapus |
+| Titik akses sisi timur 3 | -6.8907117 | 107.6102482 | 0.0 m | [buka](https://www.google.com/maps?q=-6.8907117,107.6102482) | ☐ Cocok ☐ Hapus |
+| Titik akses sisi barat daya | -6.8907403 | 107.6096439 | 2.9 m | [buka](https://www.google.com/maps?q=-6.8907403,107.6096439) | ☐ Cocok ☐ Hapus |
+| Titik akses sisi barat 1 | -6.8906329 | 107.6093209 | 0.0 m | [buka](https://www.google.com/maps?q=-6.8906329,107.6093209) | ☐ Cocok ☐ Hapus |
+| Titik akses sisi barat 2 | -6.890466 | 107.6093201 | 0.0 m | [buka](https://www.google.com/maps?q=-6.890466,107.6093201) | ☐ Cocok ☐ Hapus |
+| Titik akses sisi barat laut | -6.8904645 | 107.6096411 | 0.0 m | [buka](https://www.google.com/maps?q=-6.8904645,107.6096411) | ☐ Cocok ☐ Hapus |
+| Lorong Labtek V (kandidat, 30 m menembus gedung) | -6.8904645 → -6.8907403 | 107.6096411 → 107.6096439 | — | [ujung 1](https://www.google.com/maps?q=-6.8904645,107.6096411) · [ujung 2](https://www.google.com/maps?q=-6.8907403,107.6096439) | ☐ Lorong terbuka, bisa dilewati ☐ Hapus |
+
+## P02 — Labtek VI
+
+Poligon OSM: Labtek VI (way/119419729).
+
+| Titik | Lat | Lng | Jarak ke dinding | Peta | Hasil cek |
+| --- | --- | --- | --- | --- | --- |
+| Titik akses sisi timur laut | -6.8900219 | 107.6098787 | 0.0 m | [buka](https://www.google.com/maps?q=-6.8900219,107.6098787) | ☐ Cocok ☐ Hapus |
+| Titik akses sisi timur 1 (koreksi peta) | -6.8900353 | 107.6101898 | 0.1 m | [buka](https://www.google.com/maps?q=-6.8900353,107.6101898) | ☐ Cocok ☐ Hapus |
+| Titik akses sisi timur 2 (koreksi peta) | -6.8902806 | 107.6101858 | 0.4 m | [buka](https://www.google.com/maps?q=-6.8902806,107.6101858) | ☐ Cocok ☐ Hapus |
+| Titik akses sisi barat daya | -6.8902856 | 107.6095855 | 0.0 m | [buka](https://www.google.com/maps?q=-6.8902856,107.6095855) | ☐ Cocok ☐ Hapus |
+| Titik akses sisi barat 1 | -6.8902862 | 107.6093147 | 0.0 m | [buka](https://www.google.com/maps?q=-6.8902862,107.6093147) | ☐ Cocok ☐ Hapus |
+| Titik akses sisi barat 2 | -6.890023 | 107.6093731 | 0.0 m | [buka](https://www.google.com/maps?q=-6.890023,107.6093731) | ☐ Cocok ☐ Hapus |
+
+## P03 — Labtek VII
+
+Poligon OSM: School of Pharmacy ITB (way/119414691).
+
+| Titik | Lat | Lng | Jarak ke dinding | Peta | Hasil cek |
+| --- | --- | --- | --- | --- | --- |
+| Titik akses sisi timur laut | -6.8900025 | 107.6110473 | 0.0 m | [buka](https://www.google.com/maps?q=-6.8900025,107.6110473) | ☐ Cocok ☐ Hapus |
+| Titik akses sisi timur | -6.8901188 | 107.611455 | 0.1 m | [buka](https://www.google.com/maps?q=-6.8901188,107.611455) | ☐ Cocok ☐ Hapus |
+| Titik akses sisi tenggara | -6.8902538 | 107.6110458 | 0.0 m | [buka](https://www.google.com/maps?q=-6.8902538,107.6110458) | ☐ Cocok ☐ Hapus |
+| Titik akses sisi barat (koreksi peta) | -6.8902589 | 107.6105248 | 0.2 m | [buka](https://www.google.com/maps?q=-6.8902589,107.6105248) | ☐ Cocok ☐ Hapus |
+| Lorong Labtek VII (kandidat, 28 m menembus gedung) | -6.8902538 → -6.8900025 | 107.6110458 → 107.6110473 | — | [ujung 1](https://www.google.com/maps?q=-6.8902538,107.6110458) · [ujung 2](https://www.google.com/maps?q=-6.8900025,107.6110473) | ☐ Lorong terbuka, bisa dilewati ☐ Hapus |
+
+## P04 — Labtek VIII
+
+Poligon OSM: Labtek VIII (way/119422837).
+
+| Titik | Lat | Lng | Jarak ke dinding | Peta | Hasil cek |
+| --- | --- | --- | --- | --- | --- |
+| Titik akses sisi timur laut | -6.8904501 | 107.6110471 | 0.0 m | [buka](https://www.google.com/maps?q=-6.8904501,107.6110471) | ☐ Cocok ☐ Hapus |
+| Titik akses sisi timur | -6.8905532 | 107.6114021 | 0.0 m | [buka](https://www.google.com/maps?q=-6.8905532,107.6114021) | ☐ Cocok ☐ Hapus |
+| Titik akses sisi tenggara | -6.8907099 | 107.6111297 | 0.0 m | [buka](https://www.google.com/maps?q=-6.8907099,107.6111297) | ☐ Cocok ☐ Hapus |
+| Titik akses sisi barat 1 | -6.8907161 | 107.6105091 | 0.0 m | [buka](https://www.google.com/maps?q=-6.8907161,107.6105091) | ☐ Cocok ☐ Hapus |
+| Titik akses sisi barat 2 | -6.8906368 | 107.6105083 | 0.0 m | [buka](https://www.google.com/maps?q=-6.8906368,107.6105083) | ☐ Cocok ☐ Hapus |
+| Titik akses sisi barat 3 (koreksi peta) | -6.8904492 | 107.6105068 | 0.4 m | [buka](https://www.google.com/maps?q=-6.8904492,107.6105068) | ☐ Cocok ☐ Hapus |
+| Lorong Labtek VIII (kandidat, 30 m menembus gedung) | -6.8904501 → -6.8907099 | 107.6110471 → 107.6111297 | — | [ujung 1](https://www.google.com/maps?q=-6.8904501,107.6110471) · [ujung 2](https://www.google.com/maps?q=-6.8907099,107.6111297) | ☐ Lorong terbuka, bisa dilewati ☐ Hapus |
+
+## P05 — Labtek X & XI
+
+Poligon OSM: Labtek X (way/119419842), Labtek XI (way/119419843).
+
+| Titik | Lat | Lng | Jarak ke dinding | Peta | Hasil cek |
+| --- | --- | --- | --- | --- | --- |
+| Titik akses sisi timur laut 1 | -6.8887142 | 107.6096741 | 2.8 m | [buka](https://www.google.com/maps?q=-6.8887142,107.6096741) | ☐ Cocok ☐ Hapus |
+| Titik akses sisi timur laut 2 | -6.8889175 | 107.6097767 | 0.0 m | [buka](https://www.google.com/maps?q=-6.8889175,107.6097767) | ☐ Cocok ☐ Hapus |
+| Titik akses sisi tenggara | -6.8896134 | 107.6097832 | 0.0 m | [buka](https://www.google.com/maps?q=-6.8896134,107.6097832) | ☐ Cocok ☐ Hapus |
+| Titik akses sisi selatan | -6.8897748 | 107.6093745 | 0.0 m | [buka](https://www.google.com/maps?q=-6.8897748,107.6093745) | ☐ Cocok ☐ Hapus |
+| Titik akses sisi barat laut | -6.8887148 | 107.6092416 | 3.1 m | [buka](https://www.google.com/maps?q=-6.8887148,107.6092416) | ☐ Cocok ☐ Hapus |
+| Titik akses sisi utara 1 (koreksi peta) | -6.889121 | 107.6094236 | 0.7 m | [buka](https://www.google.com/maps?q=-6.889121,107.6094236) | ☐ Cocok ☐ Hapus |
+| Titik akses sisi utara 2 | -6.8887136 | 107.6093865 | 3.1 m | [buka](https://www.google.com/maps?q=-6.8887136,107.6093865) | ☐ Cocok ☐ Hapus |
+| Lorong Labtek X & XI (koreksi peta) (kandidat, 28 m menembus gedung) | -6.889121 → -6.8892698 | 107.6094236 → 107.6092154 | — | [ujung 1](https://www.google.com/maps?q=-6.889121,107.6094236) · [ujung 2](https://www.google.com/maps?q=-6.8892698,107.6092154) | ☐ Lorong terbuka, bisa dilewati ☐ Hapus |
+
+## P06 — Gedung Kuliah Umum Barat
+
+Poligon OSM: GKU barat (way/119419737).
+
+| Titik | Lat | Lng | Jarak ke dinding | Peta | Hasil cek |
+| --- | --- | --- | --- | --- | --- |
+| Titik akses sisi timur (koreksi peta) | -6.8903994 | 107.609086 | 5.2 m | [buka](https://www.google.com/maps?q=-6.8903994,107.609086) | ☐ Cocok ☐ Hapus |
+| Titik akses sisi selatan (koreksi peta) | -6.8906619 | 107.608862 | 8.7 m | [buka](https://www.google.com/maps?q=-6.8906619,107.608862) | ☐ Cocok ☐ Hapus |
+| Titik akses sisi barat laut | -6.890139 | 107.6087204 | 3.2 m | [buka](https://www.google.com/maps?q=-6.890139,107.6087204) | ☐ Cocok ☐ Hapus |
+
+## P07 — Gedung Kuliah Umum Timur
+
+Poligon OSM: GKU Timur (way/119424003).
+
+| Titik | Lat | Lng | Jarak ke dinding | Peta | Hasil cek |
+| --- | --- | --- | --- | --- | --- |
+| Titik akses sisi timur | -6.8904699 | 107.612408 | 3.0 m | [buka](https://www.google.com/maps?q=-6.8904699,107.612408) | ☐ Cocok ☐ Hapus |
+| Titik akses sisi barat daya | -6.8905032 | 107.6117897 | 0.0 m | [buka](https://www.google.com/maps?q=-6.8905032,107.6117897) | ☐ Cocok ☐ Hapus |
+| Jalur terputus dari jaringan rute (tidak dipakai) | -6.8905201 | 107.6119298 | 0.0 m | [buka](https://www.google.com/maps?q=-6.8905201,107.6119298) | ☐ Jalur nyata, perlu disambung ☐ Abaikan |
+
+## P08 — Oktagon
+
+Poligon OSM: Oktagon (way/119419840).
+
+| Titik | Lat | Lng | Jarak ke dinding | Peta | Hasil cek |
+| --- | --- | --- | --- | --- | --- |
+| Titik akses sisi timur | -6.8890511 | 107.6102704 | 1.8 m | [buka](https://www.google.com/maps?q=-6.8890511,107.6102704) | ☐ Cocok ☐ Hapus |
+| Titik akses sisi barat laut | -6.8888957 | 107.6099707 | 0.0 m | [buka](https://www.google.com/maps?q=-6.8888957,107.6099707) | ☐ Cocok ☐ Hapus |
+| Dihapus pada koreksi peta (bukan jalan masuk): -6.8891131, 107.6102691; -6.8889882, 107.60986 | | | | | |
+
+## P09 — TVST
+
+Poligon OSM: TVST (way/119419841).
+
+| Titik | Lat | Lng | Jarak ke dinding | Peta | Hasil cek |
+| --- | --- | --- | --- | --- | --- |
+| Titik akses sisi timur | -6.8895149 | 107.6102835 | 2.5 m | [buka](https://www.google.com/maps?q=-6.8895149,107.6102835) | ☐ Cocok ☐ Hapus |
+| Titik akses sisi barat daya | -6.8896356 | 107.6099737 | 0.0 m | [buka](https://www.google.com/maps?q=-6.8896356,107.6099737) | ☐ Cocok ☐ Hapus |
+| Dihapus pada koreksi peta (bukan jalan masuk): -6.8894129, 107.6098605; -6.8892786, 107.6099849; -6.8895544, 107.6098592; -6.8894072, 107.6102802 | | | | | |
+
+## P10 — Labtek I
+
+Poligon OSM: Labtek I - Mekanika Tanah (way/119423377).
+
+| Titik | Lat | Lng | Jarak ke dinding | Peta | Hasil cek |
+| --- | --- | --- | --- | --- | --- |
+| Titik akses sisi selatan | -6.8895553 | 107.6110389 | 1.7 m | [buka](https://www.google.com/maps?q=-6.8895553,107.6110389) | ☐ Cocok ☐ Hapus |
+| Titik akses sisi barat | -6.88927 | 107.61103 | 2.6 m | [buka](https://www.google.com/maps?q=-6.88927,107.61103) | ☐ Cocok ☐ Hapus |
+
+## Urutan trail (keliling)
+
+Jumlah jarak jalan antar-gedung ±492 m, diukur dari titik akses terdekat ke titik akses terdekat; jalan menembus atau mengitari gedung untuk berpindah sisi tidak dihitung, jadi jarak tempuh nyata lebih panjang. Aplikasi memutar urutan ini agar dimulai dari POI terdekat dengan pengguna, lalu berlanjut searah putaran.
+
+| Urutan | POI | Gedung | Ke berikutnya |
+| --- | --- | --- | --- |
+| 1 | P01 | Labtek V | 29 m ke Labtek VIII |
+| 2 | P04 | Labtek VIII | 48 m ke Gedung Kuliah Umum Timur |
+| 3 | P07 | Gedung Kuliah Umum Timur | 80 m ke Labtek VII |
+| 4 | P03 | Labtek VII | 49 m ke Labtek I |
+| 5 | P10 | Labtek I | 100 m ke Oktagon |
+| 6 | P08 | Oktagon | 34 m ke Labtek X & XI |
+| 7 | P05 | Labtek X & XI | 29 m ke TVST |
+| 8 | P09 | TVST | 50 m ke Labtek VI |
+| 9 | P02 | Labtek VI | 39 m ke Gedung Kuliah Umum Barat |
+| 10 | P06 | Gedung Kuliah Umum Barat | 34 m ke Labtek V |
+
+## Catatan graf
+
+Graf OSM terdiri atas 17 potongan terpisah; jaringan utama 985 simpul. Lorong tembus gedung (4 kandidat di `assets/routing/passages.geojson`) menyambung selasar yang terputus, sehingga jaringan yang dapat dipakai rute menjadi 991 simpul. Lorong hanya diusulkan bila selasar menunjuk lurus ke jalur di dinding seberang (≤20°, ≤60 m, seluruhnya di dalam gedung). Jalur yang masih terputus tercantum di tabel per gedung.

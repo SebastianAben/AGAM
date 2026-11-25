@@ -344,7 +344,12 @@ List<PoiEntrance>? _entrances(
     );
     if (lat == null || lng == null) return null;
     entrances.add(
-      PoiEntrance(position: GeoPoint(lat, lng), label: _text(entry['label'])),
+      PoiEntrance(
+        position: GeoPoint(lat, lng),
+        label: _text(entry['label']),
+        // Hanya `true` eksplisit; selain itu titik dianggap kandidat.
+        verified: entry['verified'] == true,
+      ),
     );
   }
   return entrances;
