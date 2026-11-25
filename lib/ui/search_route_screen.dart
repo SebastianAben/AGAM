@@ -17,6 +17,7 @@ import 'widgets/agam_theme.dart';
 import 'widgets/arrival_card.dart';
 import 'widgets/facility_labels.dart';
 import 'widgets/offline_campus_map.dart';
+import 'widgets/recommendation_card.dart';
 
 /// UI05 Search & Destination plus the active UI06 navigation summary.
 /// Search/routing implementations are injected from AppServices.
@@ -83,6 +84,10 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
   // `search` when a typed search first returns results, `facilities` when a
   // facility category first filters the page. Only the feature is sent.
   final _loggedFeatures = <ActivityFeature>{};
+  // UI07 after arrival; the request counter drops answers that come back
+  // after the route changed.
+  RecommendationView? _recommendation;
+  int _recommendRequest = 0;
 
   void _logOnce(ActivityFeature feature) {
     if (!_loggedFeatures.add(feature)) return;
@@ -110,11 +115,15 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
       // The arrival card replaces the route card at the top of the list;
       // bring it into view if the list was scrolled down meanwhile.
       if (arrived) {
+        _recommendAfter(value.target);
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) _revealCard();
         });
       }
     });
+    if (_navigation.status == NavigationStatus.arrived) {
+      _recommendAfter(_navigation.target);
+    }
     _facilityFilter = widget.initialFacility;
     if (_facilityFilter != null) _logOnce(ActivityFeature.facilities);
     if (widget.initialDestination case final poi?) {
@@ -277,6 +286,50 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
     await _openPoiDetail(poi);
   }
 
+  /// UI07 under the arrival card: next POIs from where the user now stands
+  /// (or the arrival point), excluding the POI just reached. Nothing is
+  /// logged (PRD §15.5, rules §5.1).
+  Future<void> _recommendAfter(NavigationTarget? target) async {
+    if (target == null) return;
+    _recommendation = null;
+    final request = ++_recommendRequest;
+    final from = widget.services.location.lastFix?.position ?? target.point;
+    try {
+      final result = await widget.services.recommendations.recommend(
+        from: from,
+        afterPoiId: target.kind == NavigationTargetKind.poi ? target.id : null,
+      );
+      final pois = await widget.services.pois.watchPois().first;
+      if (!mounted || request != _recommendRequest) return;
+      setState(
+        () => _recommendation = RecommendationView.resolve(
+          result,
+          pois: pois,
+          from: from,
+          trailActive: widget.services.trail.current.active,
+        ),
+      );
+    } catch (_) {
+      // Recommendations are optional; the arrival card stands on its own.
+    }
+  }
+
+  void _clearRecommendation() {
+    _recommendRequest++;
+    _recommendation = null;
+  }
+
+  Future<void> _routeToRecommended(Poi poi) async {
+    final result = SearchResult(
+      kind: SearchResultKind.poi,
+      id: poi.id,
+      name: poi.name,
+      score: 1,
+    );
+    _selectDestination(result);
+    await _startRoute(result);
+  }
+
   Future<void> _startRoute(SearchResult result) async {
     if (_routing) return;
     final poi = _poiFor(result);
@@ -292,6 +345,7 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
       _routing = true;
       _error = null;
       _destination = result;
+      _clearRecommendation();
     });
     var sessionStarted = false;
     try {
@@ -347,6 +401,7 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
       setState(() {
         _destination = null;
         _navigation = const NavigationState.idle();
+        _clearRecommendation();
       });
     }
   }
@@ -1021,7 +1076,8 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
     final poi = _poiFor(destination);
     final facility = _facilityFor(destination);
     final point = _pointFor(destination);
-    return ArrivalCard(
+    final recommendation = _recommendation;
+    final arrival = ArrivalCard(
       name: _navigation.target?.name ?? destination.name,
       kind: _navigation.target?.kind ?? NavigationTargetKind.poi,
       voice: widget.services.voice,
@@ -1047,6 +1103,24 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
               onSelectPoi: _openPoiDetail,
               attributionPadding: const EdgeInsets.all(8),
             ),
+    );
+    // UI07: the next places sit right under the arrival, one tap from a route.
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        arrival,
+        RecommendationPresence(
+          child: recommendation == null
+              ? null
+              : Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: RecommendationCard(
+                    view: recommendation,
+                    onRoute: _routeToRecommended,
+                  ),
+                ),
+        ),
+      ],
     );
   }
 
