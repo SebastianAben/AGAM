@@ -528,8 +528,8 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
                     const SizedBox(height: 10),
                     // Location speaks through the dot on the map; words
                     // appear only when something needs the user's action.
-                    AnimatedSize(
-                      duration: AgamMotion.duration(context, 240),
+                    AgamAnimatedSize(
+                      milliseconds: 240,
                       curve: AgamMotion.easeOut,
                       alignment: Alignment.bottomCenter,
                       child: switch (_locationMessage ??
@@ -1200,8 +1200,8 @@ class _PoiSheet extends StatelessWidget {
                     if (triggered)
                       _PromptCard(poi: poi)
                     else
-                      AnimatedSize(
-                        duration: AgamMotion.duration(context, 240),
+                      AgamAnimatedSize(
+                        milliseconds: 240,
                         curve: AgamMotion.easeOut,
                         alignment: Alignment.topCenter,
                         child: Text(

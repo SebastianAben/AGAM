@@ -658,8 +658,8 @@ class _TrailStep extends StatelessWidget {
                           ),
                           if (contentReady) ...[
                             const SizedBox(height: 8),
-                            AnimatedSize(
-                              duration: AgamMotion.duration(context, 240),
+                            AgamAnimatedSize(
+                              milliseconds: 240,
                               curve: AgamMotion.easeOut,
                               alignment: Alignment.topCenter,
                               child: Text(

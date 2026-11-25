@@ -664,8 +664,8 @@ class _PoiDetailScreenState extends State<PoiDetailScreen> {
                 ),
               ],
             ),
-            AnimatedSize(
-              duration: AgamMotion.duration(context, 240),
+            AgamAnimatedSize(
+              milliseconds: 240,
               curve: AgamMotion.easeOut,
               alignment: Alignment.topCenter,
               child: _transcriptExpanded

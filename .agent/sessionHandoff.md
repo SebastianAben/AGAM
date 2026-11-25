@@ -14,8 +14,8 @@
   perlu review LA/LB/FE); tiba ≤15 m dari titik akses mana pun; arahan lorong
   kandidat "(belum diverifikasi)". `pubspec.yaml` (LA) mendaftarkan dua aset graf.
 - WP3 tiba: TTS "Anda telah tiba di {fasilitas}" bila suara `id-ID` ada; kartu
-  tiba di Cari & Rute; `AgamAnimatedSize` memperbaiki crash `AnimatedSize`
-  berdurasi nol saat reduced motion di layar itu (7 pemakaian lain belum).
+  tiba di Cari & Rute. `AgamAnimatedSize` menggantikan semua `AnimatedSize` di
+  UI (crash build debug saat reduced motion; APK lapangan adalah build debug).
 - WP4 trail: mulai dari POI terdekat, titik awal per akun, kandidat titik akses
   diterima, `trailCompleted` sekali; layar Trail berjalan di demo.
 - WP5 rekomendasi: UI07 "Lanjut ke mana?" di bawah kartu tiba dan di peta
@@ -31,15 +31,21 @@
 - Dokumen: rules §2 tabel Audio dan PRD §23 "Sumber suara" (TTS juga untuk tiba
   di fasilitas), PRD §15.5 baris `featureUsed`, implementationPhases (rekap 18
   `in_progress`/4 `planned`; PB11, PB12, PB14, PB15, PB16, PB21, PB22).
-- Verifikasi: format/analyze bersih, 467 test lulus. Belum: build APK, uji
-  emulator/perangkat, tes lapangan.
+- Pratinjau web (Playwright, 390×844, lokasi palsu Labtek V → VIII): cari →
+  Rute → kartu tiba + "Lanjut ke mana?" → Rute satu ketukan memulai rute; di
+  peta, menutup panel memunculkan UI07 dan Rute langsung membuka rute; tanpa
+  error console. Temuan: ETA "0 menit" untuk jalan <1 menit, kini dibulatkan
+  ke atas (min. 1).
+- Verifikasi: format/analyze bersih, 469 test lulus. Belum: build APK (CI PR),
+  uji emulator/perangkat, tes lapangan.
 - Terbuka: kunjungan Explore tidak dicatat ke `AccountVisitStore`;
   `DeviceAuthService.deleteAccount` bisa gagal setengah jalan; status suara
   `id-ID` di-cache sampai aplikasi dibuka ulang; rekomendasi di layar sangat
   pendek dan pergantian kartu tiba saat trail auto-route belum diuji; kelas
   `UnavailableRecommendationService` kini tak terpakai; `recommendation_bootstrap.dart`
-  (folder LB) perlu review LB; CI `dev` `5cc955c` gagal di build APK (diduga
-  sementara, perlu re-run); PB13 eyes-free belum dimulai.
+  (folder LB) perlu review LB; CI `dev` `5cc955c` gagal di build APK dan belum
+  di-re-run (CI PR untuk commit yang sama lulus, diduga gangguan runner); PB13
+  eyes-free belum dimulai.
 
 ## Current — Gelombang 0: titik akses, urutan trail, dan dokumen, 24 November 2026
 
