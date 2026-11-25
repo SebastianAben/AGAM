@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 
 import 'contracts/contracts.dart';
@@ -39,11 +40,19 @@ Future<void> main() async {
   );
 }
 
+/// Graf jalan kaki kampus dan lorong tembus gedung yang dibundel (PRD §11).
+/// Rute dihitung di perangkat; posisi pengguna tidak dikirim ke mana pun.
+Future<RoutingService> _loadCampusRouting() async =>
+    CampusRoutingService.fromGeoJson(
+      await rootBundle.loadString('assets/routing/ganesha-walk-demo.geojson'),
+      passages: await rootBundle.loadString('assets/routing/passages.geojson'),
+    );
+
 /// Build produk: Firebase, akun asli dengan gerbang login (UI10), batas
 /// layanan Kampus Ganesha + 200 m (PRD §9.3), dan layanan asli LA/LB yang
-/// sama dengan demo. Fitur yang datanya belum ada (graf jalur
-/// kampus, urutan resmi trail, rekomendasi) memakai layanan berstatus "belum
-/// tersedia", bukan data palsu.
+/// sama dengan demo. Routing memakai graf jalur kampus yang dibundel. Fitur
+/// yang belum disambungkan (trail, rekomendasi) memakai layanan berstatus
+/// "belum tersedia", bukan data palsu.
 ///
 /// Seperti demo, permintaan buka POI dan aksi dari notifikasi trigger
 /// diteruskan ke UI; tanpa ini notifikasi POI tidak membuka kartunya.
@@ -52,7 +61,7 @@ Future<
 >
 _createProductionAppServices() async {
   final map = AgamMapConfig.campus();
-  const routing = UnavailableCampusRouting();
+  final routing = await _loadCampusRouting();
   final la = await createLaServices(
     bundledOnly: false,
     developerTrialAvailable: false,
@@ -93,17 +102,17 @@ _createProductionAppServices() async {
   );
 }
 
-/// Demo memakai seluruh layanan asli LA dan LB. Fitur yang datanya belum ada
-/// memakai layanan asli berstatus "belum tersedia", bukan data palsu: graf
-/// jalur kampus (routing), urutan resmi trail, dan rekomendasi. Akun demo
-/// tetap fake karena demo tidak menjalankan Firebase; gerbang login hanya
-/// ada di build produk.
+/// Demo memakai seluruh layanan asli LA dan LB, termasuk routing pada graf
+/// jalur kampus yang dibundel. Fitur yang belum disambungkan memakai layanan
+/// asli berstatus "belum tersedia", bukan data palsu: trail dan rekomendasi.
+/// Akun demo tetap fake karena demo tidak menjalankan Firebase; gerbang login
+/// hanya ada di build produk.
 Future<
   (AppServices, Stream<String>, Future<void> Function(String, TriggerAction))
 >
 _createAppServices() async {
   final map = AgamMapConfig.internalDemo();
-  const routing = UnavailableCampusRouting();
+  final routing = await _loadCampusRouting();
   final la = await createLaServices(
     bundledOnly: true,
     developerTrialAvailable: const bool.fromEnvironment('AGAM_INTERNAL_DEMO'),

@@ -25,7 +25,8 @@ AppServices demoServices() {
     activity: fake.activity,
     map: fake.map,
     routing: fake.routing,
-    navigation: _UnavailableNavigation(),
+    // The demo routes on the bundled campus graph, like the product build.
+    navigation: fake.navigation,
     search: PoiSearchService(pois: fake.pois),
     recommendations: fake.recommendations,
     trail: _UnavailableTrail(),
@@ -34,12 +35,6 @@ AppServices demoServices() {
 }
 
 // Any access to unfinished runtime services must fail this test.
-class _UnavailableNavigation implements NavigationController {
-  @override
-  dynamic noSuchMethod(Invocation invocation) =>
-      throw StateError('Demo accessed navigation: ${invocation.memberName}');
-}
-
 class _UnavailableTrail implements TrailService {
   @override
   dynamic noSuchMethod(Invocation invocation) =>
