@@ -37,6 +37,7 @@ class ExploreMapScreen extends StatefulWidget {
     this.onAutomaticPoi,
     this.onOpenSearch,
     this.onRoute,
+    this.onStartRoute,
   });
 
   final VoidCallback? onAutomaticPoi;
@@ -48,6 +49,12 @@ class ExploreMapScreen extends StatefulWidget {
   /// Starts the route flow to a POI. Without it, or in the internal demo
   /// where the campus graph is missing, "Rute" explains it is unavailable.
   final ValueChanged<Poi>? onRoute;
+
+  /// Starts navigating to a POI in one tap (a recommendation, Rute on the
+  /// POI detail). Falls back to [onRoute] when not given.
+  final ValueChanged<Poi>? onStartRoute;
+
+  ValueChanged<Poi>? get _startRoute => onStartRoute ?? onRoute;
   final AppServices services;
   final bool embedded;
   final bool isActive;
@@ -305,11 +312,11 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
             audio: widget.services.audio,
             settings: widget.services.settings,
             checkedIn: false,
-            navigationAvailable: widget.onRoute != null,
+            navigationAvailable: widget._startRoute != null,
             // The route card lives on the search page, as from the panel.
             onNavigate: () async {
               Navigator.of(context).pop();
-              widget.onRoute?.call(poi);
+              widget._startRoute?.call(poi);
             },
           ),
         ),
@@ -551,10 +558,10 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
                                 child: RecommendationCard(
                                   view: view,
                                   floating: true,
-                                  routeAvailable: widget.onRoute != null,
+                                  routeAvailable: widget._startRoute != null,
                                   onRoute: (poi) {
                                     setState(_clearRecommendation);
-                                    widget.onRoute?.call(poi);
+                                    widget._startRoute?.call(poi);
                                   },
                                   onDismiss: () =>
                                       setState(_clearRecommendation),

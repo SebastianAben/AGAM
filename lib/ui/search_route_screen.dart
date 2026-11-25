@@ -29,6 +29,7 @@ class SearchRouteScreen extends StatefulWidget {
     this.initialFacility,
     this.autofocus = false,
     this.initialDestination,
+    this.startRouteOnOpen = false,
     this.onTabSelected,
     this.internalDemo = false,
     this.onShowPoiOnMap,
@@ -48,6 +49,10 @@ class SearchRouteScreen extends StatefulWidget {
 
   /// Opens with this building already chosen, from "Rute" on the map.
   final Poi? initialDestination;
+
+  /// Starts the route to [initialDestination] as soon as the page shows, for
+  /// one-tap actions (a recommendation, Rute on a POI detail; PRD F07).
+  final bool startRouteOnOpen;
   final ValueChanged<int>? onTabSelected;
   final bool internalDemo;
 
@@ -62,6 +67,8 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
   List<Facility> _facilities = const [];
   List<SearchResult> _results = const [];
   SearchResult? _destination;
+  // Set by [SearchRouteScreen.startRouteOnOpen] until the POIs have loaded.
+  SearchResult? _pendingRoute;
   // One map lives in the destination card while it is open, so switching
   // destinations moves its camera instead of rebuilding it at the new place.
   final _cardMap = GlobalKey<OfflineCampusMapState>();
@@ -98,7 +105,14 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
   void initState() {
     super.initState();
     _poiSubscription = widget.services.pois.watchPois().listen((value) {
-      if (mounted) setState(() => _pois = value);
+      if (!mounted) return;
+      setState(() => _pois = value);
+      // A one-tap route waits for the POIs it needs to build its target.
+      if (_pendingRoute case final destination?
+          when _poiFor(destination) != null) {
+        _pendingRoute = null;
+        _startRoute(destination);
+      }
     });
     _facilitySubscription = widget.services.pois.watchFacilities().listen((
       value,
@@ -127,12 +141,14 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
     _facilityFilter = widget.initialFacility;
     if (_facilityFilter != null) _logOnce(ActivityFeature.facilities);
     if (widget.initialDestination case final poi?) {
-      _destination = SearchResult(
+      final destination = SearchResult(
         kind: SearchResultKind.poi,
         id: poi.id,
         name: poi.name,
         score: 1,
       );
+      _destination = destination;
+      if (widget.startRouteOnOpen) _pendingRoute = destination;
     }
     _query.addListener(_runSearch);
     _focus.addListener(() => setState(() {}));

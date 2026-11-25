@@ -205,6 +205,32 @@ void main() {
       return (services, navigation);
     }
 
+    testWidgets('halaman pencarian dari satu ketukan langsung memulai rute', (
+      tester,
+    ) async {
+      _phone(tester, height: 1400);
+      final navigation = _ManualNavigation(const NavigationState.idle());
+      final services = _services(
+        recommendations: _StubRecommendations(_full()),
+        navigation: navigation,
+        location: _StaticLocation(_fixAt(_here.position)),
+      );
+      await tester.pumpWidget(
+        _app(
+          SearchRouteScreen(
+            services: services,
+            initialDestination: _next,
+            startRouteOnOpen: true,
+          ),
+        ),
+      );
+      await _frames(tester, 4);
+      expect(navigation.started.single.id, _next.id);
+      expect(services.session.current.mode, SessionMode.navigation);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await _frames(tester, 2);
+    });
+
     testWidgets('UI07 menampilkan POI dan fasilitas; Rute memulai navigasi', (
       tester,
     ) async {
@@ -309,7 +335,10 @@ void main() {
         _app(
           ExploreMapScreen(
             services: services,
-            onRoute: routed.add,
+            // The panel's Rute opens the destination card; a recommendation
+            // starts the route in one tap (PRD F07).
+            onRoute: (_) {},
+            onStartRoute: routed.add,
             onOpenSearch: searchBar ? (_) {} : null,
           ),
           reduceMotion: reduceMotion,
@@ -322,7 +351,7 @@ void main() {
       return (services, session, routed);
     }
 
-    testWidgets('menutup panel memunculkan UI07; Rute memakai onRoute', (
+    testWidgets('menutup panel memunculkan UI07; Rute satu ketukan', (
       tester,
     ) async {
       final recommendations = _StubRecommendations(_full());
