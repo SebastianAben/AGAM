@@ -10,11 +10,15 @@ import '../../contracts/contracts.dart';
 /// - membacakan teks arahan setiap kali langkah berganti atau rute baru
 ///   dihitung (mis. setelah rerouting), lewat [VoiceGuidance];
 /// - saat status berubah menjadi tiba, menghentikan TTS lalu memutar file
-///   audio pengumuman tiba milik POI tujuan lewat [AudioService].
+///   audio pengumuman tiba milik POI tujuan lewat [AudioService];
+/// - tiba di fasilitas (tanpa file audio tiba) diumumkan dengan TTS:
+///   "Anda telah tiba di {nama fasilitas}" (PRD §10, keputusan 24 November
+///   2026). Jika suara `id-ID` tidak tersedia, pengumuman tidak dibacakan dan
+///   kartu tiba di UI menjadi penggantinya.
 ///
 /// Langkah dengan manuver `arrive` tidak dibacakan karena pengumuman tiba
-/// memakai file audio (PRD §10). Tujuan berupa fasilitas tidak memiliki file
-/// pengumuman tiba; konfirmasi tiba untuk fasilitas hanya visual (UI07).
+/// memakai file audio atau kalimat tiba di atas. Setiap kedatangan diumumkan
+/// sekali, walau status tiba dipancarkan berulang.
 class NavigationAnnouncer {
   NavigationAnnouncer({
     required this._navigation,
@@ -30,6 +34,7 @@ class NavigationAnnouncer {
   NavigationStatus _lastStatus = NavigationStatus.idle;
   WalkingRoute? _lastRoute;
   int? _lastStepIndex;
+  String? _arrivedAt;
 
   void start() {
     _subscription ??= _navigation.state.listen(_onState);
@@ -56,17 +61,36 @@ class NavigationAnnouncer {
       case NavigationStatus.onRoute:
         await _announceStep(state);
       case NavigationStatus.arrived:
-        if (previous == NavigationStatus.arrived) return;
+        final sameArrival =
+            previous == NavigationStatus.arrived &&
+            state.target?.id == _arrivedAt;
+        _arrivedAt = state.target?.id;
+        if (sameArrival) return;
         _forgetStep();
         await _voice.stop();
         final target = state.target;
-        if (target != null && target.kind == NavigationTargetKind.poi) {
-          await _audio.play(
-            AudioClip(poiId: target.id, kind: AudioClipKind.arrival),
-          );
+        if (target == null) return;
+        switch (target.kind) {
+          case NavigationTargetKind.poi:
+            await _audio.play(
+              AudioClip(poiId: target.id, kind: AudioClipKind.arrival),
+            );
+          case NavigationTargetKind.facility:
+            await _announceFacilityArrival(target);
         }
     }
   }
+
+  Future<void> _announceFacilityArrival(NavigationTarget target) async {
+    if (!await _voice.isAvailable()) return;
+    // Navigation may have ended while availability was checked; speaking
+    // after the user closed the arrival card would be out of place.
+    if (_lastStatus != NavigationStatus.arrived) return;
+    await _voice.speak(arrivalSentence(target.name));
+  }
+
+  /// Kalimat pengumuman tiba di fasilitas (PRD §10).
+  static String arrivalSentence(String name) => 'Anda telah tiba di $name';
 
   Future<void> _announceStep(NavigationState state) async {
     final route = state.route;
