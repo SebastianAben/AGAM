@@ -16,7 +16,8 @@
         {"lat": -6.8907117, "lng": 107.6102482, "label": "Titik akses sisi timur 2", "verified": false},
         {"lat": -6.8907403, "lng": 107.6096439, "label": "Titik akses sisi barat daya", "verified": false},
         {"lat": -6.8906329, "lng": 107.6093209, "label": "Titik akses sisi barat 1", "verified": false},
-        {"lat": -6.890466, "lng": 107.6093201, "label": "Titik akses sisi barat 2", "verified": false}
+        {"lat": -6.890466, "lng": 107.6093201, "label": "Titik akses sisi barat 2", "verified": false},
+        {"lat": -6.8904645, "lng": 107.6096411, "label": "Titik akses sisi barat laut", "verified": false}
       ],
       "description": "Labtek V atau Gedung Benny Subianto, gedung ini menjadi salah satu pusat kegiatan akademik Teknik Informatika ITB, termasuk perkuliahan, praktikum, dan penelitian.",
       "function": "Gedung Kuliah dan Laboratorium",
@@ -62,6 +63,7 @@
       "radiusM": 15,
       "entrances": [
         {"lat": -6.8900219, "lng": 107.6098787, "label": "Titik akses sisi timur laut", "verified": false},
+        {"lat": -6.8902856, "lng": 107.6095855, "label": "Titik akses sisi barat daya", "verified": false},
         {"lat": -6.8902862, "lng": 107.6093147, "label": "Titik akses sisi barat 1", "verified": false},
         {"lat": -6.890023, "lng": 107.6093731, "label": "Titik akses sisi barat 2", "verified": false}
       ],
@@ -109,7 +111,8 @@
       "radiusM": 15,
       "entrances": [
         {"lat": -6.8900025, "lng": 107.6110473, "label": "Titik akses sisi timur laut", "verified": false},
-        {"lat": -6.8901188, "lng": 107.611455, "label": "Titik akses sisi timur", "verified": false}
+        {"lat": -6.8901188, "lng": 107.611455, "label": "Titik akses sisi timur", "verified": false},
+        {"lat": -6.8902538, "lng": 107.6110458, "label": "Titik akses sisi tenggara", "verified": false}
       ],
       "description": "Labtek VII atau Gedung Yusuf Panigoro, gedung ini digunakan untuk kegiatan akademik dan penelitian Sekolah Farmasi ITB, khususnya bidang Sains dan Teknologi Farmasi serta Farmasi Klinik dan Komunitas.",
       "function": "Gedung Kuliah dan Laboratorium",
@@ -152,6 +155,7 @@
       "lng": 107.6105760,
       "radiusM": 15,
       "entrances": [
+        {"lat": -6.8904501, "lng": 107.6110471, "label": "Titik akses sisi timur laut", "verified": false},
         {"lat": -6.8905532, "lng": 107.6114021, "label": "Titik akses sisi timur", "verified": false},
         {"lat": -6.8907099, "lng": 107.6111297, "label": "Titik akses sisi tenggara", "verified": false},
         {"lat": -6.8907161, "lng": 107.6105091, "label": "Titik akses sisi barat 1", "verified": false},

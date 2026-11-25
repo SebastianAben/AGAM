@@ -1,6 +1,6 @@
 # PB11 — Daftar cek titik akses di lapangan
 
-Dibuat oleh `tools/routing/plan_access_points.py` dari data OSM yang juga digambar di peta: poligon gedung (`tools/tiles/ganesha.gpkg`) dan graf jalan kaki (`assets/routing/ganesha-walk-demo.geojson`). Titik akses adalah titik pada jalur yang menempel ke gedung (≤4 m dari dinding; 8 m bila tidak ada yang sedekat itu), digabung bila berjarak <5 m. Totalnya 35 kandidat untuk 10 gedung; semuanya belum diverifikasi (`verified: false`). Navigasi akan menuju titik akses terdekat milik gedung tujuan.
+Dibuat oleh `tools/routing/plan_access_points.py` dari data OSM yang juga digambar di peta: poligon gedung (`tools/tiles/ganesha.gpkg`) dan graf jalan kaki (`assets/routing/ganesha-walk-demo.geojson`). Titik akses adalah titik pada jalur yang menempel ke gedung (≤4 m dari dinding; 8 m bila tidak ada yang sedekat itu), digabung bila berjarak <5 m. Totalnya 39 kandidat untuk 10 gedung; semuanya belum diverifikasi (`verified: false`). Navigasi akan menuju titik akses terdekat milik gedung tujuan.
 
 ## Cara cek
 
@@ -21,7 +21,8 @@ Poligon OSM: Labtek V (way/119419735).
 | Titik akses sisi barat daya | -6.8907403 | 107.6096439 | 2.9 m | [buka](https://www.google.com/maps?q=-6.8907403,107.6096439) | ☐ Cocok ☐ Hapus |
 | Titik akses sisi barat 1 | -6.8906329 | 107.6093209 | 0.0 m | [buka](https://www.google.com/maps?q=-6.8906329,107.6093209) | ☐ Cocok ☐ Hapus |
 | Titik akses sisi barat 2 | -6.890466 | 107.6093201 | 0.0 m | [buka](https://www.google.com/maps?q=-6.890466,107.6093201) | ☐ Cocok ☐ Hapus |
-| Jalur terputus dari jaringan rute (tidak dipakai) | -6.8904645 | 107.6096411 | 0.0 m | [buka](https://www.google.com/maps?q=-6.8904645,107.6096411) | ☐ Jalur nyata, perlu disambung ☐ Abaikan |
+| Titik akses sisi barat laut | -6.8904645 | 107.6096411 | 0.0 m | [buka](https://www.google.com/maps?q=-6.8904645,107.6096411) | ☐ Cocok ☐ Hapus |
+| Lorong Labtek V (kandidat, 30 m menembus gedung) | -6.8904645 → -6.8907403 | 107.6096411 → 107.6096439 | — | [ujung 1](https://www.google.com/maps?q=-6.8904645,107.6096411) · [ujung 2](https://www.google.com/maps?q=-6.8907403,107.6096439) | ☐ Lorong terbuka, bisa dilewati ☐ Hapus |
 
 ## P02 — Labtek VI
 
@@ -30,9 +31,9 @@ Poligon OSM: Labtek VI (way/119419729).
 | Titik | Lat | Lng | Jarak ke dinding | Peta | Hasil cek |
 | --- | --- | --- | --- | --- | --- |
 | Titik akses sisi timur laut | -6.8900219 | 107.6098787 | 0.0 m | [buka](https://www.google.com/maps?q=-6.8900219,107.6098787) | ☐ Cocok ☐ Hapus |
+| Titik akses sisi barat daya | -6.8902856 | 107.6095855 | 0.0 m | [buka](https://www.google.com/maps?q=-6.8902856,107.6095855) | ☐ Cocok ☐ Hapus |
 | Titik akses sisi barat 1 | -6.8902862 | 107.6093147 | 0.0 m | [buka](https://www.google.com/maps?q=-6.8902862,107.6093147) | ☐ Cocok ☐ Hapus |
 | Titik akses sisi barat 2 | -6.890023 | 107.6093731 | 0.0 m | [buka](https://www.google.com/maps?q=-6.890023,107.6093731) | ☐ Cocok ☐ Hapus |
-| Jalur terputus dari jaringan rute (tidak dipakai) | -6.8902856 | 107.6095855 | 0.0 m | [buka](https://www.google.com/maps?q=-6.8902856,107.6095855) | ☐ Jalur nyata, perlu disambung ☐ Abaikan |
 
 ## P03 — Labtek VII
 
@@ -42,7 +43,8 @@ Poligon OSM: School of Pharmacy ITB (way/119414691).
 | --- | --- | --- | --- | --- | --- |
 | Titik akses sisi timur laut | -6.8900025 | 107.6110473 | 0.0 m | [buka](https://www.google.com/maps?q=-6.8900025,107.6110473) | ☐ Cocok ☐ Hapus |
 | Titik akses sisi timur | -6.8901188 | 107.611455 | 0.1 m | [buka](https://www.google.com/maps?q=-6.8901188,107.611455) | ☐ Cocok ☐ Hapus |
-| Jalur terputus dari jaringan rute (tidak dipakai) | -6.8902538 | 107.6110458 | 0.0 m | [buka](https://www.google.com/maps?q=-6.8902538,107.6110458) | ☐ Jalur nyata, perlu disambung ☐ Abaikan |
+| Titik akses sisi tenggara | -6.8902538 | 107.6110458 | 0.0 m | [buka](https://www.google.com/maps?q=-6.8902538,107.6110458) | ☐ Cocok ☐ Hapus |
+| Lorong Labtek VII (kandidat, 28 m menembus gedung) | -6.8902538 → -6.8900025 | 107.6110458 → 107.6110473 | — | [ujung 1](https://www.google.com/maps?q=-6.8902538,107.6110458) · [ujung 2](https://www.google.com/maps?q=-6.8900025,107.6110473) | ☐ Lorong terbuka, bisa dilewati ☐ Hapus |
 
 ## P04 — Labtek VIII
 
@@ -50,11 +52,12 @@ Poligon OSM: Labtek VIII (way/119422837).
 
 | Titik | Lat | Lng | Jarak ke dinding | Peta | Hasil cek |
 | --- | --- | --- | --- | --- | --- |
+| Titik akses sisi timur laut | -6.8904501 | 107.6110471 | 0.0 m | [buka](https://www.google.com/maps?q=-6.8904501,107.6110471) | ☐ Cocok ☐ Hapus |
 | Titik akses sisi timur | -6.8905532 | 107.6114021 | 0.0 m | [buka](https://www.google.com/maps?q=-6.8905532,107.6114021) | ☐ Cocok ☐ Hapus |
 | Titik akses sisi tenggara | -6.8907099 | 107.6111297 | 0.0 m | [buka](https://www.google.com/maps?q=-6.8907099,107.6111297) | ☐ Cocok ☐ Hapus |
 | Titik akses sisi barat 1 | -6.8907161 | 107.6105091 | 0.0 m | [buka](https://www.google.com/maps?q=-6.8907161,107.6105091) | ☐ Cocok ☐ Hapus |
 | Titik akses sisi barat 2 | -6.8906368 | 107.6105083 | 0.0 m | [buka](https://www.google.com/maps?q=-6.8906368,107.6105083) | ☐ Cocok ☐ Hapus |
-| Jalur terputus dari jaringan rute (tidak dipakai) | -6.8904501 | 107.6110471 | 0.0 m | [buka](https://www.google.com/maps?q=-6.8904501,107.6110471) | ☐ Jalur nyata, perlu disambung ☐ Abaikan |
+| Lorong Labtek VIII (kandidat, 30 m menembus gedung) | -6.8904501 → -6.8907099 | 107.6110471 → 107.6111297 | — | [ujung 1](https://www.google.com/maps?q=-6.8904501,107.6110471) · [ujung 2](https://www.google.com/maps?q=-6.8907099,107.6111297) | ☐ Lorong terbuka, bisa dilewati ☐ Hapus |
 
 ## P05 — Labtek X & XI
 
@@ -139,4 +142,4 @@ Jumlah jarak jalan antar-gedung ±592 m, diukur dari titik akses terdekat ke tit
 
 ## Catatan graf
 
-Graf berisi 1170 simpul dalam 17 potongan terpisah; jaringan utama 985 simpul. Hanya jaringan utama yang dapat dipakai rute. Jalur yang terputus, misalnya selasar antar-gedung, tercantum di tabel per gedung untuk dicek.
+Graf OSM terdiri atas 17 potongan terpisah; jaringan utama 985 simpul. Lorong tembus gedung (3 kandidat di `assets/routing/passages.geojson`) menyambung selasar yang terputus, sehingga jaringan yang dapat dipakai rute menjadi 991 simpul. Lorong hanya diusulkan bila selasar menunjuk lurus ke jalur di dinding seberang (≤20°, ≤60 m, seluruhnya di dalam gedung). Jalur yang masih terputus tercantum di tabel per gedung.

@@ -55,6 +55,8 @@ WALKING_MPS = 1.3
 TOUCH_M = 4.0
 WIDE_M = 8.0
 MERGE_M = 5.0
+PASSAGE_ANGLE = 20.0
+PASSAGE_MAX_M = 60.0
 SIDES = ['utara', 'timur laut', 'timur', 'tenggara',
          'selatan', 'barat daya', 'barat', 'barat laut']
 
@@ -164,17 +166,9 @@ def merge(found):
     return kept
 
 
-def plan(graph_path, pois_path, buildings_path):
-    adjacency, edges = load_graph(graph_path)
-    network, piece_count = main_network(adjacency)
-    main_edges = [e for e in edges if e[0] in network]
-    other_edges = [e for e in edges if e[0] not in network]
-    with fiona.open(buildings_path, layer='building') as source:
-        buildings = [(f['properties']['source_id'], f['properties']['name'],
-                      polygon_m(f['geometry'])) for f in source]
-    document = json.loads(Path(pois_path).read_text(encoding='utf-8'))
-
-    results = []
+def poi_outlines(document, buildings):
+    """Building outline (one or more OSM polygons) for every POI."""
+    outlines = []
     for poi in document['pois']:
         centre = Point(to_m(poi['lng'], poi['lat']))
         extra = EXTRA_BUILDINGS.get(poi['id'], [])
@@ -182,9 +176,100 @@ def plan(graph_path, pois_path, buildings_path):
                  if g.contains(centre) or sid in extra]
         if not parts:
             raise SystemExit(f"{poi['id']}: tidak ada poligon gedung di titik tengahnya")
-        outline = unary_union([g for _, _, g in parts])
-        middle = (outline.centroid.x, outline.centroid.y)
+        outlines.append((poi, parts, unary_union([g for _, _, g in parts])))
+    return outlines
 
+
+def find_passages(adjacency, network, outlines):
+    """Straight passages across a building that join a detached walkway.
+
+    A covered walkway between two buildings often sits on its own piece of the
+    graph: it ends at one wall and the path resumes at the opposite wall, with
+    an open ground-floor corridor in between that OSM does not draw. When the
+    walkway's last segment points straight (within PASSAGE_ANGLE) at a
+    main-network node on another wall of the same building, and the line
+    between them stays inside the building, that line is a candidate passage.
+    """
+    found = []
+    for poi, _, outline in outlines:
+        inner = outline.buffer(0.5)
+        ends = [n for n in adjacency if n not in network and len(adjacency[n]) == 1
+                and outline.boundary.distance(Point(to_m(*n))) <= TOUCH_M]
+        targets = [n for n in adjacency if n in network
+                   and outline.boundary.distance(Point(to_m(*n))) <= TOUCH_M]
+        for end in sorted(ends):
+            neighbour = adjacency[end][0][0]
+            ex, ey = to_m(*end)
+            nx, ny = to_m(*neighbour)
+            heading = math.atan2(ex - nx, ey - ny)
+            best = None
+            for target in targets:
+                tx, ty = to_m(*target)
+                length = math.dist((ex, ey), (tx, ty))
+                if not 5 <= length <= PASSAGE_MAX_M:
+                    continue
+                turn = abs((math.atan2(tx - ex, ty - ey) - heading + math.pi)
+                           % (2 * math.pi) - math.pi)
+                if math.degrees(turn) > PASSAGE_ANGLE:
+                    continue
+                line = LineString([(ex, ey), (tx, ty)])
+                # Both ends may stand up to TOUCH_M outside the wall; any more
+                # than that means the line crosses open ground elsewhere.
+                slack = (outline.boundary.distance(Point(ex, ey))
+                         + outline.boundary.distance(Point(tx, ty)) + 1.0)
+                if line.difference(inner).length > slack:
+                    continue  # leaves the building
+                if best is None or length < best[0]:
+                    best = (length, target)
+            if best:
+                found.append({'poi': poi['id'], 'name': poi['name'],
+                              'from': end, 'to': best[1], 'length': best[0],
+                              'verified': False})
+    return found
+
+
+def read_passages(path):
+    """Passages already in the file; verified ones survive a re-run."""
+    if not path or not Path(path).exists():
+        return []
+    document = json.loads(Path(path).read_text(encoding='utf-8'))
+    out = []
+    for f in document['features']:
+        a, b = (node(c) for c in f['geometry']['coordinates'])
+        out.append({'poi': f['properties']['poi'], 'name': f['properties']['label'],
+                    'from': a, 'to': b, 'length': math.dist(to_m(*a), to_m(*b)),
+                    'verified': f['properties'].get('verified') is True,
+                    'label': f['properties']['label']})
+    return out
+
+
+def plan(graph_path, pois_path, buildings_path, passages_path=None):
+    adjacency, edges = load_graph(graph_path)
+    base_network, piece_count = main_network(adjacency)
+    with fiona.open(buildings_path, layer='building') as source:
+        buildings = [(f['properties']['source_id'], f['properties']['name'],
+                      polygon_m(f['geometry'])) for f in source]
+    document = json.loads(Path(pois_path).read_text(encoding='utf-8'))
+    outlines = poi_outlines(document, buildings)
+
+    # Passages: keep the verified ones from the file, find candidates again.
+    kept = [p for p in read_passages(passages_path) if p['verified']]
+    passages = kept + [p for p in find_passages(adjacency, base_network, outlines)
+                       if not any({p['from'], p['to']} == {k['from'], k['to']}
+                                  for k in kept)]
+    for i, p in enumerate(sorted(passages, key=lambda p: (p['poi'], p['from']))):
+        p.setdefault('label', f"Lorong {p['name']}")
+        p['id'] = f"PSG-{p['poi']}-{i + 1}"
+        adjacency.setdefault(p['from'], []).append((p['to'], p['length']))
+        adjacency.setdefault(p['to'], []).append((p['from'], p['length']))
+    network, _ = main_network(adjacency)
+    # Access points come from walkways only, never from a passage itself.
+    main_edges = [e for e in edges if e[0] in network]
+    other_edges = [e for e in edges if e[0] not in network]
+
+    results = []
+    for poi, parts, outline in outlines:
+        middle = (outline.centroid.x, outline.centroid.y)
         limit = TOUCH_M
         found = touches(main_edges, outline, limit)
         if not found:
@@ -209,7 +294,8 @@ def plan(graph_path, pois_path, buildings_path):
         detached = [(d, to_deg(*pt)) for d, pt, _ in merge(touches(other_edges, outline, TOUCH_M))]
         results.append({'id': poi['id'], 'name': poi['name'],
                         'buildings': [(sid, name) for sid, name, _ in parts],
-                        'limit': limit, 'points': points, 'detached': detached})
+                        'limit': limit, 'points': points, 'detached': detached,
+                        'passages': [p for p in passages if p['poi'] == poi['id']]})
 
     # Shortest walk between any access point of one POI and any of another.
     def sources(entry):
@@ -239,24 +325,36 @@ def plan(graph_path, pois_path, buildings_path):
     if loop[1] < loop[-1]:
         loop = (loop[0],) + tuple(reversed(loop[1:]))
     return {'pieces': piece_count, 'network_nodes': len(network),
+            'base_network_nodes': len(base_network),
             'nodes': len(adjacency), 'pois': results, 'loop': list(loop),
-            'loop_m': loop_length(loop), 'walk': walk}
+            'loop_m': loop_length(loop), 'walk': walk, 'passages': passages}
 
 
 def write_dataset(pois_path, result):
-    """Rewrites entrances[] and trailOrder in place, one access point per line."""
+    """Rewrites entrances[] and trailOrder in place, one access point per line.
+
+    Entrances already marked ``verified: true`` (checked in the field) are
+    kept as they are; candidates closer than MERGE_M to one of them are
+    dropped, the rest are written after them.
+    """
     path = Path(pois_path)
     text = path.read_text(encoding='utf-8')
+    current = {poi['id']: poi for poi in json.loads(text)['pois']}
     order = {poi_id: i + 1 for i, poi_id in enumerate(result['loop'])}
     for r in result['pois']:
+        verified = [e for e in current[r['id']].get('entrances', [])
+                    if e.get('verified') is True]
+        taken = [to_m(e['lng'], e['lat']) for e in verified]
+        fresh = [{'lat': p['point'][1], 'lng': p['point'][0],
+                  'label': p['label'], 'verified': False}
+                 for p in r['points']
+                 if all(math.dist(p['m'], t) >= MERGE_M for t in taken)]
+        items = [json.dumps(e, ensure_ascii=False) for e in verified + fresh]
+        value = '[\n' + ',\n'.join(' ' * 8 + item for item in items) + '\n      ]'
         head = re.search(r'"id": "%s"' % re.escape(r['id']), text)
         nxt = re.search(r'"id": "', text[head.end():])
         stop = head.end() + nxt.start() if nxt else len(text)
         block = text[head.start():stop]
-        items = [json.dumps({'lat': p['point'][1], 'lng': p['point'][0],
-                             'label': p['label'], 'verified': False},
-                            ensure_ascii=False) for p in r['points']]
-        value = '[\n' + ',\n'.join(' ' * 8 + item for item in items) + '\n      ]'
         # Entrance objects hold no brackets, so [^\]]* spans the whole list.
         block, found_entrances = re.subn(
             r'"entrances": \[[^\]]*\]',
@@ -269,6 +367,28 @@ def write_dataset(pois_path, result):
         text = text[:head.start()] + block + text[stop:]
     json.loads(text)  # the result must stay valid JSON
     path.write_text(text, encoding='utf-8')
+
+
+def write_passages(path, result):
+    """Writes the passages as extra graph edges between existing nodes."""
+    features = [{
+        'type': 'Feature',
+        'properties': {'id': p['id'], 'poi': p['poi'], 'label': p['label'],
+                       'lengthM': round(p['length'], 1), 'verified': p['verified']},
+        'geometry': {'type': 'LineString',
+                     'coordinates': [list(p['from']), list(p['to'])]},
+    } for p in sorted(result['passages'], key=lambda p: p['id'])]
+    document = {
+        'type': 'FeatureCollection',
+        'description': (
+            'Lorong tembus lantai 1 yang menyambung selasar terputus ke jaringan '
+            'jalan kaki. Setiap ruas menghubungkan dua simpul yang sudah ada di '
+            'ganesha-walk-demo.geojson. Dibuat oleh tools/routing/'
+            'plan_access_points.py; verified=false berarti belum dicek di lapangan.'),
+        'features': features,
+    }
+    Path(path).write_text(json.dumps(document, ensure_ascii=False, indent=2) + '\n',
+                          encoding='utf-8')
 
 
 def check_list(result):
@@ -319,6 +439,15 @@ def check_list(result):
                 f'{lng} | {d:.1f} m | '
                 f'[buka](https://www.google.com/maps?q={lat},{lng}) | '
                 '☐ Jalur nyata, perlu disambung ☐ Abaikan |')
+        for p in r['passages']:
+            (lng1, lat1), (lng2, lat2) = p['from'], p['to']
+            state = 'sudah dicek' if p['verified'] else 'kandidat'
+            lines.append(
+                f"| {p['label']} ({state}, {p['length']:.0f} m menembus gedung) | "
+                f"{lat1} → {lat2} | {lng1} → {lng2} | — | "
+                f'[ujung 1](https://www.google.com/maps?q={lat1},{lng1}) · '
+                f'[ujung 2](https://www.google.com/maps?q={lat2},{lng2}) | '
+                '☐ Lorong terbuka, bisa dilewati ☐ Hapus |')
     loop = result['loop']
     lines += [
         '',
@@ -341,10 +470,14 @@ def check_list(result):
         '',
         '## Catatan graf',
         '',
-        f"Graf berisi {result['nodes']} simpul dalam {result['pieces']} potongan "
-        f"terpisah; jaringan utama {result['network_nodes']} simpul. Hanya jaringan "
-        'utama yang dapat dipakai rute. Jalur yang terputus, misalnya selasar '
-        'antar-gedung, tercantum di tabel per gedung untuk dicek.',
+        f"Graf OSM terdiri atas {result['pieces']} potongan terpisah; jaringan utama "
+        f"{result['base_network_nodes']} simpul. Lorong tembus gedung "
+        f"({len(result['passages'])} kandidat di "
+        '`assets/routing/passages.geojson`) menyambung selasar yang terputus, '
+        f"sehingga jaringan yang dapat dipakai rute menjadi {result['network_nodes']} "
+        'simpul. Lorong hanya diusulkan bila selasar menunjuk lurus ke jalur di '
+        f'dinding seberang (≤{PASSAGE_ANGLE:.0f}°, ≤{PASSAGE_MAX_M:.0f} m, seluruhnya '
+        'di dalam gedung). Jalur yang masih terputus tercantum di tabel per gedung.',
         '',
     ]
     return '\n'.join(lines)
@@ -357,12 +490,18 @@ def main():
     parser.add_argument('--buildings', default='tools/tiles/ganesha.gpkg')
     parser.add_argument('--write', action='store_true',
                         help='fill entrances[] and trailOrder in the POI file')
+    parser.add_argument('--passages', default='assets/routing/passages.geojson',
+                        help='passage file: read for verified passages, written with --write')
     parser.add_argument('--check-list', help='write the field check list here')
     args = parser.parse_args()
 
-    result = plan(args.graph, args.pois, args.buildings)
+    result = plan(args.graph, args.pois, args.buildings, args.passages)
     print(f"Graf: {result['nodes']} simpul, {result['pieces']} potongan; "
-          f"jaringan utama {result['network_nodes']} simpul")
+          f"jaringan utama {result['base_network_nodes']} simpul, "
+          f"{result['network_nodes']} dengan lorong")
+    for p in result['passages']:
+        state = 'dicek' if p['verified'] else 'kandidat'
+        print(f"  {p['id']} {p['label']:<30} {p['length']:4.0f} m ({state})")
     for r in result['pois']:
         extra = f" (batas {r['limit']:.0f} m)" if r['limit'] > TOUCH_M else ''
         print(f"  {r['id']} {r['name']:<26} {len(r['points'])} titik akses, "
@@ -376,6 +515,8 @@ def main():
     if args.write:
         write_dataset(args.pois, result)
         print(f'Ditulis: {args.pois}')
+        write_passages(args.passages, result)
+        print(f'Ditulis: {args.passages}')
     if args.check_list:
         Path(args.check_list).write_text(check_list(result), encoding='utf-8')
         print(f'Ditulis: {args.check_list}')

@@ -10,16 +10,19 @@
   (§10), trail berupa keliling yang dimulai dari POI terdekat (F08/§12).
 - `tools/routing/plan_access_points.py` (fiona + shapely, deterministik, idempoten):
   titik akses = titik pada ruas jaringan utama graf yang menempel ke poligon gedung OSM
-  (≤4 m dari dinding, 8 m bila kosong, digabung bila <5 m). 37 kandidat untuk 10
-  gedung, semuanya `verified: false`. Urutan trail = keliling terpendek dengan jarak
+  (≤4 m dari dinding, 8 m bila kosong, digabung bila <5 m). 39 kandidat untuk 10
+  gedung, semuanya `verified: false`. Tiga kandidat lorong tembus gedung (Labtek V,
+  VII, VIII) di `assets/routing/passages.geojson` menyambung selasar V–VI dan
+  VII–VIII; aset ini belum didaftarkan di `pubspec.yaml` (dikerjakan WP2). Titik
+  dan lorong `verified: true` tidak ditimpa saat script dijalankan ulang. Urutan trail = keliling terpendek dengan jarak
   antar-POI diukur di antara titik akses terdekat. Mengisi `entrances[]` (satu titik
   per baris) dan `trailOrder` 1–10 di `pois.json`, serta menulis daftar cek
   `task-implementation/backend/PB11-access-point-field-check.md`.
 - Kontrak: `PoiEntrance.verified` (default `false`); `hasSurveyedEntrance`
   hanya untuk titik terverifikasi; `navigationPoint` memakai kandidat. Codec
   hanya menerima `true` eksplisit. Seed Firestore tidak menyaring field.
-- Temuan untuk WP2/WP4: graf draf 17 potongan; selasar antar-gedung terputus
-  dari jaringan utama. Navigasi harus memilih titik akses terdekat dari
+- Temuan untuk WP2/WP4: graf draf 17 potongan; WP2 harus memuat
+  `passages.geojson` sebagai ruas tambahan dan menyebut lorong kandidat di arahan. Navigasi harus memilih titik akses terdekat dari
   `entrances[]`, bukan `navigationPoint` (titik pertama).
   `DeviceTrailService._canRoute` menolak titik kandidat, jadi trail tidak bisa
   dimulai sebelum aturan itu disesuaikan. Pesan "Pintu masuk belum disurvei"
@@ -28,8 +31,9 @@
   `planned`), PB03 seed otomatis berjalan, PB09/PB11/PB12/PB15/PB21/PB22
   diperbarui sesuai kode `dev`. PRD §22: titik akses, urutan trail, Firebase,
   dan konten diperbarui.
-- Test: kandidat titik akses di dataset, urutan trail 1–10, codec `verified`.
-  Analyze bersih, 415 test lulus.
+- Test: kandidat titik akses di dataset, urutan trail 1–10, codec `verified`,
+  lorong menghubungkan simpul graf yang ada (`passages_data_test.dart`).
+  Analyze bersih, 416 test lulus.
 
 ## Current — Onboarding crash di layar pendek, 24 November 2026
 

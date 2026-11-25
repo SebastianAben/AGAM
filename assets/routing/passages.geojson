@@ -1,0 +1,75 @@
+{
+  "type": "FeatureCollection",
+  "description": "Lorong tembus lantai 1 yang menyambung selasar terputus ke jaringan jalan kaki. Setiap ruas menghubungkan dua simpul yang sudah ada di ganesha-walk-demo.geojson. Dibuat oleh tools/routing/plan_access_points.py; verified=false berarti belum dicek di lapangan.",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "PSG-P01-1",
+        "poi": "P01",
+        "label": "Lorong Labtek V",
+        "lengthM": 30.5,
+        "verified": false
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            107.6096411,
+            -6.8904645
+          ],
+          [
+            107.6096439,
+            -6.8907403
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "PSG-P03-2",
+        "poi": "P03",
+        "label": "Lorong Labtek VII",
+        "lengthM": 27.8,
+        "verified": false
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            107.6110458,
+            -6.8902538
+          ],
+          [
+            107.6110473,
+            -6.8900025
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "PSG-P04-3",
+        "poi": "P04",
+        "label": "Lorong Labtek VIII",
+        "lengthM": 30.1,
+        "verified": false
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            107.6110471,
+            -6.8904501
+          ],
+          [
+            107.6111297,
+            -6.8907099
+          ]
+        ]
+      }
+    }
+  ]
+}
