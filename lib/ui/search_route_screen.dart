@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
@@ -1002,7 +1003,10 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
                   child: Column(
                     children: [
                       Text(
-                        eta == null ? '—' : '${eta.inMinutes}',
+                        // Rounded up: a 50 s walk reads "1 menit", not "0".
+                        eta == null
+                            ? '—'
+                            : '${math.max(1, (eta.inSeconds / 60).ceil())}',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 26,
