@@ -36,12 +36,28 @@ class AccountVisitStore {
   Future<void> clear(String uid) => _enqueue((preferences) async {
     final visitsRemoved = await preferences.remove(_key(uid));
     final trailRemoved = await preferences.remove(_trailKey(uid));
-    if (!visitsRemoved || !trailRemoved) {
+    final startRemoved = await preferences.remove(_trailStartKey(uid));
+    if (!visitsRemoved || !trailRemoved || !startRemoved) {
       throw StateError('Progres belum dapat dihapus.');
     }
   });
 
   static String _trailKey(String uid) => 'account.$uid.trailProgress';
+
+  static String _trailStartKey(String uid) => 'account.$uid.trailStart';
+
+  /// ID POI awal trail milik [uid]: POI terdekat saat trail pertama kali
+  /// dimulai (PRD §12). Hanya ID POI yang disimpan, bukan posisi.
+  Future<String?> readTrailStart(String uid) => _enqueue(
+    (preferences) async => preferences.getString(_trailStartKey(uid)),
+  );
+
+  Future<void> saveTrailStart(String uid, String poiId) =>
+      _enqueue((preferences) async {
+        if (!await preferences.setString(_trailStartKey(uid), poiId)) {
+          throw StateError('Awal Trail belum dapat disimpan.');
+        }
+      });
 
   Future<({Set<String> ids, DateTime? date})> readTrail(String uid) =>
       _enqueue((preferences) async {

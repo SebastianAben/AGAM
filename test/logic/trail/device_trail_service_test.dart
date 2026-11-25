@@ -36,6 +36,7 @@ void main() {
     );
     DeviceTrailService create() => DeviceTrailService(
       pois: repo,
+      location: location,
       visits: AccountVisitStore(),
       currentUid: () => uid,
       accounts: accountChanges.stream,

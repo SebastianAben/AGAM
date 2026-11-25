@@ -1,11 +1,25 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import '../../contracts/contracts.dart';
 import 'account_visit_store.dart';
 
+/// Orientation Trail di perangkat (F08, PRD §12).
+///
+/// Urutan resmi (`trailOrder` 1–10) berbentuk keliling. Saat trail pertama
+/// kali dimulai untuk sebuah akun, POI terdekat dengan posisi pengguna
+/// menjadi titik awal dan [TrailProgress.order] diputar agar dimulai dari
+/// POI itu, lalu berlanjut searah putaran. Titik awal disimpan lokal per
+/// akun (hanya ID POI) dan dipilih ulang setelah [reset].
+///
+/// Posisi diambil dari `LocationService.lastFix`, atau fix berikutnya jika
+/// belum ada, dengan batas tunggu [startFixTimeout]. Tanpa fix, trail
+/// dimulai dari `trailOrder` 1 dan titik awal itu tetap disimpan agar
+/// urutan tidak berubah di tengah progres; hapus progres untuk memilih ulang.
 class DeviceTrailService implements TrailService {
   DeviceTrailService({
     required PoiRepository pois,
+    required this.location,
     required this.visits,
     required this.currentUid,
     required Stream<dynamic> accounts,
@@ -14,6 +28,7 @@ class DeviceTrailService implements TrailService {
     required this.map,
     required this.routingAvailable,
     required this.onComplete,
+    this.startFixTimeout = const Duration(seconds: 3),
   }) {
     _subscriptions.addAll([
       pois.watchPois().listen(
@@ -63,7 +78,9 @@ class DeviceTrailService implements TrailService {
     ]);
   }
 
+  final LocationService location;
   final AccountVisitStore visits;
+  final Duration startFixTimeout;
   final String? Function() currentUid;
   final SessionController session;
   final NavigationController navigation;
@@ -76,19 +93,19 @@ class DeviceTrailService implements TrailService {
   Future<void> _pending = Future.value();
   String? _uid;
   List<Poi> _order = const [];
+  String? _start;
   TrailProgress _current = const TrailProgress(
     order: [],
     visited: {},
     active: false,
   );
 
+  /// Titik akses boleh berupa kandidat yang belum diverifikasi; UI
+  /// menandai rutenya sebagai pratinjau.
   bool get _canRoute =>
       routingAvailable &&
       _order.isNotEmpty &&
-      _order.every(
-        (poi) =>
-            poi.hasSurveyedEntrance && map.isInsideCampus(poi.navigationPoint),
-      );
+      _order.every((poi) => map.isInsideCampus(poi.navigationPoint));
 
   @override
   TrailProgress get current => _uid == currentUid()
@@ -101,8 +118,15 @@ class DeviceTrailService implements TrailService {
   @override
   Future<void> start() => _enqueue(() async {
     await _restore();
-    if (_uid == null || !_canRoute || _current.isComplete) {
+    final uid = _uid;
+    if (uid == null || !_canRoute || _current.isComplete) {
       throw StateError('Trail belum dapat dimulai.');
+    }
+    if (_start == null) {
+      final start = await _nearestStart();
+      if (currentUid() != uid) throw StateError('Akun berganti.');
+      await visits.saveTrailStart(uid, start);
+      await _restore();
     }
     _emit(active: true);
     await _routeNext();
@@ -128,9 +152,17 @@ class DeviceTrailService implements TrailService {
     final sameAccount = uid == _uid;
     if (!sameAccount && _current.active) await _end();
     final stored = uid == null ? null : await visits.readTrail(uid);
+    final start = uid == null ? null : await visits.readTrailStart(uid);
     if (currentUid() != uid) return;
     _uid = uid;
-    final order = _order.map((p) => p.id).toList();
+    final official = _order.map((p) => p.id).toList();
+    // A start missing from the current dataset is picked again on start().
+    final startIndex = start == null ? -1 : official.indexOf(start);
+    _start = startIndex < 0 ? null : start;
+    final order = [
+      ...official.skip(startIndex < 0 ? 0 : startIndex),
+      ...official.take(startIndex < 0 ? 0 : startIndex),
+    ];
     final visited = (stored?.ids ?? const <String>{}).intersection(
       order.toSet(),
     );
@@ -143,6 +175,26 @@ class DeviceTrailService implements TrailService {
           : null,
     );
     _changes.add(_current);
+  }
+
+  /// POI dengan titik (pusat gedung atau titik akses) terdekat dari posisi
+  /// pengguna; `trailOrder` 1 jika belum ada fix.
+  Future<String> _nearestStart() async {
+    var fix = location.lastFix;
+    if (fix == null) {
+      try {
+        fix = await location.positions.first.timeout(startFixTimeout);
+      } on Object {
+        fix = null;
+      }
+    }
+    final from = fix?.position;
+    if (from == null) return _order.first.id;
+    double distance(Poi poi) => [
+      poi.position,
+      for (final entrance in poi.entrances) entrance.position,
+    ].map(from.distanceTo).reduce(math.min);
+    return _order.reduce((a, b) => distance(b) < distance(a) ? b : a).id;
   }
 
   Future<void> _checkIn(String uid, PoiTriggerEvent event) async {
