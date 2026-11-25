@@ -352,7 +352,13 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
       final onAction = widget.onPoiAction;
       if (onAction != null) {
         if (action == TriggerAction.view && !fromTrigger) _panelViewId = poi.id;
-        await onAction(poi.id, action);
+        try {
+          await onAction(poi.id, action);
+        } finally {
+          // The view request has been delivered by now (or was dropped); a
+          // later notification "Lihat" must not count as a panel open.
+          _panelViewId = null;
+        }
       } else {
         switch (action) {
           case TriggerAction.listen:

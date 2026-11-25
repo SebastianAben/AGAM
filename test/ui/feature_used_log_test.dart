@@ -1,8 +1,10 @@
 import 'dart:async';
 
 import 'package:agam/contracts/contracts.dart';
+import 'package:agam/contracts/fakes/fake_data.dart';
 import 'package:agam/contracts/fakes/fake_la_services.dart';
 import 'package:agam/logic/search/poi_search_service.dart';
+import 'package:agam/logic/session/trigger_notifier.dart';
 import 'package:agam/ui/app.dart';
 import 'package:agam/ui/poi_detail_screen.dart';
 import 'package:agam/ui/search_route_screen.dart';
@@ -42,13 +44,53 @@ Matcher _onlyFeature(ActivityFeature feature) => equals([
       .having((e) => e.feature, 'feature', feature),
 ]);
 
-AppServices _services() {
+/// A session whose POI triggers the test fires by hand.
+class _TriggerSession implements SessionController {
+  final _states = StreamController<SessionState>.broadcast();
+  final _triggers = StreamController<PoiTriggerEvent>.broadcast();
+  @override
+  SessionState current = const SessionState.idle();
+  @override
+  Stream<SessionState> get state => _states.stream;
+  @override
+  Stream<PoiTriggerEvent> get triggers => _triggers.stream;
+  void fire(String id) => _triggers.add(
+    PoiTriggerEvent(
+      poiId: id,
+      mode: current.mode,
+      response: TriggerResponse.full,
+      triggeredAt: DateTime.utc(2026),
+    ),
+  );
+  @override
+  Future<void> start(SessionMode mode) async {
+    current = SessionState(mode: mode, startedAt: DateTime(2026));
+    _states.add(current);
+  }
+
+  @override
+  Future<void> end() async {
+    current = const SessionState.idle();
+    _states.add(current);
+  }
+}
+
+// SINTETIS: a fixed fix in memory, no GPS or network.
+class _StaticLocation implements LocationService {
+  _StaticLocation(this.lastFix);
+  @override
+  final LocationFix lastFix;
+  @override
+  Stream<LocationFix> get positions => const Stream.empty();
+}
+
+AppServices _services({SessionController? session, LocationService? location}) {
   final fake = AppServices.fake(tick: const Duration(hours: 1));
   return AppServices(
     permissions: fake.permissions,
-    location: fake.location,
+    location: location ?? fake.location,
     pois: fake.pois,
-    session: fake.session,
+    session: session ?? fake.session,
     audio: fake.audio,
     voice: fake.voice,
     settings: fake.settings,
@@ -66,6 +108,13 @@ AppServices _services() {
 
 List<ActivityEvent> _events(AppServices services) =>
     (services.activity as FakeActivityLogger).events;
+
+/// The live map keeps animating, so pumpAndSettle would never return.
+Future<void> _pumpFrames(WidgetTester tester) async {
+  for (var i = 0; i < 15; i++) {
+    await tester.pump(const Duration(milliseconds: 100));
+  }
+}
 
 void _phone(WidgetTester tester) {
   tester.view.physicalSize = const Size(430, 1000);
@@ -233,6 +282,51 @@ void main() {
     expect(find.byType(PoiDetailScreen), findsOneWidget);
 
     expect(_events(services), isEmpty);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('"Lihat" on the trigger card logs nothing', (tester) async {
+    _phone(tester);
+    final session = _TriggerSession();
+    final services = _services(
+      session: session,
+      location: _StaticLocation(
+        LocationFix(
+          position: fakePois.first.position,
+          accuracyM: 5,
+          timestamp: DateTime.utc(2026),
+        ),
+      ),
+    );
+    final views = StreamController<String>.broadcast();
+    addTearDown(views.close);
+    await session.start(SessionMode.explore);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: AgamMainShell(
+          services: services,
+          poiViewRequests: views.stream,
+          internalDemo: true,
+          // As in the product: the action goes through the responder, which
+          // answers "Lihat" with a view request.
+          onPoiAction: (id, action) async {
+            if (action == TriggerAction.view) views.add(id);
+          },
+        ),
+      ),
+    );
+    await _pumpFrames(tester);
+    session.fire('P01');
+    await _pumpFrames(tester);
+    _events(services).clear();
+
+    await tester.ensureVisible(find.text('Lihat'));
+    await tester.tap(find.text('Lihat'));
+    await _pumpFrames(tester);
+    expect(find.byType(PoiDetailScreen), findsOneWidget);
+
+    expect(_events(services), isEmpty);
+    await session.end();
     await tester.pumpWidget(const SizedBox.shrink());
   });
 }
