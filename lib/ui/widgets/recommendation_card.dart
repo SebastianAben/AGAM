@@ -107,7 +107,8 @@ class RecommendationCard extends StatelessWidget {
   final ValueChanged<Poi> onRoute;
   final bool routeAvailable;
 
-  /// Shows a close button; used where the card floats over the map.
+  /// Shows a "Tutup" pill in the header; used where the card floats over
+  /// the map.
   final VoidCallback? onDismiss;
 
   /// Over the map the card takes the floating shadow of map controls.
@@ -137,15 +138,14 @@ class RecommendationCard extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Padding(
-              padding: EdgeInsets.fromLTRB(18, 14, dismiss == null ? 18 : 6, 4),
+              padding: EdgeInsets.fromLTRB(
+                18,
+                dismiss == null ? 16 : 12,
+                12,
+                dismiss == null ? 4 : 0,
+              ),
               child: Row(
                 children: [
-                  const Icon(
-                    Icons.explore_rounded,
-                    size: 20,
-                    color: AgamColors.brand,
-                  ),
-                  const SizedBox(width: 10),
                   Expanded(
                     child: Semantics(
                       header: true,
@@ -153,14 +153,11 @@ class RecommendationCard extends StatelessWidget {
                     ),
                   ),
                   if (dismiss != null)
-                    IconButton(
+                    AgamTextPill.outlined(
                       key: const ValueKey('recommendation-dismiss'),
+                      label: 'Tutup',
+                      semanticLabel: 'Tutup rekomendasi',
                       onPressed: dismiss,
-                      tooltip: 'Tutup rekomendasi',
-                      icon: const Icon(
-                        Icons.close_rounded,
-                        color: AgamColors.muted,
-                      ),
                     ),
                 ],
               ),

@@ -459,7 +459,7 @@ void main() {
       await tester.tap(find.byTooltip('Tutup informasi'));
       await _frames(tester);
       expect(_card, findsOneWidget);
-      await tester.tap(find.byTooltip('Tutup rekomendasi'));
+      await tester.tap(find.byKey(const ValueKey('recommendation-dismiss')));
       await _frames(tester, 3);
       expect(_card, findsNothing);
 

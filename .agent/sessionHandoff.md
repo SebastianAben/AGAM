@@ -1,5 +1,26 @@
 # Session Handoff — AGAM
 
+## Kartu status rute UI06 dan "Lanjut ke mana?" — 26 November 2026
+
+- Branch `feat/end-route-card` dari `22f28ad`
+  (worktree `.claude/worktrees/end-route-card`). Ikon X dihapus dari dua
+  kartu dan diganti komponen bersama `AgamTextPill` di
+  `agam_components.dart`.
+- Kartu status saat berjalan dipindah ke
+  `lib/ui/widgets/trip_status_card.dart` (`TripStatusCard`): satu baris,
+  nama + "Sisa … · ~… menit" di kiri, pil merah muda **Akhiri rute** di
+  kanan.
+- "Lanjut ke mana?" (`recommendation_card.dart`): ikon kompas dan X
+  dihapus. Header berisi judul + pil garis tepi **Tutup** (key
+  `recommendation-dismiss`, label pembaca layar "Tutup rekomendasi") agar
+  lebih tenang dibanding tombol **Rute**. Tes kini mengetuk lewat key,
+  bukan tooltip.
+- Source lokal di checkout utama sudah mengganti `_RouteSummary` menjadi
+  `_TripCard`. Saat digabung, isi `build` `_TripCard` cukup diganti
+  pemanggilan `TripStatusCard`.
+- `flutter analyze` bersih dan 469 tes Flutter lulus. Belum dicek di
+  perangkat. Status PBI tidak berubah.
+
 ## Pembersihan teks internal UI — 26 November 2026
 
 - Detail POI menampilkan kredit dan sumber. Prefix teknis
