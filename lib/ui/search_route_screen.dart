@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
@@ -11,6 +10,7 @@ import '../contracts/models/geo.dart';
 import '../contracts/models/navigation.dart';
 import '../contracts/models/session.dart';
 import 'poi_detail_screen.dart';
+import 'walking_navigation_screen.dart';
 import 'widgets/agam_arrival.dart';
 import 'widgets/agam_components.dart';
 import 'widgets/agam_motion.dart';
@@ -20,7 +20,7 @@ import 'widgets/facility_labels.dart';
 import 'widgets/offline_campus_map.dart';
 import 'widgets/recommendation_card.dart';
 
-/// UI05 Search & Destination plus the active UI06 navigation summary.
+/// UI05 Search & Destination and the UI07 arrival card.
 /// Search/routing implementations are injected from AppServices.
 class SearchRouteScreen extends StatefulWidget {
   const SearchRouteScreen({
@@ -80,6 +80,7 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
   // the middle of the camera's flight, so the name lands with its marker.
   Duration _arriveAfter = Duration.zero;
   NavigationState _navigation = const NavigationState.idle();
+  Route<void>? _navigationPage;
   FacilityCategory? _facilityFilter;
   int _searchRequest = 0;
   bool _searching = false;
@@ -127,6 +128,9 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
           value.status == NavigationStatus.arrived &&
           _navigation.status != NavigationStatus.arrived;
       setState(() => _navigation = value);
+      if (arrived || value.status == NavigationStatus.idle) {
+        _closeNavigationPage();
+      }
       // The arrival card replaces the route card at the top of the list;
       // bring it into view if the list was scrolled down meanwhile.
       if (arrived) {
@@ -269,28 +273,30 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
   /// [onArrival] opens the detail without `featureUsed`: right after arriving
   /// its time would match the arrival at the POI (PRD §15.5, rules §5.1).
   Future<void> _openPoiDetail(Poi poi, {bool onArrival = false}) async {
+    var routeRequested = false;
     await Navigator.of(context).push<void>(
       AgamMotion.route(
-        (context) => PoiDetailScreen(
+        (_) => PoiDetailScreen(
           activity: onArrival ? null : widget.services.activity,
           poi: poi,
           audio: widget.services.audio,
           settings: widget.services.settings,
           checkedIn: false,
           onNavigate: () async {
-            Navigator.of(context).pop();
-            final result = SearchResult(
-              kind: SearchResultKind.poi,
-              id: poi.id,
-              name: poi.name,
-              score: 1,
-            );
-            _selectDestination(result);
-            await _startRoute(result);
+            routeRequested = true;
           },
         ),
       ),
     );
+    if (!mounted || !routeRequested) return;
+    final result = SearchResult(
+      kind: SearchResultKind.poi,
+      id: poi.id,
+      name: poi.name,
+      score: 1,
+    );
+    _selectDestination(result);
+    await _startRoute(result);
   }
 
   Future<void> _openDemoPoi(String id) async {
@@ -348,7 +354,7 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
   }
 
   Future<void> _startRoute(SearchResult result) async {
-    if (_routing) return;
+    if (_routing || _navigationPage != null) return;
     final poi = _poiFor(result);
     final facility = _facilityFor(result);
     final target = poi != null
@@ -373,23 +379,39 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
           const Duration(seconds: 12),
         );
       }
-      await widget.services.navigation.start(target);
-      // The real controller reports an unavailable route as an error state
-      // rather than throwing, e.g. while the campus walking graph is not
-      // bundled. Treat it as a failure instead of announcing a route.
-      if (widget.services.navigation.current.status == NavigationStatus.error) {
+      final navigation = widget.services.navigation;
+      await navigation.start(target);
+      var state = navigation.current;
+      // An inaccurate first fix leaves the controller waiting for a usable fix.
+      if (state.status == NavigationStatus.calculating) {
+        state = await navigation.state
+            .where((state) => state.status != NavigationStatus.calculating)
+            .timeout(const Duration(seconds: 12))
+            .first;
+      }
+      if (!mounted) {
+        await navigation.stop();
+        await widget.services.session.end();
+        return;
+      }
+      if (state.status == NavigationStatus.arrived) return;
+      if (state.status == NavigationStatus.idle) return;
+      if ((state.route?.path.length ?? 0) < 2) {
         throw StateError('Rute belum tersedia.');
       }
-      if (mounted) {
-        setState(() => _destination = result);
-        if (target.isPlaceholderPoint) {
-          _showMessage(
-            'Rute menuju titik akses yang belum diverifikasi di lapangan.',
-          );
-        }
-      }
+      _focus.unfocus();
+      final page = AgamMotion.route<void>(
+        (_) => WalkingNavigationScreen(
+          services: widget.services,
+          target: target,
+          onEnd: _endActiveRoute,
+        ),
+      );
+      _navigationPage = page;
+      unawaited(Navigator.of(context).push(page));
     } on TimeoutException {
-      await widget.services.session.end();
+      await widget.services.navigation.stop();
+      if (sessionStarted) await widget.services.session.end();
       if (mounted) {
         setState(
           () =>
@@ -402,6 +424,27 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
       if (mounted) {
         setState(() => _error = 'Rute belum tersedia untuk tujuan ini.');
       }
+    } finally {
+      if (mounted) setState(() => _routing = false);
+    }
+  }
+
+  void _closeNavigationPage() {
+    final page = _navigationPage;
+    if (page == null) return;
+    _navigationPage = null;
+    if (page.isCurrent) {
+      page.navigator?.pop();
+    } else if (page.isActive) {
+      page.navigator?.removeRoute(page);
+    }
+  }
+
+  Future<void> _endActiveRoute() async {
+    setState(() => _routing = true);
+    try {
+      await widget.services.navigation.stop();
+      await widget.services.session.end();
     } finally {
       if (mounted) setState(() => _routing = false);
     }
@@ -431,9 +474,6 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final activeRoute =
-        _navigation.status != NavigationStatus.idle &&
-        _navigation.status != NavigationStatus.error;
     final currentTarget = _navigation.target;
     final selected =
         _destination ??
@@ -483,10 +523,7 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
                               ? const SizedBox(width: double.infinity)
                               : Padding(
                                   padding: const EdgeInsets.only(bottom: 24),
-                                  child: _routeCard(
-                                    selected,
-                                    activeRoute: activeRoute,
-                                  ),
+                                  child: _routeCard(selected),
                                 ),
                         ),
                         if (_error != null) _errorCard(_error!),
@@ -913,14 +950,9 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
       ? (_navigation.route?.path.lastOrNull ?? _navigation.target!.point)
       : _poiFor(result)?.position ?? _facilityFor(result)?.position;
 
-  Widget _routeCard(SearchResult destination, {required bool activeRoute}) {
+  Widget _routeCard(SearchResult destination) {
     if (_hasArrivedAt(destination)) return _arrivalCard(destination);
-    // An active route shows its progress in the regular card.
-    if (widget.internalDemo && !activeRoute) return _demoPoiCard(destination);
-    final route = _navigation.route;
-    final step = _navigation.currentStep;
-    final eta = _navigation.remainingEta ?? route?.eta;
-    final distance = _navigation.remainingDistanceM ?? route?.distanceM;
+    if (widget.internalDemo) return _demoPoiCard(destination);
     final point = _pointFor(destination);
     return Container(
       decoration: BoxDecoration(
@@ -975,83 +1007,15 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
                   child: AgamArrival(
                     id: destination.id,
                     arriveAfter: _arriveAfter,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          destination.name,
-                          style: AgamText.headline.copyWith(
-                            color: Colors.white,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          distance == null ? '— m' : '${distance.round()} m',
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: .75),
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
+                    child: Text(
+                      destination.name,
+                      style: AgamText.headline.copyWith(color: Colors.white),
                     ),
-                  ),
-                ),
-                AgamArrival(
-                  id: destination.id,
-                  arriveAfter: _arriveAfter,
-                  child: Column(
-                    children: [
-                      Text(
-                        // Rounded up: a 50 s walk reads "1 menit", not "0".
-                        eta == null
-                            ? '—'
-                            : '${math.max(1, (eta.inSeconds / 60).ceil())}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 26,
-                          height: 1,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: -0.6,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'menit',
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: .75),
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
                   ),
                 ),
               ],
             ),
           ),
-          if (step != null)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-              child: Row(
-                children: [
-                  const AgamIconTile(icon: Icons.turn_left_rounded, size: 40),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(step.instruction, style: AgamText.label),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Arahan • ${step.distanceM.round()} m',
-                          style: AgamText.caption,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
             child: Row(
@@ -1060,18 +1024,15 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
                   child: AgamRouteButton(
                     available: true,
                     primary: true,
-                    onPressed: _routing || activeRoute
-                        ? null
-                        : () => _startRoute(destination),
+                    onPressed: _routing ? null : () => _startRoute(destination),
                     busy: _routing,
-                    label: activeRoute ? 'Navigasi sedang berjalan' : 'Rute',
                   ),
                 ),
                 const SizedBox(width: 10),
                 IconButton(
                   onPressed: _stopRoute,
                   icon: const Icon(Icons.close_rounded),
-                  tooltip: 'Akhiri rute',
+                  tooltip: 'Tutup pilihan',
                   style: IconButton.styleFrom(
                     backgroundColor: AgamColors.fill,
                     foregroundColor: AgamColors.ink,

@@ -303,20 +303,19 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
   Future<void> _openDetail(Poi poi, {bool fromTrigger = false}) async {
     if (_openingDetail) return;
     _openingDetail = true;
+    var routeRequested = false;
     try {
       await Navigator.of(context).push(
         AgamMotion.route<void>(
-          (context) => PoiDetailScreen(
+          (_) => PoiDetailScreen(
             poi: poi,
             activity: fromTrigger ? null : widget.services.activity,
             audio: widget.services.audio,
             settings: widget.services.settings,
             checkedIn: false,
             navigationAvailable: widget._startRoute != null,
-            // The route card lives on the search page, as from the panel.
             onNavigate: () async {
-              Navigator.of(context).pop();
-              widget._startRoute?.call(poi);
+              routeRequested = true;
             },
           ),
         ),
@@ -324,6 +323,7 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
     } finally {
       _openingDetail = false;
     }
+    if (mounted && routeRequested) widget._startRoute?.call(poi);
   }
 
   void _selectPoi(Poi poi) {
@@ -480,6 +480,7 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
               OfflineCampusMap(
                 key: _mapKey,
                 showPois: _showPois,
+                lockToTileBounds: true,
                 config: widget.services.map,
                 pois: _pois,
                 selectedPoiId: poi?.id,

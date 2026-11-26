@@ -346,6 +346,14 @@ Progres trail, POI dikunjungi, dan pengaturan disimpan per akun (PRD §15.1). Im
 
 ### PB04 — Explore Map dengan tile vektor dibundel
 
+- **Atribusi ringkas (26 November 2026, `LB`) · `in_progress`.** Kredit
+  peta memakai teks 8 piksel logis dan kedua tautan tetap tersedia pada peta.
+
+- **Batas kamera Jelajah (26 November 2026, `LB`) · `in_progress`.**
+  Ukuran viewport dan rotasi menentukan zoom terjauh yang masih mengisi
+  layar dengan cakupan PMTiles. Geser dan pusatkan lokasi mengikuti batas
+  kamera. Pesan luar kampus tetap mengikuti area layanan §9.3.
+
 - Paket LB pada 24 November 2026 menyiapkan style peta jalan kaki dengan
   kedalaman skematis, tile native z12–18, PNG 512 px dan bounds yang dapat
   dipakai kamera FE. PB04 tetap `in_progress`.
@@ -516,6 +524,15 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
 
 ### PB11 — Navigasi jalan kaki di perangkat
 
+- **UI06 layar penuh (26 November 2026, `LB`) · `in_progress`.** Cari &
+  Rute membuka peta navigasi layar penuh ketika hasil Dijkstra tersedia.
+  Garis biru putus-putus memakai geometri rute aktif, termasuk lorong
+  kandidat, dan diperbarui saat reroute. Emulator API 36 dengan GPS
+  simulasi memverifikasi Labtek V → Labtek VIII, pergantian arahan kanan
+  dan kiri, reroute, serta kembali ke pencarian saat tiba atau sesi
+  diakhiri. Survei titik akses dan lorong serta acceptance F06 masih
+  tertunda.
+
 - Paket LB pada 24 November 2026 menyiapkan graf draf dari layer jalur putih,
   Dijkstra yang dibatasi ruas graf dan deteksi tiba di ujung rute demo.
   Integrasi bootstrap dan verifikasi lapangan tertunda. PB11 tetap `in_progress`.
@@ -528,6 +545,10 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
 - **Status:** `in_progress` — `CampusRoutingService` dan `DeviceNavigationController` asli tersedia. Dijkstra, langkah, ETA, reroute >25 m, tiba ≤15 m, serta pembatalan perhitungan tertunda lulus test fixture sintetis. Integrasi UI/LA dan verifikasi lapangan belum selesai. Aktivasi rute produk menunggu graf jalan bersumber dan koordinat pintu masuk hasil survei; batas layanan produk ditetapkan 24 November 2026 (PRD §9.3).
 
 ### PB12 — Arahan suara navigasi dan deteksi tiba
+
+- **UI06/UI07 (26 November 2026, `LB`) · `in_progress`.** Emulator API 36
+  memverifikasi transisi dari UI06 ke kartu tiba dengan aksi detail dan
+  rekomendasi. Playback dan acceptance perangkat fisik masih tertunda.
 
 - **Gelombang 1 (25 November 2026, branch `feat/field-test-wave1`):** tiba di fasilitas diumumkan TTS bila suara `id-ID` tersedia; kartu tiba di Cari & Rute (`lib/ui/widgets/arrival_card.dart`) dengan Lihat Detail POI dan Selesai, layar bergulir ke kartu tiba, catatan cara memasang data suara bila TTS tidak ada. Detail yang dibuka dari kartu tiba tidak mencatat `featureUsed`.
 - **Track:** LA (`VoiceGuidance`, audio tiba), LB (event tiba), FE (tampilan tiba) · **Requirement:** F04, F06

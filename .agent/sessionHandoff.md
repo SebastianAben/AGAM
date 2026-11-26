@@ -1,5 +1,67 @@
 # Session Handoff — AGAM
 
+## Atribusi peta ringkas — 26 November 2026
+
+- `MapAttribution` memakai teks 8 piksel logis dengan kontras lebih tinggi.
+  Kredit OpenStreetMap (ODbL) dan OpenMapTiles tetap terlihat dan
+  masing-masing tertaut. Luas area ketuk dan penskalaan teks sistem
+  dipertahankan. PB04 tetap `in_progress`.
+- Format 143 file bersih, `flutter analyze --no-pub` bersih, dan
+  seluruh 469 tes Flutter lulus.
+
+## Batas kamera Jelajah — 26 November 2026
+
+- Pada branch lokal `LB`, Jelajah mengaktifkan batas kamera opsional
+  `OfflineCampusMap` dari header PMTiles. Zoom minimum menyesuaikan ukuran
+  dan rotasi viewport, lalu kamera membatasi geser dan pemusatan ke area
+  yang dapat dirender. Peringatan luar kampus tetap memakai batas layanan
+  PRD §9.3. UI06 dan peta kartu memakai perilaku kamera sebelumnya.
+- Pemeriksaan direktori arsip mengonfirmasi 85 tile mencakup seluruh
+  batas aset di setiap zoom native 12–18. `test/ui/demo_explore_test.dart`
+  memeriksa pinch, geser ke tepi, rotasi, perubahan viewport, dan pesan
+  lokasi di luar kampus dengan fix simulasi.
+- `flutter analyze --no-pub` bersih, seluruh 469 tes Flutter lulus, dan
+  `git diff --check` bersih. Build APK debug demo x86_64 berhasil
+  dan hash APK terpasang di emulator cocok dengan hasil build
+  `23e39b4d4b21e470c47f78a01423ac4e41069db1b1a99df0527ef6b0a227f6a4`.
+- Emulator API 36 dalam mode pesawat memverifikasi zoom dengan ketukan
+  ganda dan roda gulir, geser ke tepi, serta peringatan dan pemusatan saat
+  GPS simulasi berada di luar kampus. Bukti layar tersedia di
+  `D:/CodexRuntime/agam-android/explore-lock-evidence/`.
+- PB04 tetap `in_progress`. Uji perangkat fisik dan lapangan tertunda.
+  Penggunaan AI untuk implementasi dan verifikasi dicakup PB20.
+
+## UI06 layar penuh — 26 November 2026
+
+- Implementasi di worktree lokal `AGAM-LB-PB04`, branch `LB`, dengan
+  baseline `1e46a86`. `lib/ui/walking_navigation_screen.dart` memakai
+  viewport penuh dengan arahan di atas, ringkasan sisa jarak dan ETA,
+  serta tombol Akhiri rute. Kamera dibingkai saat peta siap. Pengguna
+  dapat menggeser, memperbesar, dan memusatkan kembali peta.
+- `OfflineCampusMap` menggambar `WalkingRoute.path` dengan
+  `StrokePattern.dashed` di atas tile dan di bawah penanda. Jalur baru
+  mengganti jalur lama setelah reroute. State tanpa rute menghapus garis.
+  Geometri lorong kandidat ikut digambar dan arahan membawa label belum
+  diverifikasi. Semua pemrosesan peta dan lokasi berlangsung di perangkat.
+- Cari & Rute mempertahankan pilihan dan kata kunci saat panduan ditutup.
+  Saat tiba, layar asal menampilkan UI07, detail, dan rekomendasi dari
+  layanan yang sama. Aksi satu ketukan dari detail membuka UI06 setelah
+  halaman detail tertutup. Kegagalan hitung awal ditampilkan di Cari & Rute.
+- `flutter analyze --no-pub` bersih, `flutter test --no-pub --concurrency=3
+  --reporter expanded` lulus 469 tes, dan `git diff --check` bersih.
+  Build debug demo x86_64 berhasil. SHA-256 APK pada emulator cocok dengan
+  hasil build `3ba1f3c6e3cb5f34efceca26682fcc68c66627d8868c706857b438620c58b8f5`.
+- Emulator API 36 (720 × 1600), mode pesawat dan Wi-Fi mati, memakai titik
+  akses dataset Labtek V → Labtek VIII serta vertex jalur untuk GPS
+  simulasi. Pemeriksaan mencakup lorong, pergantian instruksi belok kanan
+  dan kiri, garis reroute, pemusatan peta, kartu tiba dan rekomendasi,
+  serta pemulihan pencarian setelah Akhiri rute. Bukti `jelajah.png`,
+  `navigasi-aktif.png`, dan tangkapan tambahan tersedia di
+  `D:/CodexRuntime/agam-android/ui06-evidence/`.
+- PB11 dan PB12 tetap `in_progress`. Survei titik akses/lorong, uji
+  perangkat fisik, dan acceptance lapangan F06 masih tertunda. Penggunaan
+  AI untuk implementasi dan pengujian dicakup PB20.
+
 ## Current — Gelombang 1: routing, tiba, trail, rekomendasi, akun, 25 November 2026
 
 - Branch integrasi `feat/field-test-wave1` dari `dev` @ `5cc955c`, berisi merge

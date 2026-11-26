@@ -5,6 +5,8 @@ import 'package:agam/contracts/fakes/fake_data.dart';
 import 'package:agam/contracts/fakes/fake_la_services.dart';
 import 'package:agam/ui/explore_map_screen.dart';
 import 'package:agam/ui/search_route_screen.dart';
+import 'package:agam/ui/walking_navigation_screen.dart';
+import 'package:agam/ui/widgets/offline_campus_map.dart';
 import 'package:agam/ui/widgets/recommendation_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -48,7 +50,18 @@ class _ManualNavigation implements NavigationController {
   @override
   Future<void> start(NavigationTarget target) async {
     started.add(target);
-    emit(NavigationState(status: NavigationStatus.onRoute, target: target));
+    emit(
+      NavigationState(
+        status: NavigationStatus.onRoute,
+        target: target,
+        route: WalkingRoute(
+          path: [_here.position, target.point],
+          distanceM: 120,
+          eta: const Duration(minutes: 2),
+          steps: const [],
+        ),
+      ),
+    );
   }
 
   @override
@@ -227,6 +240,63 @@ void main() {
       await _frames(tester, 4);
       expect(navigation.started.single.id, _next.id);
       expect(services.session.current.mode, SessionMode.navigation);
+      expect(find.byType(WalkingNavigationScreen), findsOneWidget);
+
+      List<GeoPoint> visiblePath() => tester
+          .widget<OfflineCampusMap>(
+            find.descendant(
+              of: find.byType(WalkingNavigationScreen),
+              matching: find.byType(OfflineCampusMap),
+            ),
+          )
+          .routePath;
+      final route = navigation.current.route!;
+      expect(visiblePath(), route.path);
+
+      final replacement = [_later.position, _next.navigationPoint];
+      const instruction =
+          'Belok kanan, lewat lorong dalam gedung (belum diverifikasi).';
+      navigation.emit(
+        NavigationState(
+          status: NavigationStatus.onRoute,
+          target: navigation.current.target,
+          route: WalkingRoute(
+            path: replacement,
+            distanceM: 60,
+            eta: const Duration(minutes: 1),
+            steps: [
+              RouteStep(
+                maneuver: Maneuver.turnRight,
+                position: replacement.first,
+                distanceM: 60,
+                instruction: instruction,
+              ),
+            ],
+          ),
+          currentStepIndex: 0,
+          remainingDistanceM: 43,
+          remainingEta: const Duration(seconds: 34),
+        ),
+      );
+      await _frames(tester);
+      expect(visiblePath(), replacement);
+      expect(find.byIcon(Icons.turn_right_rounded), findsOneWidget);
+      expect(find.text(instruction), findsOneWidget);
+      expect(find.textContaining('Sisa 43 m'), findsOneWidget);
+
+      final target = navigation.current.target;
+      navigation.emit(
+        NavigationState(status: NavigationStatus.error, target: target),
+      );
+      await _frames(tester);
+      expect(visiblePath(), isEmpty);
+
+      navigation.emit(
+        NavigationState(status: NavigationStatus.arrived, target: target),
+      );
+      await _frames(tester, 5);
+      expect(find.byType(WalkingNavigationScreen), findsNothing);
+      expect(find.text('Anda telah tiba di ${_next.name}'), findsOneWidget);
       await tester.pumpWidget(const SizedBox.shrink());
       await _frames(tester, 2);
     });
@@ -261,6 +331,7 @@ void main() {
       // One tap: the route to the recommended POI has started.
       expect(navigation.started.single.id, _next.id);
       expect(services.session.current.mode, SessionMode.navigation);
+      expect(find.byType(WalkingNavigationScreen), findsOneWidget);
       expect(_card, findsNothing);
       // Shown right after arrival: nothing logged (PRD §15.5, rules §5.1).
       expect(_featureUsed(services), isEmpty);

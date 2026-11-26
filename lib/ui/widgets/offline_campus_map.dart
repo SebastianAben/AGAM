@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -18,8 +20,11 @@ class OfflineCampusMap extends StatefulWidget {
     this.userAccuracyM,
     this.selectedPoiId,
     this.showPois = true,
+    this.lockToTileBounds = false,
     this.initialFocus,
     this.highlight,
+    this.routePath = const [],
+    this.onMapReady,
     this.attributionPadding = const EdgeInsets.all(10),
   });
 
@@ -27,11 +32,14 @@ class OfflineCampusMap extends StatefulWidget {
   /// [MapAttribution] itself, next to its own overlays.
   final EdgeInsets? attributionPadding;
   final GeoPoint? initialFocus;
+  final List<GeoPoint> routePath;
+  final VoidCallback? onMapReady;
 
   /// A non-POI place to point at, such as a facility chosen as a
   /// destination. Drawn like a selected POI, with its own icon and label.
   final MapHighlight? highlight;
   final bool showPois;
+  final bool lockToTileBounds;
   final MapConfig config;
   final List<Poi> pois;
   final GeoPoint? userPosition;
@@ -54,6 +62,27 @@ class OfflineCampusMapState extends State<OfflineCampusMap>
   late final _motion = AnimationController(vsync: this);
   VoidCallback? _cameraTick;
   GeoPoint? _pendingCenter;
+  _OfflineViewportConstraint? _tileConstraint;
+
+  void _onMapReady() {
+    if (!mounted) return;
+    _ready = true;
+    if (widget.lockToTileBounds) _containViewport();
+    widget.onMapReady?.call();
+  }
+
+  void _onMapEvent(MapEvent event) {
+    // flutter_map updates the viewport dimensions before emitting this
+    // event, without applying the camera constraint to the new size.
+    if (event is MapEventNonRotatedSizeChange && widget.lockToTileBounds) {
+      _containViewport();
+    }
+  }
+
+  void _containViewport() {
+    final camera = _controller.camera;
+    _controller.move(camera.center, camera.zoom);
+  }
 
   /// Kamera hanya hidup di memori; tidak menyimpan atau mengirim posisi.
   void focusOn(GeoPoint point) {
@@ -92,6 +121,18 @@ class OfflineCampusMapState extends State<OfflineCampusMap>
     if (_ready) {
       _animateCamera(_controller.camera.center, _controller.camera.zoom, 0);
     }
+  }
+
+  void fitPoints(List<GeoPoint> points, {required EdgeInsets padding}) {
+    if (!_ready || points.isEmpty) return;
+    _motion.stop();
+    _controller.fitCamera(
+      CameraFit.coordinates(
+        coordinates: points.map(_latLng).toList(),
+        padding: padding,
+        maxZoom: 19,
+      ),
+    );
   }
 
   void _animateCamera(
@@ -180,10 +221,16 @@ class OfflineCampusMapState extends State<OfflineCampusMap>
                       widget.initialFocus ??
                       widget.config.initialCenter,
                 ),
-                onMapReady: () => _ready = true,
+                onMapReady: _onMapReady,
+                onMapEvent: _onMapEvent,
                 initialZoom: 17,
                 minZoom: 14,
                 maxZoom: 20,
+                cameraConstraint: widget.lockToTileBounds
+                    ? (_tileConstraint ??= _OfflineViewportConstraint(
+                        LatLngBounds(tiles.southWest, tiles.northEast),
+                      ))
+                    : const CameraConstraint.unconstrained(),
               ),
               children: [
                 TileLayer(
@@ -193,6 +240,24 @@ class OfflineCampusMapState extends State<OfflineCampusMap>
                   maxZoom: 20,
                   tileDisplay: const TileDisplay.instantaneous(),
                 ),
+                if (widget.routePath.length >= 2)
+                  PolylineLayer(
+                    simplificationTolerance: 0,
+                    polylines: [
+                      Polyline(
+                        points: widget.routePath.map(_latLng).toList(),
+                        pattern: StrokePattern.dashed(
+                          segments: const [10, 8],
+                          patternFit: PatternFit.appendDot,
+                        ),
+                        color: AgamColors.brand,
+                        strokeWidth: 5,
+                        borderColor: Colors.white,
+                        borderStrokeWidth: 1.5,
+                        strokeCap: StrokeCap.round,
+                      ),
+                    ],
+                  ),
                 if ((widget.userPosition, widget.userAccuracyM) case (
                   final position?,
                   final accuracy?,
@@ -288,6 +353,41 @@ class OfflineCampusMapState extends State<OfflineCampusMap>
   }
 
   LatLng _latLng(GeoPoint point) => LatLng(point.lat, point.lng);
+}
+
+class _OfflineViewportConstraint extends CameraConstraint {
+  _OfflineViewportConstraint(this.bounds)
+    : _contain = CameraConstraint.contain(bounds: bounds);
+
+  final LatLngBounds bounds;
+  final CameraConstraint _contain;
+
+  @override
+  MapCamera? constrain(MapCamera camera) {
+    if (camera.nonRotatedSize == MapCamera.kImpossibleSize) return camera;
+
+    final northEast = camera.project(bounds.northEast);
+    final southWest = camera.project(bounds.southWest);
+    // The rotated viewport's bounding rectangle must still fit. Leave one
+    // pixel of slack for rounding when the fitted zoom is at the limit.
+    final scale = math.max(
+      (camera.size.x + 1) / (northEast.x - southWest.x),
+      (camera.size.y + 1) / (southWest.y - northEast.y),
+    );
+    final fitted = scale > 1 + 1e-9
+        ? camera.withPosition(
+            zoom: camera.clampZoom(camera.getScaleZoom(scale)),
+          )
+        : camera;
+    final bounded = _contain.constrain(fitted);
+    if (bounded == null) return null;
+    // Avoid moving an already clamped center again due to projection rounding.
+    if ((bounded.center.latitude - fitted.center.latitude).abs() < 1e-10 &&
+        (bounded.center.longitude - fitted.center.longitude).abs() < 1e-10) {
+      return fitted;
+    }
+    return bounded;
+  }
 }
 
 /// Seluruh tile sudah dirender dari aset, sebelum pembacaan viewport.
@@ -551,9 +651,10 @@ class MapAttribution extends StatelessWidget {
 
   Widget _credit(BuildContext context, String label, String url) => TextButton(
     style: TextButton.styleFrom(
-      foregroundColor: AgamColors.muted,
+      foregroundColor: AgamColors.ink,
       textStyle: const TextStyle(
-        fontSize: 10,
+        fontSize: 8,
+        fontWeight: FontWeight.w600,
         letterSpacing: 0,
         fontFamily: 'PlusJakartaSans',
       ),

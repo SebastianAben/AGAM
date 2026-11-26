@@ -7,6 +7,7 @@ import 'package:agam/logic/data/data.dart';
 import 'package:agam/logic/location/device_location_service.dart';
 import 'package:agam/logic/location/position_source.dart';
 import 'package:agam/logic/map/agam_map_config.dart';
+import 'package:agam/logic/map/offline_map_tiles.dart';
 import 'package:agam/logic/session/device_session_controller.dart';
 import 'package:agam/ui/app.dart';
 import 'package:agam/ui/widgets/agam_bottom_navigation.dart';
@@ -291,6 +292,75 @@ void main() {
       await tester.tap(find.byTooltip('Arahkan peta ke utara'));
       await tester.pumpAndSettle();
       expect(controller.camera.rotation, 0);
+
+      final tiles = (await tester.runAsync(
+        () => OfflineMapTiles.load(map.style),
+      ))!;
+      void expectViewportInsideTiles() {
+        final camera = controller.camera;
+        final viewport = tester.getSize(find.byType(FlutterMap));
+        // Geographic tolerance for the round trip at an exact tile edge.
+        const tolerance = 1e-9;
+        final coverage = LatLngBounds(
+          LatLng(
+            tiles.southWest.latitude - tolerance,
+            tiles.southWest.longitude - tolerance,
+          ),
+          LatLng(
+            tiles.northEast.latitude + tolerance,
+            tiles.northEast.longitude + tolerance,
+          ),
+        );
+        for (final corner in [
+          Offset.zero,
+          Offset(viewport.width, 0),
+          Offset(0, viewport.height),
+          Offset(viewport.width, viewport.height),
+        ]) {
+          expect(coverage.contains(camera.offsetToCrs(corner)), isTrue);
+        }
+      }
+
+      controller.move(center, 1);
+      await tester.pumpAndSettle();
+      final farthestZoom = controller.camera.zoom;
+      expect(farthestZoom, greaterThan(14));
+      expect(farthestZoom, lessThan(17));
+      expectViewportInsideTiles();
+      controller.move(tiles.northEast, farthestZoom);
+      controller.rotate(45);
+      await tester.pumpAndSettle();
+      expectViewportInsideTiles();
+      tester.view.physicalSize = const Size(500, 1050);
+      await tester.pumpAndSettle();
+      expectViewportInsideTiles();
+      tester.view.physicalSize = const Size(430, 900);
+      await tester.pumpAndSettle();
+      controller.move(center, 19);
+      expect(controller.camera.zoom, 19);
+      await tester.tap(find.byTooltip('Arahkan peta ke utara'));
+      await tester.pumpAndSettle();
+      final pinchCenter =
+          tester.getCenter(find.byType(FlutterMap)) + const Offset(0, 90);
+      final leftFinger = await tester.startGesture(
+        pinchCenter - const Offset(140, 0),
+      );
+      final rightFinger = await tester.startGesture(
+        pinchCenter + const Offset(140, 0),
+      );
+      for (final distance in [110.0, 75.0, 40.0, 14.0]) {
+        await leftFinger.moveTo(pinchCenter - Offset(distance, 0));
+        await rightFinger.moveTo(pinchCenter + Offset(distance, 0));
+        await tester.pump(const Duration(milliseconds: 40));
+      }
+      await leftFinger.up();
+      await rightFinger.up();
+      await tester.pumpAndSettle();
+      expect(controller.camera.zoom, closeTo(farthestZoom, 1e-6));
+      expectViewportInsideTiles();
+      controller.move(center, 17);
+      await tester.pumpAndSettle();
+
       await tester.tap(find.byTooltip('Sembunyikan penanda POI'));
       await tester.pumpAndSettle();
       expect(
@@ -317,17 +387,36 @@ void main() {
       await tester.pump();
       expect(session.current.mode, SessionMode.explore);
       final epoch = DateTime.utc(2026, 11, 14);
-      void emit(int second, {double accuracy = 5}) => source.emit(
-        LocationFix(
-          position: poi.position,
-          accuracyM: accuracy,
-          timestamp: epoch.add(Duration(seconds: second)),
-        ),
+      void emit(int second, {double accuracy = 5, GeoPoint? position}) =>
+          source.emit(
+            LocationFix(
+              position: position ?? poi.position,
+              accuracyM: accuracy,
+              timestamp: epoch.add(Duration(seconds: second)),
+            ),
+          );
+      // SYNTHETIC: an accurate fix outside both tile and service bounds.
+      emit(
+        -1,
+        position: GeoPoint(tiles.northEast.latitude + .01, poi.position.lng),
       );
+      await tester.runAsync(() => pumpEventQueue(times: 5));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Anda berada di luar area Kampus Ganesha'),
+        findsOneWidget,
+      );
+      await tester.tap(find.byTooltip('Pusatkan lokasi saya'));
+      await tester.pumpAndSettle();
+      expectViewportInsideTiles();
       emit(0, accuracy: 30);
       emit(6, accuracy: 30);
       await tester.runAsync(() => pumpEventQueue(times: 5));
       await tester.pump();
+      expect(
+        find.text('Anda berada di luar area Kampus Ganesha'),
+        findsNothing,
+      );
       expect(find.text('Lihat'), findsNothing);
       emit(7);
       emit(10);

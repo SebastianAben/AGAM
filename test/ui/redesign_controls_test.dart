@@ -6,8 +6,10 @@ import 'package:agam/logic/map/agam_map_config.dart';
 import 'package:agam/ui/app.dart';
 import 'package:agam/ui/poi_detail_screen.dart';
 import 'package:agam/ui/search_route_screen.dart';
+import 'package:agam/ui/walking_navigation_screen.dart';
 import 'package:agam/ui/widgets/agam_components.dart';
 import 'package:agam/ui/widgets/agam_motion.dart';
+import 'package:agam/ui/widgets/offline_campus_map.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -144,28 +146,31 @@ void main() {
     await tester.pumpAndSettle();
     expect(services.session.current.mode, SessionMode.navigation);
     expect(services.navigation.current.status, NavigationStatus.onRoute);
-    expect(find.text('Navigasi sedang berjalan'), findsOneWidget);
+    expect(find.byType(WalkingNavigationScreen), findsOneWidget);
+    expect(find.byType(TextField), findsNothing);
+    final map = find.byType(OfflineCampusMap);
+    expect(tester.getSize(map), const Size(430, 900));
+    expect(
+      tester.widget<OfflineCampusMap>(map).routePath,
+      services.navigation.current.route!.path,
+    );
     // Fake POIs have no verified access point.
     expect(
       find.text('Rute menuju titik akses yang belum diverifikasi di lapangan.'),
       findsOneWidget,
     );
-    ScaffoldMessenger.of(tester.element(find.byType(Scaffold).last))
-        .hideCurrentSnackBar();
-    await tester.pumpAndSettle();
-    await tester.ensureVisible(find.byTooltip('Akhiri rute'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Akhiri rute'));
+    await tester.tap(find.text('Akhiri rute'));
     // Stopping settles outside the fake clock, like the tile decoding above.
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 50)),
     );
     await tester.pumpAndSettle();
     expect(services.session.current.mode, SessionMode.none);
-    await tester.enterText(find.byType(TextField), 'labtek 5');
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Labtek V').last);
-    await tester.pumpAndSettle();
+    expect(find.byType(WalkingNavigationScreen), findsNothing);
+    expect(
+      tester.widget<TextField>(find.byType(TextField)).controller!.text,
+      'labtek 5',
+    );
     // Detail: the bottom action.
     await tester.ensureVisible(find.text('Lihat Detail POI'));
     await tester.pumpAndSettle();
@@ -175,6 +180,7 @@ void main() {
     await tester.tap(find.text('Rute'));
     await tester.pumpAndSettle();
     expect(find.byType(PoiDetailScreen), findsNothing);
+    expect(find.byType(WalkingNavigationScreen), findsOneWidget);
     expect(services.session.current.mode, SessionMode.navigation);
     expect(services.navigation.current.status, NavigationStatus.onRoute);
     // Stopping settles outside the fake clock, like the tile decoding above.
