@@ -123,13 +123,27 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    // The map card hands the POI to the search page as the destination.
+    // The map card opens the route preview directly, without the search
+    // page; nothing starts until "Mulai rute".
     await tester.tap(find.text('Rute'));
     await tester.pumpAndSettle();
-    expect(find.byType(SearchRouteScreen), findsOneWidget);
-    expect(find.text('Tutup pilihan'), findsOneWidget);
+    expect(find.byType(SearchRouteScreen), findsNothing);
+    expect(find.byType(WalkingNavigationScreen), findsOneWidget);
+    expect(find.text(WalkingNavigationScreen.startLabel), findsOneWidget);
     expect(services.session.current.mode, SessionMode.none);
-    await tester.tap(find.byTooltip('Back'));
+    await tester.tap(find.byTooltip('Kembali'));
+    await tester.pumpAndSettle();
+    // The map card's detail: its Rute also lands on the preview directly.
+    await tester.tap(find.text('Lihat'));
+    await tester.pumpAndSettle();
+    expect(find.byType(PoiDetailScreen), findsOneWidget);
+    await tester.tap(find.text('Rute'));
+    await tester.pumpAndSettle();
+    expect(find.byType(PoiDetailScreen), findsNothing);
+    expect(find.byType(SearchRouteScreen), findsNothing);
+    expect(find.byType(WalkingNavigationScreen), findsOneWidget);
+    expect(services.session.current.mode, SessionMode.none);
+    await tester.tap(find.byTooltip('Kembali'));
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Tutup informasi'));
     await tester.pumpAndSettle();
@@ -144,6 +158,9 @@ void main() {
     await tester.pumpAndSettle();
     // The search card routes on the bundled graph in the demo too.
     await tester.tap(find.text('Rute'));
+    await tester.pumpAndSettle();
+    expect(services.session.current.mode, SessionMode.none);
+    await tester.tap(find.text(WalkingNavigationScreen.startLabel));
     await tester.pumpAndSettle();
     expect(services.session.current.mode, SessionMode.navigation);
     expect(services.navigation.current.status, NavigationStatus.onRoute);
@@ -175,11 +192,14 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Lihat Detail POI'));
     await tester.pumpAndSettle();
-    // Rute on the detail closes it and starts the route from the search page.
+    // Rute on the detail closes it and opens the preview; Mulai starts it.
     await tester.tap(find.text('Rute'));
     await tester.pumpAndSettle();
     expect(find.byType(PoiDetailScreen), findsNothing);
     expect(find.byType(WalkingNavigationScreen), findsOneWidget);
+    expect(services.session.current.mode, SessionMode.none);
+    await tester.tap(find.text(WalkingNavigationScreen.startLabel));
+    await tester.pumpAndSettle();
     expect(services.session.current.mode, SessionMode.navigation);
     expect(services.navigation.current.status, NavigationStatus.onRoute);
     // Stopping settles outside the fake clock, like the tile decoding above.

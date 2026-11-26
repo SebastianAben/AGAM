@@ -31,6 +31,7 @@ class AgamAudioHandler extends svc.BaseAudioHandler
     config: const svc.AudioServiceConfig(
       androidNotificationChannelId: 'site.agam.audio',
       androidNotificationChannelName: 'Narasi AGAM',
+      androidNotificationIcon: 'drawable/ic_stat_agam',
       androidNotificationOngoing: true,
       androidStopForegroundOnPause: true,
     ),

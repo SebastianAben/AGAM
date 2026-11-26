@@ -213,7 +213,7 @@ Nama di tabel berikut sesuai kode kontrak v1.0.
 | `RoutingService` | Hitung rute dari posisi ke tujuan | LB |
 | `NavigationController` | Mulai/berhenti navigasi, aliran `NavigationState`, reroute >25 m, tiba ≤15 m | LB |
 | `SearchService` | Pencarian dengan alias dan filter kategori | LB |
-| `RecommendationService` | Rekomendasi setelah kartu ditutup/tiba | LB |
+| `RecommendationService` | Rekomendasi setelah tiba (CL 26 November 2026) | LB |
 | `TrailService` | Mulai trail, POI berikutnya, progres, lencana; check-in dari `PoiTriggerEvent` | LB |
 | `FacilityService` | Fasilitas terdekat per kategori | LB |
 
@@ -375,6 +375,7 @@ Progres trail, POI dikunjungi, dan pengaturan disimpan per akun (PRD §15.1). Im
 - **UI02 FE (14 November 2026):** kerangka Explore Map dengan penanda POI dan posisi; peta masih ilustrasi skematis berlabel, belum merender PMTiles.
 - **Done:** peta tampil offline setelah login pertama; 10 POI dan posisi pengguna yang bergerak terlihat; script tile dapat dijalankan ulang; ukuran tile tercatat.
 - **Integrasi demo lokal (14 November 2026):** WIP `AgamMapConfig`, style, test, dan audit LB disalin ke checkout integrasi tanpa mengubah worktree LB. Pipeline kini melakukan clustering deterministik; PMTiles 1.022.885 byte, SHA-256 `6af43dfb1be0f854480ab45caa5dadc672e865134d50cddf43a316fc97934792`, seluruh 13 payload/metadata tetap sama dengan arsip awal. `OfflineMapTiles` + `OfflineCampusMap` merender vektor ke memori dengan `flutter_map 7.0.2`, `vector_tile_renderer 5.2.0`, `pmtiles 1.3.0`; tidak memakai layer/cache disk `vector_map_tiles`. Aset terdaftar, atribusi bertautan, marker repository, pan dan overzoom 19 lulus widget. 233 test Flutter, 21 test pipeline, analyze, audit aset tanpa APK, dan CLI verify lulus. Batas layanan produk tetap TBD; demo eksplisit memakai coverage engineering bersumber sesuai PRD §9.3.
+- **Gelombang 2 (26 November 2026, branch `feat/route-preview-wave2`):** atribusi peta (`lib/ui/widgets/map_attribution.dart`) tampil penuh lalu menciut menjadi ⓘ setelah 5 detik atau sentuhan pertama pada peta, sesuai OSMF Attribution Guidelines (PRD §14); ikon launcher dan notifikasi memakai logo AGAM. Berjalan di emulator API 36; belum di perangkat fisik.
 - **Status:** `in_progress` — build/install/peta offline Android diuji; batas layanan produk ditetapkan (24 November 2026); pergerakan GPS di atas tile lokal dan field test belum terbukti
 
 
@@ -550,6 +551,7 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
 - **Track:** LB (graf, `RoutingService`, `NavigationController`), FE (UI06), LA (sesi Navigasi) · **Requirement:** F06, A01
 - **Dependency eksternal:** verifikasi titik akses di lapangan.
 - **Done:** rute tampil ke titik akses tujuan yang sudah diverifikasi; rerouting berjalan; tidak ada request routing ke server.
+- **Gelombang 2 (26 November 2026, branch `feat/route-preview-wave2`):** `planWalkingRoute` (`lib/logic/routing/route_planner.dart`) dipakai preview dan controller: tujuan = titik akses terdekat, titik awal ikut mencoba pintu gedung tempat pengguna berada, garis lurus luar jaringan berbobot 2×. Selasar OSM `highway=corridor` (`assets/routing/corridors.geojson`, `tools/routing/export_osm_corridors.py`) menjadi lorong kandidat. Labtek V → VII: 253 m → 161,6 m lewat selasar (oracle `tools/routing/check_corridor_route.py`). Layar Preview Rute + navigasi satu layar di `walking_navigation_screen.dart`; pesan gagal per sebab (lokasi, luar kampus, jauh dari jalur, lainnya). Berjalan di emulator dengan GPS simulasi; survei lapangan selasar/pintu dan kalibrasi bobot tertunda.
 - **Status:** `in_progress` — `CampusRoutingService` dan `DeviceNavigationController` asli tersedia. Dijkstra, langkah, ETA, reroute >25 m, tiba ≤15 m, serta pembatalan perhitungan tertunda lulus test fixture sintetis. Integrasi UI/LA dan verifikasi lapangan belum selesai. Aktivasi rute produk menunggu graf jalan bersumber dan koordinat pintu masuk hasil survei; batas layanan produk ditetapkan 24 November 2026 (PRD §9.3).
 
 ### PB12 — Arahan suara navigasi dan deteksi tiba
@@ -566,6 +568,7 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
   - `lib/logic/audio/navigation_announcer.dart`: mendengarkan `NavigationState` (LB); membacakan `RouteStep.instruction` sekali per langkah dan saat rute baru setelah rerouting; langkah `arrive` tidak dibacakan; saat tiba, TTS dihentikan lalu file audio tiba POI diputar lewat `AudioService`.
   - Mode Navigasi di `SessionController` (POI lain hanya notifikasi ringkas) sudah selesai di PB06.
 - **Keputusan 24 November 2026:** tiba di fasilitas diumumkan dengan TTS runtime ("Anda telah tiba di {nama fasilitas}"), fallback visual bila suara `id-ID` tidak tersedia ([CL] PRD §10/§23). **Belum:** implementasi pengumuman tersebut, tampilan tiba di layar Cari & Rute (saat ini baru di layar Trail), integrasi dengan routing asli (PB11), dan uji perangkat.
+- **Gelombang 2 (26 November 2026):** narasi/prompt yang sedang diputar dijeda (bukan dihentikan) saat Mulai rute; kartu tiba + "Lanjut ke mana?" tampil di layar navigasi yang sama. Diverifikasi di emulator (media session PLAYING → PAUSED).
 - **Status:** `in_progress` — logic LA selesai dan teruji unit dengan navigasi palsu
 
 ### PB21 — Akun dan login wajib
@@ -605,7 +608,7 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
 
 | Track | Langkah |
 | --- | --- |
-| FE | 1. UI07 Rekomendasi setelah kartu ditutup/tiba, navigasi satu ketukan (PB14). 2. UI08 Orientation Trail: urutan, progres x/10, lencana (PB15). 3. UI09 Fasilitas & pengaturan: daftar fasilitas, auto-play, akhiri sesi, hapus progres (PB16). 4. Mode eyes-free: tombol besar dan alur tanpa membaca layar (PB13). 5. Keadaan offline yang jelas di semua layar (PB17). |
+| FE | 1. UI07 Rekomendasi setelah tiba, Rute membuka preview rute (PB14). 2. UI08 Orientation Trail: urutan, progres x/10, lencana (PB15). 3. UI09 Fasilitas & pengaturan: daftar fasilitas, auto-play, akhiri sesi, hapus progres (PB16). 4. Mode eyes-free: tombol besar dan alur tanpa membaca layar (PB13). 5. Keadaan offline yang jelas di semua layar (PB17). |
 | LA | 1. Kontrol eyes-free dari notifikasi dan lock screen; auto-play (PB13). 2. `SettingsStore` untuk pengaturan (PB16). 3. Mode Trail di `SessionController` (PB15). 4. Uji offline: mode pesawat untuk data, media, trigger (PB17). |
 | LB | 1. `RecommendationService` (PB14). 2. `TrailService`: urutan, navigasi berantai, check-in dari `PoiTriggerEvent` termasuk di luar urutan, progres tersimpan, lencana, hapus progres lokal lewat `reset()` (PB15/A01). 3. `FacilityService` (PB16; bergantung pada dataset fasilitas). 4. Uji offline peta dan navigasi (PB17). |
 
@@ -620,7 +623,8 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
 ### PB14 — Rekomendasi POI berikutnya
 
 - **Track:** LB (`RecommendationService`), FE (UI07) · **Requirement:** F07
-- **Done:** rekomendasi muncul setelah kartu ditutup/tiba dan dapat langsung dinavigasikan.
+- **Done:** rekomendasi muncul setelah tiba; Rute membuka preview rute dan navigasi dimulai dengan Mulai rute (CL 26 November 2026, PRD F07/§23).
+- **Gelombang 2 (26 November 2026, branch `feat/route-preview-wave2`):** rekomendasi tidak lagi muncul saat panel POI di peta ditutup; hanya di kartu tiba. Rute dari rekomendasi membuka preview di layar navigasi yang sama.
 - **Gelombang 1 (25 November 2026, branch `feat/field-test-wave1`):** `RepositoryRecommendationService` tersambung di kedua build (`lib/logic/search/recommendation_bootstrap.dart`, berbagi `AccountVisitStore` dan trail). Kartu UI07 "Lanjut ke mana?" (1–3 POI + 2 fasilitas, jarak garis lurus ±) muncul di bawah kartu tiba dan di peta setelah panel POI ditutup (tidak setelah Lewati); Rute satu ketukan langsung memulai navigasi. Tidak ada log aktivitas. Celah: kunjungan mode Explore tidak dicatat ke `AccountVisitStore`, jadi rekomendasi hanya mengecualikan check-in trail.
 - **Status:** `in_progress` — tersambung dan lulus test otomatis; belum diuji di perangkat/lapangan
 
@@ -645,6 +649,7 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
 - **Gelombang 1 (25 November 2026, branch `feat/field-test-wave1`):** jarak/ETA kartu rute kini terisi karena routing aktif; rute ke fasilitas memakai titik fasilitas.
 - **Track:** LB (`FacilityService`), FE (UI09), LA (data fasilitas di `PoiRepository`) · **Requirement:** F05, F07 · **Prioritas:** Should
 - **Dependency eksternal:** dataset fasilitas.
+- **Gelombang 2 (26 November 2026):** penjaga demo usang di Cari & Rute dihapus; fasilitas dapat dipilih (nama + jarak) dan dipreview rutenya. Berjalan di emulator.
 - **Status:** `in_progress` — kategori fasilitas dan placeholder FE tampil; UI09 auto-play/Akhiri tersambung SettingsStore/SessionController LA dan diuji widget. Dataset fasilitas/layanan terdekat serta acceptance F05/F07 belum tersedia.
 
 ### PB17 — Verifikasi akses offline
@@ -677,6 +682,7 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
 
 - **Track:** PM · **Requirement:** —
 - **Done:** video ≤3 menit terunggah; dokumen disclosure lengkap.
+- **Catatan AI (26 November 2026, gelombang 2):** Claude Code (PM/orkestrator + sub agent per paket di worktree terpisah) mengerjakan routing multi-sumber dan selasar OSM, ikon AGAM, preview rute dan navigasi satu layar, atribusi menciut, rekomendasi setelah tiba, dan audit copy; pengguna memutuskan keputusan produk dan meninjau hasil emulator.
 - **Status:** `planned`
 
 ## 10. Requirement Coverage
@@ -689,7 +695,7 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
 | F04 Eyes-Free Interaction | PB06, PB08, PB12, PB13 | Uji ≥3 penguji |
 | F05 Search & Destination | PB03, PB10, PB16 | Test pencarian + pengukuran waktu respons |
 | F06 Navigation | PB11, PB12 | Field test ≥4/5 tujuan acak |
-| F07 Contextual Recommendation | PB14, PB16 | Demo alur kartu ditutup/tiba |
+| F07 Contextual Recommendation | PB14, PB16 | Demo alur tiba → rekomendasi → preview rute |
 | F08 Orientation Trail | PB15 | Demo progres tersimpan + lencana |
 | A01 Privacy & Session Control | PB02, PB06, PB11, PB21, PB22 | Pemeriksaan penyimpanan dan lalu lintas jaringan; test rules Firestore |
 | A02 Content Traceability | PB03, PB07, PB09 | Metadata lengkap pada 10 POI |

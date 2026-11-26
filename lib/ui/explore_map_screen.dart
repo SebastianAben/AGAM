@@ -20,7 +20,6 @@ import 'widgets/agam_poi_panel.dart';
 import 'widgets/agam_theme.dart';
 import 'widgets/facility_labels.dart';
 import 'widgets/offline_campus_map.dart';
-import 'widgets/recommendation_card.dart';
 
 /// UI02 Explore Map. UI03 trigger and UI04 detail are states layered over it.
 class ExploreMapScreen extends StatefulWidget {
@@ -88,10 +87,6 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
   bool _appVisible = true;
   final _activeTriggerIds = <String>{};
   String? _locationMessage;
-  // UI07 after a POI panel is closed; the counter drops late answers once
-  // a panel opens again or the card is dismissed.
-  RecommendationView? _recommendation;
-  int _recommendRequest = 0;
 
   @override
   void initState() {
@@ -141,7 +136,6 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
           _triggeredPoiId = null;
           _showPois = true;
           _showDetail = false;
-          _clearRecommendation();
         });
         _mapKey.currentState?.focusOn(poi.position);
       }),
@@ -234,7 +228,6 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
       _selectedPoi = poi;
       _triggeredPoiId = poi.id;
       _showDetail = true;
-      _clearRecommendation();
     });
     widget.onAutomaticPoi?.call();
     _loadFacilities();
@@ -332,54 +325,19 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
       _selectedPoi = poi;
       _showPois = true;
       _showDetail = true;
-      _clearRecommendation();
     });
     _mapKey.currentState?.focusOn(poi.position);
     _loadFacilities();
   }
 
-  /// Closing the panel (its X or back) offers where to go next (F07).
-  /// "Lewati" declines the POI instead, so it does not come here.
+  /// Closing the panel (its X or back) only hides it. "Lanjut ke mana?"
+  /// (F07) appears on the arrival card, not here.
   void _closePanel() {
-    final closed = _selectedPoi;
     _activeTriggerIds.remove(_triggeredPoiId);
     setState(() {
       _triggeredPoiId = null;
       _showDetail = false;
     });
-    if (closed != null) _recommendAfter(closed);
-  }
-
-  /// From the user's position when the map has one, else from the closed
-  /// POI. Nothing is logged: right after a trigger its time would match the
-  /// visit (PRD §15.5, rules §5.1).
-  Future<void> _recommendAfter(Poi poi) async {
-    final request = ++_recommendRequest;
-    final position = _fix?.position;
-    final from = position ?? poi.position;
-    try {
-      final result = await widget.services.recommendations.recommend(
-        from: from,
-        afterPoiId: poi.id,
-      );
-      if (!mounted || request != _recommendRequest || _showDetail) return;
-      setState(
-        () => _recommendation = RecommendationView.resolve(
-          result,
-          pois: _pois,
-          from: from,
-          trailActive: widget.services.trail.current.active,
-          origin: position == null ? poi.name : null,
-        ),
-      );
-    } catch (_) {
-      // Optional; the map stays as it was.
-    }
-  }
-
-  void _clearRecommendation() {
-    _recommendRequest++;
-    _recommendation = null;
   }
 
   Future<void> _poiAction(Poi poi, TriggerAction action) async {
@@ -515,8 +473,7 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
                 left: 16,
                 right: 16,
                 bottom: 16,
-                // The stack stays below the map controls, so a tall
-                // recommendation scrolls instead of covering them.
+                // The stack stays below the map controls.
                 top:
                     (widget.onOpenSearch == null ? 12 : 126) +
                     _MapControls.height +
@@ -543,36 +500,6 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
                         ),
                         null => const SizedBox(width: double.infinity),
                       },
-                    ),
-                    // UI07 after a closed panel: a dismissible card, at most
-                    // half the map and never over the map controls.
-                    Flexible(
-                      child: RecommendationPresence(
-                        child: switch (_recommendation) {
-                          final view? => Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
-                            child: ConstrainedBox(
-                              constraints: BoxConstraints(
-                                maxHeight: constraints.maxHeight * .5,
-                              ),
-                              child: SingleChildScrollView(
-                                child: RecommendationCard(
-                                  view: view,
-                                  floating: true,
-                                  routeAvailable: widget._startRoute != null,
-                                  onRoute: (poi) {
-                                    setState(_clearRecommendation);
-                                    widget._startRoute?.call(poi);
-                                  },
-                                  onDismiss: () =>
-                                      setState(_clearRecommendation),
-                                ),
-                              ),
-                            ),
-                          ),
-                          null => null,
-                        },
-                      ),
                     ),
                     _SessionCard(
                       active: _sessionActive,

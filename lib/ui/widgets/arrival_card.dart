@@ -44,8 +44,8 @@ class ArrivalCard extends StatefulWidget {
 
   static const voiceNote =
       'Suara Bahasa Indonesia belum terpasang, jadi kedatangan tidak '
-      'diumumkan. Pasang data suara Bahasa Indonesia di pengaturan '
-      'text-to-speech (TTS) Android.';
+      'diumumkan. Pasang data suaranya di pengaturan text-to-speech (TTS) '
+      'Android.';
 
   static String headline(String name) => 'Anda telah tiba di $name';
 

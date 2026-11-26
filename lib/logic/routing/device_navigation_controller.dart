@@ -2,6 +2,7 @@ import 'dart:async';
 
 import '../../contracts/contracts.dart';
 import 'campus_routing_service.dart';
+import 'route_planner.dart';
 
 /// Holds only the current route and active progress in memory.
 class DeviceNavigationController implements NavigationController {
@@ -11,10 +12,16 @@ class DeviceNavigationController implements NavigationController {
     required this._map,
     required this._session,
     this.arriveAtRouteEnd = false,
+    this._pois,
   });
 
   final LocationService _location;
   final RoutingService _routing;
+
+  /// Latest POIs, so a start inside a building may leave by any of its
+  /// access points (see [planWalkingRoute]). Without it only the nearest
+  /// path is snapped.
+  final List<Poi> Function()? _pois;
   final MapConfig _map;
   final SessionController _session;
   final bool arriveAtRouteEnd;
@@ -130,23 +137,15 @@ class DeviceNavigationController implements NavigationController {
       target.candidates.isEmpty ? [target.point] : target.candidates;
 
   /// Routes to every access point and keeps the shortest walk, so a nearer
-  /// door behind a wall does not win over one that is closer on foot.
-  Future<WalkingRoute> _nearestRoute(
-    GeoPoint from,
-    NavigationTarget target,
-  ) async {
-    WalkingRoute? best;
-    RouteUnavailableException? failure;
-    for (final to in _destinations(target)) {
-      try {
-        final route = await _routing.route(from: from, to: to);
-        if (best == null || route.distanceM < best.distanceM) best = route;
-      } on RouteUnavailableException catch (error) {
-        failure = error;
-      }
-    }
-    return best ?? (throw failure!);
-  }
+  /// door behind a wall does not win over one that is closer on foot. A
+  /// start inside a POI also tries each of its doors (also on reroute).
+  Future<WalkingRoute> _nearestRoute(GeoPoint from, NavigationTarget target) =>
+      planWalkingRoute(
+        routing: _routing,
+        from: from,
+        target: target,
+        pois: _pois?.call() ?? const [],
+      );
 
   bool _isAtDestination(
     GeoPoint position,
