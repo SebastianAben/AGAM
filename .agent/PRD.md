@@ -63,19 +63,7 @@ Di luar lingkup v1 (keputusan tim): **bahasa selain Bahasa Indonesia** dan **bac
 
 **[CL] Akun wajib (keputusan PM 6 November 2026).** Pengguna wajib daftar atau login sebelum memakai aplikasi. Login tidak membuka fitur tambahan. Data akun dipakai internal oleh tim developer untuk menghitung jumlah pengguna, success metric, dan log aktivitas ([§15.5](#155-log-aktivitas)). Seluruh batas privasi NG04 dan A01 tetap berlaku.
 
-**Pengecualian demo internal (instruksi PM 14 November 2026):** login boleh
-dilewati sementara untuk integrasi peta/lokasi/Explore/trigger/kartu POI, dengan
-Labtek V (P01) sebagai POI uji pertama. Pengecualian hanya diaktifkan lewat
-`--dart-define=AGAM_INTERNAL_DEMO=true` dan terlihat pada UI. Default flag false;
-selama PB21 belum tersedia, build biasa menampilkan gerbang login belum tersedia.
-Tidak membuat akun tamu, tidak menambahkan log/server, dan tidak mengganti
-keputusan login wajib produk. Sesuai instruksi PM 16 November 2026, seluruh
-layar FE dipertahankan pada demo: fitur yang belum memiliki logic/data nyata
-tampil sebagai pratinjau, tanpa menjalankan sesi Trail, rute, check-in atau akun
-palsu. Instruksi UI PM terbaru 16 November 2026 menghapus banner/catatan teknis
-dan label placeholder tambahan: data belum tersedia memakai keadaan kosong
-ringkas dan aksi yang belum didukung nonaktif. Metadata approval tetap
-dipertahankan; ini tidak memberi approval konten atau mengubah scope produk.
+**Pengecualian demo internal (dihentikan 26 November 2026).** Pengecualian sementara `--dart-define=AGAM_INTERNAL_DEMO=true` (instruksi 14 November 2026) telah dihapus atas keputusan pengguna/PM pada 26 November 2026. Seluruh build kini merupakan **build produk utuh** dengan Firebase Auth/Firestore, gerbang login wajib (UI10), dan layanan asli LA/LB. Catatan historis penyesuaian demo tetap tersimpan di Change Log [§23](#23-perbedaan-terhadap-prd-baseline-w9) dan handoff.
 
 ## 5. Skenario Utama
 
@@ -171,15 +159,7 @@ Jarak antar-POI terdekat ±49 m (P08–P09) dan ±50 m (P01–P02), sehingga rad
 
 **Parameter engineering PB05-LA-01 (4 November 2026):** engine sinkron menggunakan default margin histeresis **5 m** dan jeda sampel maksimum **10 detik**, keduanya configurable dan **telah diterapkan, belum dikalibrasi di lapangan**. Jeda yang lebih besar membatalkan kontinuitas dwell; jeda tepat 10 detik diterima. Sampel invalid membatalkan kandidat dwell tetapi tidak membuktikan keluar dan tidak menghapus cooldown. Timestamp sama/mundur diabaikan. Saat engine dinonaktifkan, dwell/pengunci kunjungan dibersihkan tetapi cooldown dipertahankan. Setelah keluar dan masuk kembali selama cooldown, dwell dapat berjalan; trigger berikutnya hanya muncul pada sampel valid setelah dwell dan cooldown terpenuhi. Ini bukan perubahan radius produk, pengaturan interval GPS, atau evidence acceptance F02. Rincian ada pada [brief PB05-LA-01](../task-implementation/backend/PB05-LA-01-geofence-engine.md); integrasi sesi dan kalibrasi masih tertunda.
 
-**Uji developer (instruksi PM 16 November 2026):** Pengaturan pada build internal
-`AGAM_INTERNAL_DEMO=true` menyediakan satu sakelar **Mode demo/trial**, default
-mati. Mengaktifkannya mereset cooldown di memori dan melewati jeda cooldown
-selama aktif agar keluar–masuk POI dapat diuji berulang. Pengunci kunjungan,
-radius, histeresis, akurasi, dwell dan prasyarat sesi/area tetap berlaku:
-diam di POI tidak memicu ulang walaupun sudah lewat 10 menit. Mematikannya
-mengembalikan pemeriksaan cooldown normal sejak trigger terakhir; perubahan
-tidak disimpan dan kembali mati saat aplikasi dimulai ulang. Ini alat uji
-developer, bukan tambahan mode sesi §6 atau perubahan cooldown produk.
+**Uji developer (dihentikan 26 November 2026):** sakelar **Mode demo/trial** pada UI09 yang sebelumnya hanya tampil di build `AGAM_INTERNAL_DEMO=true` dihapus seiring penghentian build demo; seluruh build produk memakai cooldown normal 10 menit.
 
 **Parameter engineering lokasi dan sesi LA Sprint 1–2 (10 November 2026)** — **telah diterapkan, belum dikalibrasi**; tidak mengubah keputusan produk:
 
@@ -511,7 +491,7 @@ Perubahan berikut wajib dicatat PM pada Change Log PRD resmi.
 | Mode aplikasi | Tidak dirinci | Empat mode (§6) dan auto-end 30 menit | Memperjelas kapan lokasi dibaca dan trigger aktif |
 | PB17 | Cache konten & tile peta saat offline | Tile sudah dibundel sejak S1; PB17 menjadi verifikasi offline konten | Keputusan tile |
 | Akun pengguna | Tidak disebut di requirement, backlog, maupun sprint plan | Login wajib (email + password), role Mahasiswa ITB/Pengunjung, hapus akun (§4, §16) | Pencatatan jumlah pengguna dan success metric oleh tim (keputusan PM 6 November 2026) |
-| Demo internal sementara | Tidak dirinci | Flag eksplisit melewati login untuk demo integrasi dengan P01; area demo memakai coverage engineering OSM berlabel. Keputusan produk login wajib/batas layanan final tetap berlaku | Instruksi PM 14 November 2026 untuk memprioritaskan integrasi FE/logic, menyesuaikan kebutuhan demo, dan skip login sementara |
+| Demo internal sementara | Tidak dirinci | Sempat memakai flag `AGAM_INTERNAL_DEMO=true` (14 November 2026) untuk integrasi awal; **dihapus 26 November 2026** sehingga seluruh build kini build produk utuh dengan login wajib dan Firebase | Keputusan pengguna/PM 26 November 2026 agar layar login dan akun menjadi bagian utuh alur aplikasi mobile |
 | Area kontak dan visual trigger | Tidak dirinci | Titik POI menjadi area kontak radius 5 m; radius pendekatan dataset tetap 15 m (efektif masuk 20 m, keluar >25 m). Explore/Trail menampilkan kartu terdekat + audio saat resumed, notifikasi + audio di latar belakang | Instruksi PM 16 November 2026 untuk memperluas kontak dan memperjelas respons di layar |
 | Uji developer trigger | Tidak dirinci | Sakelar Mode demo/trial di Pengaturan build internal mereset/melewati cooldown; pengunci saat tetap di POI dan validasi lokasi/dwell dipertahankan | Instruksi PM 16 November 2026 agar pengujian ulang tidak menunggu 10 menit; default mati, hanya memori |
 | Log aktivitas | Tidak disebut | Daftar event tertutup tanpa data lokasi (§15.5) | Success metric; tetap mematuhi NG04/A01 |

@@ -10,13 +10,11 @@ class AgamBottomNavigation extends StatelessWidget {
   const AgamBottomNavigation({
     required this.selectedIndex,
     required this.onSelect,
-    this.internalDemo = false,
     super.key,
   });
 
   final int selectedIndex;
   final ValueChanged<int> onSelect;
-  final bool internalDemo;
 
   static const _items = [
     (Icons.explore_outlined, Icons.explore_rounded, 'Jelajah'),

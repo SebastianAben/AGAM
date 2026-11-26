@@ -116,12 +116,12 @@ void main() {
 
     final headline = 'Anda telah tiba di ${poi.name}';
     expect(find.text(headline), findsNothing);
-    expect(find.byTooltip('Tutup pilihan'), findsOneWidget);
+    expect(find.text('Tutup pilihan'), findsOneWidget);
 
     navigation.emit(_state(NavigationStatus.arrived, poiTarget));
     await tester.pump();
     expect(find.text(headline), findsOneWidget);
-    expect(find.byTooltip('Tutup pilihan'), findsNothing);
+    expect(find.text('Tutup pilihan'), findsNothing);
     // Arrival content eases in rather than appearing at once.
     expect(_opacityOf(tester, find.text(headline)), lessThan(1));
     await tester.pump(const Duration(milliseconds: 300));

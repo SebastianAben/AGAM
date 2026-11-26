@@ -22,7 +22,6 @@ class OrientationTrailScreen extends StatefulWidget {
     required this.services,
     this.embedded = false,
     this.isActive = true,
-    this.internalDemo = false,
     this.onTabSelected,
   });
 
@@ -31,7 +30,6 @@ class OrientationTrailScreen extends StatefulWidget {
 
   /// Entrance motion waits until the tab is first shown.
   final bool isActive;
-  final bool internalDemo;
   final ValueChanged<int>? onTabSelected;
 
   @override
@@ -47,10 +45,6 @@ class _OrientationTrailScreenState extends State<OrientationTrailScreen> {
   NavigationState _navigation = const NavigationState.idle();
   final _subscriptions = <StreamSubscription<dynamic>>[];
 
-  /// The demo shows the repository order as a layout sample only while its
-  /// trail service has no official order; nothing can be started from it.
-  bool _samplePreview = false;
-
   @override
   void initState() {
     super.initState();
@@ -58,40 +52,19 @@ class _OrientationTrailScreenState extends State<OrientationTrailScreen> {
     _subscriptions.add(
       widget.services.pois.watchPois().listen((pois) {
         if (!mounted) return;
-        setState(() {
-          _pois = pois;
-          _showSampleIfNeeded();
-        });
+        setState(() => _pois = pois);
       }),
     );
     _subscriptions.add(
       widget.services.trail.progress.listen((progress) {
         if (!mounted) return;
-        setState(() {
-          _progress = progress;
-          _samplePreview = false;
-          _showSampleIfNeeded();
-        });
+        setState(() => _progress = progress);
       }),
     );
     _subscriptions.add(
       widget.services.navigation.state.listen((state) {
         if (mounted) setState(() => _navigation = state);
       }),
-    );
-  }
-
-  void _showSampleIfNeeded() {
-    if (!widget.internalDemo ||
-        (!_samplePreview && _progress.order.isNotEmpty)) {
-      return;
-    }
-    // Urutan repository hanya untuk tata letak contoh, bukan trail resmi.
-    _samplePreview = true;
-    _progress = TrailProgress(
-      order: _pois.map((poi) => poi.id).toList(),
-      visited: const {},
-      active: false,
     );
   }
 
@@ -139,10 +112,6 @@ class _OrientationTrailScreenState extends State<OrientationTrailScreen> {
       _navigation.status == NavigationStatus.arrived;
 
   bool _canContinue(Poi? destination) {
-    if (_samplePreview) {
-      _message('Trail belum tersedia.');
-      return false;
-    }
     if (_busy) return false;
     if (destination == null && _nextPoi == null) {
       _message('Semua gedung pada trail sudah dikunjungi.');
@@ -194,7 +163,6 @@ class _OrientationTrailScreenState extends State<OrientationTrailScreen> {
   }
 
   Future<void> _endTrail() async {
-    if (_samplePreview) return;
     await widget.services.navigation.stop();
     await widget.services.session.end();
     await widget.services.trail.stop();
@@ -211,7 +179,7 @@ class _OrientationTrailScreenState extends State<OrientationTrailScreen> {
           audio: widget.services.audio,
           settings: widget.services.settings,
           checkedIn: _progress.visited.contains(poi.id),
-          navigationAvailable: !_samplePreview,
+          navigationAvailable: true,
           onNavigate: () async {
             routeRequested = true;
           },
@@ -223,9 +191,7 @@ class _OrientationTrailScreenState extends State<OrientationTrailScreen> {
 
   void _showCheckInStatus(Poi poi, {required bool checkedIn}) {
     _message(
-      _samplePreview
-          ? 'Check-in belum tersedia.'
-          : checkedIn
+      checkedIn
           ? 'Check-in ${poi.name} sudah tercatat otomatis.'
           : 'Check-in akan tercatat otomatis saat lokasi terdeteksi.',
     );
@@ -327,9 +293,7 @@ class _OrientationTrailScreenState extends State<OrientationTrailScreen> {
                               last: i == visible.length - 1,
                               done: _progress.visited.contains(visible[i].id),
                               isArrived: _hasArrivedAt(visible[i]),
-                              isNext:
-                                  !_samplePreview &&
-                                  visible[i].id == _progress.nextPoiId,
+                              isNext: visible[i].id == _progress.nextPoiId,
                               isActive: _progress.active,
                               expanded: _detailPoiId == visible[i].id,
                               navigationState: _navigation,
@@ -341,9 +305,7 @@ class _OrientationTrailScreenState extends State<OrientationTrailScreen> {
                               ),
                               // Only the next stop has this button; the
                               // service may still pick the nearest start.
-                              onRoute: _samplePreview
-                                  ? null
-                                  : () => _routeTrail(),
+                              onRoute: () => _routeTrail(),
                               onCheckIn: () => _showCheckInStatus(
                                 visible[i],
                                 checkedIn: _progress.visited.contains(
@@ -361,8 +323,7 @@ class _OrientationTrailScreenState extends State<OrientationTrailScreen> {
             ),
           ),
           _TrailBottomArea(
-            nextPoi: _samplePreview ? null : nextPoi,
-            internalDemo: _samplePreview,
+            nextPoi: nextPoi,
             busy: _busy,
             isActive: _progress.active,
             hasProgress: completed > 0,
@@ -822,7 +783,6 @@ class _StepNode extends StatelessWidget {
 class _TrailBottomArea extends StatelessWidget {
   const _TrailBottomArea({
     required this.nextPoi,
-    required this.internalDemo,
     required this.busy,
     required this.isActive,
     required this.hasProgress,
@@ -832,7 +792,6 @@ class _TrailBottomArea extends StatelessWidget {
   });
 
   final Poi? nextPoi;
-  final bool internalDemo;
   final bool busy;
   final bool isActive;
 
@@ -873,21 +832,6 @@ class _TrailBottomArea extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (internalDemo && nextPoi == null) ...[
-              const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.info_outline_rounded,
-                    size: 15,
-                    color: AgamColors.subtle,
-                  ),
-                  SizedBox(width: 6),
-                  Text('Urutan trail belum tersedia.', style: AgamText.caption),
-                ],
-              ),
-              const SizedBox(height: 10),
-            ],
             if (approximateDestination) ...[
               const Text(
                 'Tujuan perkiraan',

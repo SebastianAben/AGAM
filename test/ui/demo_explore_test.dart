@@ -97,12 +97,11 @@ void main() {
       final poi = (await tester.runAsync(() => repository.poiById('P01')))!;
       final source = RecordingPositionSource();
       final location = DeviceLocationService(source: source);
-      final map = AgamMapConfig.internalDemo();
+      final map = AgamMapConfig.campus();
       final session = DeviceSessionController(
         location: location,
         pois: repository,
         isInsideCampus: map.isInsideCampus,
-        trialModeAvailable: true,
       );
       final fake = AppServices.fake();
       final services = AppServices(
@@ -133,7 +132,6 @@ void main() {
             key: repaint,
             child: AgamMainShell(
               services: services,
-              internalDemo: true,
               poiViewRequests: views.stream,
               onPoiAction: (id, action) async {
                 actions.add(TriggerActionEvent(poiId: id, action: action));
@@ -163,7 +161,7 @@ void main() {
       expect(find.text('© OpenMapTiles'), findsOneWidget);
       expect(find.text('Lihat'), findsNothing);
       expect(find.byType(MaterialBanner), findsNothing);
-      expect(find.text('Mode uji'), findsOneWidget);
+      expect(find.text('Mode uji'), findsNothing);
       // Redesign: the map fills the area under the 64 px header. A 48 px
       // control capsule sits 16 px from the right edge, below the floating
       // status; the session card is pinned 16 px above the bottom navigation.
@@ -193,10 +191,6 @@ void main() {
       expect(mapRect.contains(osmRect.topLeft), isTrue);
       expect(omtRect.right, lessThanOrEqualTo(mapRect.right));
       expect(osmRect.bottom, lessThanOrEqualTo(sessionButton.top));
-      expect(
-        tester.getRect(find.text('Mode uji')).bottom,
-        lessThanOrEqualTo(mapRect.top),
-      );
       expect(find.text('Pusatkan'), findsNothing);
       expect(find.textContaining('engineering'), findsNothing);
       // Small phone: credits stay on one line, controls keep their inset and
@@ -498,33 +492,9 @@ void main() {
       expect(find.text('Lihat'), findsOneWidget);
       await tester.tap(find.byTooltip('Profil & pengaturan'));
       await tester.pumpAndSettle();
-      await tester.ensureVisible(find.text('Mode demo/trial'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Mode demo/trial'));
-      await tester.pumpAndSettle();
-      expect(session.trialModeEnabled, isTrue);
-      expect(session.current.mode, SessionMode.explore);
-      await tester.pageBack();
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Jelajah'));
-      await tester.pumpAndSettle();
-      leave(620);
-      await tester.runAsync(() => pumpEventQueue(times: 5));
-      await tester.pumpAndSettle();
-      expect(find.text('Lihat'), findsNothing);
-      emit(621);
-      emit(624);
-      emit(627);
-      await tester.runAsync(() => pumpEventQueue(times: 5));
-      await tester.pumpAndSettle();
-      expect(find.text('Lihat'), findsOneWidget); // Trial skips cooldown.
-      await tester.tap(find.byTooltip('Profil & pengaturan'));
-      await tester.pumpAndSettle();
-      await tester.ensureVisible(find.text('Mode demo/trial'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Mode demo/trial'));
-      await tester.pumpAndSettle();
+      expect(find.text('Mode demo/trial'), findsNothing);
       expect(session.trialModeEnabled, isFalse);
+      expect(session.current.mode, SessionMode.explore);
       await tester.pageBack();
       await tester.pumpAndSettle();
       await tester.tap(find.text('Jelajah'));

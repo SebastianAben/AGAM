@@ -30,7 +30,6 @@ class SearchRouteScreen extends StatefulWidget {
     this.autofocus = false,
     this.initialDestination,
     this.onTabSelected,
-    this.internalDemo = false,
     this.onShowPoiOnMap,
   });
 
@@ -49,7 +48,6 @@ class SearchRouteScreen extends StatefulWidget {
   /// Opens with this building already chosen as the destination card.
   final Poi? initialDestination;
   final ValueChanged<int>? onTabSelected;
-  final bool internalDemo;
 
   @override
   State<SearchRouteScreen> createState() => _SearchRouteScreenState();
@@ -279,7 +277,7 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
     await _openRoute(result);
   }
 
-  Future<void> _openDemoPoi(String id) async {
+  Future<void> _openPoiById(String id) async {
     final poi = await widget.services.pois.poiById(id);
     if (!mounted) return;
     if (poi == null) {
@@ -365,7 +363,7 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
   }
 
   Future<void> _stopRoute() async {
-    if (widget.internalDemo && _navigation.status == NavigationStatus.idle) {
+    if (_navigation.status == NavigationStatus.idle) {
       setState(() => _destination = null);
       return;
     }
@@ -769,9 +767,9 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
     return '${approximateDistance(from.distanceTo(to))} dari posisi Anda';
   }
 
-  /// The demo's building card. Facilities use the regular card, which
+  /// The building destination card. Facilities use the regular card, which
   /// needs no building detail.
-  Widget _demoPoiCard(SearchResult destination, Poi poi) {
+  Widget _poiDestinationCard(SearchResult destination, Poi poi) {
     final distance = _distanceFrom(destination);
     return Container(
       decoration: BoxDecoration(
@@ -849,7 +847,7 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
                 AgamTonalButton(
                   icon: Icons.info_outline_rounded,
                   label: 'Lihat Detail POI',
-                  onPressed: () => _openDemoPoi(poi.id),
+                  onPressed: () => _openPoiById(poi.id),
                 ),
                 const SizedBox(height: 4),
                 TextButton(
@@ -880,10 +878,8 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
 
   Widget _routeCard(SearchResult destination) {
     if (_hasArrivedAt(destination)) return _arrivalCard(destination);
-    if (widget.internalDemo) {
-      if (_poiFor(destination) case final poi?) {
-        return _demoPoiCard(destination, poi);
-      }
+    if (_poiFor(destination) case final poi?) {
+      return _poiDestinationCard(destination, poi);
     }
     final point = _pointFor(destination);
     final distance = _distanceFrom(destination);

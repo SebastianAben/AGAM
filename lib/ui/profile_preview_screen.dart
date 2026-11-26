@@ -1,34 +1,112 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../contracts/contracts.dart';
-import '../logic/session/poi_trial_control.dart';
 import 'widgets/agam_components.dart';
 import 'widgets/agam_motion.dart';
 import 'widgets/agam_theme.dart';
 
-/// UI09, opened from the account button in the header: the account preview
-/// and the device settings that already work, grouped by what they affect.
-class ProfilePreviewScreen extends StatelessWidget {
-  const ProfilePreviewScreen({
-    super.key,
-    this.services,
-    this.internalDemo = false,
-  });
+/// UI09, opened from the account button in the header: account identity,
+/// session controls, audio preferences, device permissions, local progress
+/// reset, logout, and account deletion.
+class ProfilePreviewScreen extends StatefulWidget {
+  const ProfilePreviewScreen({super.key, this.services});
 
   final AppServices? services;
-  final bool internalDemo;
+
+  @override
+  State<ProfilePreviewScreen> createState() => _ProfilePreviewScreenState();
+}
+
+class _ProfilePreviewScreenState extends State<ProfilePreviewScreen>
+    with WidgetsBindingObserver {
+  LocationPermissionStatus? _locationStatus;
+  AuthState _authState = const AuthState.signedOut();
+  StreamSubscription<AuthState>? _authSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _watchAuth();
+    unawaited(_refreshPermissionStatus());
+  }
+
+  @override
+  void didUpdateWidget(covariant ProfilePreviewScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.services != widget.services) {
+      _watchAuth();
+      unawaited(_refreshPermissionStatus());
+    }
+  }
+
+  void _watchAuth() {
+    unawaited(_authSubscription?.cancel());
+    final auth = widget.services?.auth;
+    _authState = auth?.current ?? const AuthState.signedOut();
+    _authSubscription = auth?.state.listen((state) {
+      final changed =
+          _authState.isSignedIn != state.isSignedIn ||
+          _authState.account?.uid != state.account?.uid ||
+          _authState.account?.email != state.account?.email ||
+          _authState.account?.role != state.account?.role;
+      if (changed && mounted) {
+        setState(() => _authState = state);
+      } else {
+        _authState = state;
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    unawaited(_authSubscription?.cancel());
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_refreshPermissionStatus());
+    }
+  }
+
+  Future<void> _refreshPermissionStatus() async {
+    final permissions = widget.services?.permissions;
+    if (permissions == null) return;
+    final status = await permissions.locationStatus();
+    if (mounted) setState(() => _locationStatus = status);
+  }
+
+  static String _locationLabel(LocationPermissionStatus? status) =>
+      switch (status) {
+        LocationPermissionStatus.granted => 'Aktif (Akurat)',
+        LocationPermissionStatus.approximateOnly => 'Lokasi perkiraan',
+        LocationPermissionStatus.serviceDisabled => 'Layanan lokasi mati',
+        LocationPermissionStatus.permanentlyDenied => 'Ditolak permanen',
+        LocationPermissionStatus.denied => 'Belum diizinkan',
+        null => 'Lihat izin perangkat',
+      };
+
+  static String _sessionLabel(SessionState state) {
+    if (!state.isActive) return 'Tidak ada sesi aktif';
+    return switch (state.mode) {
+      SessionMode.explore => 'Sesi Explore aktif',
+      SessionMode.navigation => 'Sesi Navigasi aktif',
+      SessionMode.trail => 'Sesi Orientation Trail aktif',
+      SessionMode.none => 'Tidak ada sesi aktif',
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
-    final services = this.services;
+    final services = widget.services;
     final canPop = Navigator.canPop(context);
-    final authAccount = services?.auth.current.account;
-    final trial = switch (services?.session) {
-      final PoiTrialControl control
-          when internalDemo && control.trialModeAvailable =>
-        control,
-      _ => null,
-    };
+    final authState = _authState;
+    final authAccount = authState.account;
     var order = 0;
     Widget reveal(Widget child) => AgamReveal(order: order++, child: child);
 
@@ -68,8 +146,8 @@ class ProfilePreviewScreen extends StatelessWidget {
               background: _Identity(account: authAccount),
             ),
           ),
-          // A box adapter measures the real height; SliverFillRemaining would
-          // size from intrinsics, which underestimate these rows.
+          // A box adapter measures the real height; SliverFillRemaining
+          // would size from intrinsics, which underestimate these rows.
           SliverToBoxAdapter(
             child: Container(
               color: AgamColors.canvas,
@@ -98,7 +176,8 @@ class ProfilePreviewScreen extends StatelessWidget {
                         _InfoRow(
                           icon: Icons.my_location_rounded,
                           label: 'Akses Lokasi GPS',
-                          value: 'Lihat izin perangkat',
+                          value: _locationLabel(_locationStatus),
+                          onTap: services?.permissions.openAppSettings,
                         ),
                         if (authAccount != null)
                           _InfoRow(
@@ -119,7 +198,8 @@ class ProfilePreviewScreen extends StatelessWidget {
                             stream: services.session.state,
                             initialData: services.session.current,
                             builder: (context, snapshot) {
-                              final active = snapshot.data!.isActive;
+                              final state = snapshot.data!;
+                              final active = state.isActive;
                               return AgamListRow(
                                 icon: active
                                     ? Icons.sensors_rounded
@@ -130,9 +210,7 @@ class ProfilePreviewScreen extends StatelessWidget {
                                 iconForeground: active
                                     ? AgamColors.success
                                     : AgamColors.subtle,
-                                title: active
-                                    ? 'Sesi Explore aktif'
-                                    : 'Tidak ada sesi aktif',
+                                title: _sessionLabel(state),
                                 trailing: TextButton(
                                   onPressed: active
                                       ? () => services.session.end()
@@ -213,34 +291,19 @@ class ProfilePreviewScreen extends StatelessWidget {
                                 .permissions
                                 .openBatteryOptimizationSettings,
                           ),
+                          AgamListRow(
+                            key: const ValueKey('reset-local-progress'),
+                            icon: Icons.restart_alt_rounded,
+                            title: 'Hapus progres lokal',
+                            subtitle:
+                                'Reset progres trail & daftar POI dikunjungi',
+                            trailing: const _Chevron(),
+                            onTap: () =>
+                                _confirmResetProgress(context, services.trail),
+                          ),
                         ],
                       ),
                     ),
-                    if (trial != null) ...[
-                      const SizedBox(height: 28),
-                      reveal(const AgamSectionHeader('Developer')),
-                      reveal(
-                        AgamGroup(
-                          children: [
-                            StreamBuilder<bool>(
-                              stream: trial.trialModeChanges,
-                              initialData: trial.trialModeEnabled,
-                              builder: (context, snapshot) => _SwitchRow(
-                                icon: Icons.science_rounded,
-                                iconBackground: AgamColors.warning.withValues(
-                                  alpha: .12,
-                                ),
-                                iconForeground: AgamColors.warning,
-                                title: 'Mode demo/trial',
-                                subtitle: 'Lewati cooldown 10 menit POI',
-                                value: snapshot.data ?? false,
-                                onChanged: trial.setTrialMode,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
                   ],
                   const SizedBox(height: 32),
                   reveal(
@@ -248,7 +311,7 @@ class ProfilePreviewScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         AgamTonalButton(
-                          onPressed: services?.auth.current.isSignedIn == true
+                          onPressed: authState.isSignedIn
                               ? () => _confirmLogout(context, services!.auth)
                               : null,
                           icon: Icons.logout_rounded,
@@ -262,7 +325,7 @@ class ProfilePreviewScreen extends StatelessWidget {
                         // step lives in the dialog, behind the password.
                         TextButton.icon(
                           key: const ValueKey('delete-account'),
-                          onPressed: services?.auth.current.isSignedIn == true
+                          onPressed: authState.isSignedIn
                               ? () => _confirmDeleteAccount(
                                   context,
                                   services!.auth,
@@ -301,6 +364,46 @@ class ProfilePreviewScreen extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+Future<void> _confirmResetProgress(
+  BuildContext context,
+  TrailService trail,
+) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: const Text('Hapus progres lokal?'),
+      content: const Text(
+        'Progres Orientation Trail dan daftar gedung yang dikunjungi untuk '
+        'akun ini di perangkat akan direset. Akun Anda tidak dihapus.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(false),
+          child: const Text('Batal'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(dialogContext).pop(true),
+          style: FilledButton.styleFrom(backgroundColor: AgamColors.danger),
+          child: const Text('Hapus progres'),
+        ),
+      ],
+    ),
+  );
+  if (confirmed != true || !context.mounted) return;
+  try {
+    await trail.reset();
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Progres lokal telah dihapus.')),
+    );
+  } catch (_) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Progres lokal belum dapat dihapus.')),
     );
   }
 }
@@ -660,16 +763,19 @@ class _InfoRow extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.value,
+    this.onTap,
   });
 
   final IconData icon;
   final String label;
   final String value;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) => AgamListRow(
     icon: icon,
     title: label,
+    onTap: onTap,
     trailing: Text(
       value,
       textAlign: TextAlign.right,
@@ -683,20 +789,14 @@ class _SwitchRow extends StatelessWidget {
   const _SwitchRow({
     required this.icon,
     required this.title,
-    this.subtitle,
     required this.value,
     required this.onChanged,
-    this.iconBackground = AgamColors.tint,
-    this.iconForeground = AgamColors.brand,
   });
 
   final IconData icon;
   final String title;
-  final String? subtitle;
   final bool value;
   final ValueChanged<bool> onChanged;
-  final Color iconBackground;
-  final Color iconForeground;
 
   @override
   Widget build(BuildContext context) => SwitchListTile(
@@ -711,16 +811,10 @@ class _SwitchRow extends StatelessWidget {
     secondary: AgamIconTile(
       icon: icon,
       size: 42,
-      background: iconBackground,
-      foreground: iconForeground,
+      background: AgamColors.tint,
+      foreground: AgamColors.brand,
     ),
     title: Text(title, style: AgamText.label.copyWith(fontSize: 15)),
-    subtitle: subtitle == null
-        ? null
-        : Padding(
-            padding: const EdgeInsets.only(top: 2),
-            child: Text(subtitle!, style: AgamText.caption),
-          ),
   );
 }
 

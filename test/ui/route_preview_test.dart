@@ -462,9 +462,7 @@ void main() {
     final facility = fakeFacilities.first;
     final services = _services(location: _Location(_fixAt(_here.position)));
     await tester.pumpWidget(
-      MaterialApp(
-        home: SearchRouteScreen(services: services, internalDemo: true),
-      ),
+      MaterialApp(home: SearchRouteScreen(services: services)),
     );
     await _frames(tester, 4);
     await tester.enterText(find.byType(TextField), facility.name);
@@ -500,11 +498,7 @@ void main() {
     final services = _services(location: _Location(_fixAt(_here.position)));
     await tester.pumpWidget(
       MaterialApp(
-        home: SearchRouteScreen(
-          services: services,
-          initialDestination: _there,
-          internalDemo: true,
-        ),
+        home: SearchRouteScreen(services: services, initialDestination: _there),
       ),
     );
     await _frames(tester, 4);

@@ -28,7 +28,6 @@ void main() {
       MaterialApp(
         home: AgamMainShell(
           services: AppServices.fake(tick: const Duration(hours: 1)),
-          internalDemo: true,
         ),
       ),
     );
@@ -89,7 +88,7 @@ void main() {
       settings: fake.settings,
       auth: fake.auth,
       activity: fake.activity,
-      map: AgamMapConfig.internalDemo(),
+      map: AgamMapConfig.campus(),
       routing: fake.routing,
       navigation: FakeNavigationController(
         location: location,
@@ -101,7 +100,7 @@ void main() {
       facilities: fake.facilities,
     );
     await tester.pumpWidget(
-      MaterialApp(home: AgamMainShell(services: services, internalDemo: true)),
+      MaterialApp(home: AgamMainShell(services: services)),
     );
     // Real tiles decode off the test clock; wait for the map to appear.
     for (

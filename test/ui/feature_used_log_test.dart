@@ -276,11 +276,7 @@ void main() {
     addTearDown(views.close);
     await tester.pumpWidget(
       MaterialApp(
-        home: AgamMainShell(
-          services: services,
-          poiViewRequests: views.stream,
-          internalDemo: true,
-        ),
+        home: AgamMainShell(services: services, poiViewRequests: views.stream),
       ),
     );
     await tester.pumpAndSettle();
@@ -316,7 +312,6 @@ void main() {
         home: AgamMainShell(
           services: services,
           poiViewRequests: views.stream,
-          internalDemo: true,
           // As in the product: the action goes through the responder, which
           // answers "Lihat" with a view request.
           onPoiAction: (id, action) async {

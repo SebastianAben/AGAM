@@ -179,7 +179,7 @@ void main() {
       MaterialApp(
         home: Scaffold(
           body: OfflineCampusMap(
-            config: AgamMapConfig.internalDemo(),
+            config: AgamMapConfig.campus(),
             pois: const [],
             onSelectPoi: (_) {},
           ),

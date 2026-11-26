@@ -21,11 +21,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        home: SearchRouteScreen(
-          services: services,
-          initialDestination: first,
-          internalDemo: true,
-        ),
+        home: SearchRouteScreen(services: services, initialDestination: first),
       ),
     );
     await tester.pump(const Duration(milliseconds: 400));
@@ -86,7 +82,6 @@ void main() {
         home: SearchRouteScreen(
           services: services,
           initialDestination: fakePois.first,
-          internalDemo: true,
         ),
       ),
     );

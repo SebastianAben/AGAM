@@ -167,10 +167,14 @@ class DeviceAuthService implements AuthService {
 
   Future<UserRole?> _tryReadRole(AuthUser user) async {
     try {
-      final role = await _profiles.read(user.uid);
+      final role = await _profiles
+          .read(user.uid)
+          .timeout(const Duration(seconds: 5));
       if (role != null) await _local.saveRole(user.uid, role);
       return role;
     } on AuthException {
+      return null;
+    } on TimeoutException {
       return null;
     }
   }

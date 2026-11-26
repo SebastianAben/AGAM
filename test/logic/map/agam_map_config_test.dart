@@ -39,24 +39,6 @@ void main() {
     );
   });
 
-  test(
-    'demo berpusat pada Labtek V dan memakai coverage engineering berlabel',
-    () {
-      final dataset = jsonDecode(
-        File('assets/data/pois.json').readAsStringSync(),
-      );
-      final pois = dataset['pois'] as List;
-      final p01 = pois.singleWhere((poi) => poi['id'] == 'P01');
-      final demo = AgamMapConfig.internalDemo();
-      expect(demo.initialCenter, GeoPoint(p01['lat'], p01['lng']));
-      expect(demo.serviceAreaSource, startsWith('DEMO INTERNAL'));
-      for (final poi in pois) {
-        expect(demo.isInsideCampus(GeoPoint(poi['lat'], poi['lng'])), isTrue);
-      }
-      expect(demo.isInsideCampus(const GeoPoint(0, 0)), isFalse);
-    },
-  );
-
   test('area eksplisit membedakan dalam/luar dan menolak posisi invalid', () {
     final config = AgamMapConfig.withServiceArea(
       area: syntheticArea,
@@ -136,10 +118,7 @@ void main() {
     final campus = AgamMapConfig.campus();
     expect(campus.hasServiceArea, isTrue);
     expect(campus.serviceAreaSource, startsWith('PRODUK'));
-    expect(
-      campus.campusArea.polygon,
-      AgamMapConfig.internalDemo().campusArea.polygon,
-    );
+    expect(campus.campusArea.polygon, AgamMapConfig.engineeringBounds.polygon);
     expect(campus.initialCenter, GeoPoint(p08['lat'], p08['lng']));
     for (final poi in pois) {
       expect(campus.isInsideCampus(GeoPoint(poi['lat'], poi['lng'])), isTrue);

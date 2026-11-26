@@ -167,9 +167,7 @@ void main() {
     final services = demoServices();
     await services.session.start(SessionMode.explore);
     await tester.pumpWidget(
-      MaterialApp(
-        home: OrientationTrailScreen(services: services, internalDemo: true),
-      ),
+      MaterialApp(home: OrientationTrailScreen(services: services)),
     );
     await tester.pumpAndSettle();
     final start = tester.widget<FilledButton>(
@@ -196,9 +194,7 @@ void main() {
       navigation: _RecordingNavigation(),
     );
     await tester.pumpWidget(
-      MaterialApp(
-        home: OrientationTrailScreen(services: services, internalDemo: true),
-      ),
+      MaterialApp(home: OrientationTrailScreen(services: services)),
     );
     await tester.pumpAndSettle();
     final names = {for (final poi in unverifiedSyntheticPois) poi.id: poi.name};
@@ -235,9 +231,7 @@ void main() {
       location: _HeldLocation(unverifiedSyntheticPois.first.position),
     );
     await tester.pumpWidget(
-      MaterialApp(
-        home: OrientationTrailScreen(services: services, internalDemo: true),
-      ),
+      MaterialApp(home: OrientationTrailScreen(services: services)),
     );
     await tester.pumpAndSettle();
     // Before the first start the card of trailOrder 1 is the next stop. Its
@@ -270,9 +264,7 @@ void main() {
     final services = demoServices();
     await services.session.start(SessionMode.explore);
     await tester.pumpWidget(
-      MaterialApp(
-        home: SearchRouteScreen(services: services, internalDemo: true),
-      ),
+      MaterialApp(home: SearchRouteScreen(services: services)),
     );
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField), 'labtek 5');
@@ -314,9 +306,7 @@ void main() {
   ) async {
     final services = demoServices();
     await tester.pumpWidget(
-      MaterialApp(
-        home: SearchRouteScreen(services: services, internalDemo: true),
-      ),
+      MaterialApp(home: SearchRouteScreen(services: services)),
     );
     await tester.pumpAndSettle();
     // PRD F05 "filter kategori" means facility categories; building-type

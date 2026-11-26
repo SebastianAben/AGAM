@@ -19,7 +19,7 @@ void main() {
     'renders every bundled vector tile to memory with networking forbidden',
     () async {
       final tiles = await HttpOverrides.runWithHttpOverrides(
-        () => OfflineMapTiles.load(AgamMapConfig.internalDemo().style),
+        () => OfflineMapTiles.load(AgamMapConfig.campus().style),
         _NoNetwork(),
       );
       final manifest = jsonDecode(

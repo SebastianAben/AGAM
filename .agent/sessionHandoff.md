@@ -1,5 +1,74 @@
 # Session Handoff — AGAM
 
+## Penyatuan build produk dan alur login/akun — 26 November 2026
+
+- **Branch:** `dev` (basis `b6426d8`).
+- **Keputusan pengguna (final):** build demo (`AGAM_INTERNAL_DEMO=true`) dihapus
+  sehingga seluruh build kini adalah **build produk utuh** dengan Firebase
+  Auth/Firestore, gerbang login wajib (UI10), dan seluruh layanan asli LA/LB.
+- **Yang berubah:**
+  1. **Build produk tunggal:** flag `AGAM_INTERNAL_DEMO`, `_createAppServices()`,
+     `AgamMapConfig.internalDemo()`, chip `Mode uji`, sakelar UI `Mode demo/trial`,
+     serta parameter `internalDemo` dihapus dari `lib/main.dart`, `lib/ui/app.dart`,
+     `lib/ui/explore_map_screen.dart`, `lib/ui/orientation_trail_screen.dart`,
+     `lib/ui/search_route_screen.dart`, `lib/ui/profile_preview_screen.dart`,
+     `lib/ui/widgets/agam_bottom_navigation.dart`, dan `.github/workflows/ci.yml`
+     (CI kini membangun satu `agam-debug-apk` produk dan langsung mengaudit
+     asetnya).
+  2. **Alur login, onboarding, dan keluar akun (`lib/ui/app.dart`):**
+     - `AgamApp` selalu masuk melalui `SplashScreen` → gerbang `AuthState`
+       (`AuthScreen` bila belum login, `_SignedInFlow` bila sudah login),
+       dengan langganan tunggal ke `auth.state` (menghindari re-subscribe
+       `Stream.multi` tiap rebuild).
+     - `_SignedInFlow` mengecek `permissions.locationStatus()` saat init: bila
+       izin lokasi akurat sudah `granted`, langsung masuk ke `AgamMainShell`
+       tanpa mengulang 4 halaman Onboarding pada cold start berikutnya.
+     - Saat `auth.state` berubah menjadi `signedOut` dari mana pun,
+       `navigatorKey` menutup seluruh route yang sedang terbuka (`popUntil`
+       ke route pertama) agar `AuthScreen` tidak tertutupi layar lama.
+  3. **Profil & Pengaturan UI09 (`lib/ui/profile_preview_screen.dart`):**
+     - Menjadi `StatefulWidget` yang reaktif terhadap `auth.state`, membaca
+       status izin lokasi aktual (segar saat `resumed`) dengan akses ketuk ke
+       pengaturan aplikasi, menampilkan label mode sesi aktif (`Explore`,
+       `Navigasi`, `Orientation Trail`), serta menambahkan **Hapus progres
+       lokal** (`trail.reset()` dengan dialog konfirmasi, sesuai PRD §16/§18).
+  4. **Pencatatan kunjungan Explore & ketahanan startup:**
+     - `lib/main.dart` kini mencatat trigger mode Explore ke `AccountVisitStore`
+       per akun agar selaras dengan rekomendasi dan hapus progres/hapus akun.
+     - `lib/ui/search_route_screen.dart` menyatukan kartu tujuan gedung
+       (`Rute`, `Tampilkan di peta`, `Lihat Detail POI`, `Tutup pilihan`) dan
+       memperbaiki `_stopRoute()` agar menutup pilihan saat tidak menavigasi
+       tidak ikut mengakhiri sesi Explore aktif.
+     - `lib/logic/account/device_auth_service.dart` menambahkan timeout 5 detik
+       pada fallback `_tryReadRole` saat cold start agar tidak menggantung jika
+       cache lokal hilang saat jaringan lambat.
+  5. **Test & dokumentasi:** seluruh test lama diperbarui ke jalur produk dan
+     3 test alur baru ditambahkan di `test/ui/auth_gate_test.dart` (auto-skip
+     onboarding saat izin sudah granted, sign-out eksternal menutup layar
+     terdorong, serta status GPS/mode sesi dan hapus progres lokal di UI09).
+     `.agent/PRD.md`, `.agent/implementationPhases.md`, dan dokumen ini
+     diperbarui.
+- **Pemeriksaan:** `fvm dart format --output=none --set-exit-if-changed lib test`
+  (150 file, 0 perubahan), `fvm flutter analyze --no-pub` bersih,
+  `fvm flutter test --no-pub` **507 lulus** (baseline 504 + 3 test baru − 1 test
+  demo map + 1 = 507; `auth_gate_test.dart` 4/4 lulus), `git diff --check`
+  bersih. Build APK produk `fvm flutter build apk --debug --no-pub` berhasil
+  (SHA-256 `32c7ad020f2e24091c5e967054ed372dce852d93146216f906a39cf03be5f3bb`)
+  dan berjalan di emulator `emulator-5554` (Android 16 / API 36, `site.agam`,
+  cold start `Status: ok` 2.776 ms, Firebase `[DEFAULT]` aktif, tampil UI10
+  "Selamat datang" tanpa galat logcat, hash APK terpasang cocok). Uji alur akun
+  end-to-end di perangkat fisik dengan Firebase `agam-9e704` serta test rules
+  emulator Firestore **belum** dijalankan.
+- **Terbuka:**
+  - Uji alur daftar/login/cold-start offline/logout/hapus akun di perangkat
+    Android fisik dengan project Firebase `agam-9e704` (PB21).
+  - Test rules Firestore emulator (`tools/firestore/rules.test.mjs`).
+  - Persetujuan PM atas teks pemberitahuan privasi `AuthScreen.consentText`
+    (PRD §22).
+  - Item terbuka gelombang 2 sebelumnya (verifikasi lapangan selasar/titik
+    akses, tombol pusatkan kamera navigasi, splash logo, build release
+    shrinker, dsb.).
+
 ## Gelombang 2: preview rute, navigasi satu layar, selasar OSM — 26 November 2026
 
 - **Branch:** `feat/route-preview-wave2` dari `dev` @ `22f28ad` (branch fitur atas

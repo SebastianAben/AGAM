@@ -122,9 +122,7 @@ void main() {
       final session = services.session as _RecordingSession;
       await session.start(SessionMode.explore);
       await tester.pumpWidget(
-        MaterialApp(
-          home: AgamMainShell(services: services, internalDemo: true),
-        ),
+        MaterialApp(home: AgamMainShell(services: services)),
       );
       await tester.pumpAndSettle();
       await tester.tap(find.text('Trail')); // Any tab other than Jelajah.

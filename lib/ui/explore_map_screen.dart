@@ -31,7 +31,6 @@ class ExploreMapScreen extends StatefulWidget {
     this.onTabSelected,
     this.poiViewRequests = const Stream.empty(),
     this.poiMapRequests = const Stream.empty(),
-    this.internalDemo = false,
     this.onPoiAction,
     this.onAutomaticPoi,
     this.onOpenSearch,
@@ -45,8 +44,8 @@ class ExploreMapScreen extends StatefulWidget {
   /// Without it the map shows no search bar.
   final ValueChanged<FacilityCategory?>? onOpenSearch;
 
-  /// Starts the route flow to a POI. Without it, or in the internal demo
-  /// where the campus graph is missing, "Rute" explains it is unavailable.
+  /// Starts the route flow to a POI. Without it, "Rute" explains it is
+  /// unavailable.
   final ValueChanged<Poi>? onRoute;
 
   /// Starts navigating to a POI in one tap (a recommendation, Rute on the
@@ -60,7 +59,6 @@ class ExploreMapScreen extends StatefulWidget {
   final ValueChanged<int>? onTabSelected;
   final Stream<String> poiViewRequests;
   final Stream<String> poiMapRequests;
-  final bool internalDemo;
   final Future<void> Function(String, TriggerAction)? onPoiAction;
 
   @override
@@ -242,7 +240,7 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
 
   Future<void> _loadFacilities() async {
     final poi = _selectedPoi;
-    if (poi == null || widget.internalDemo) return;
+    if (poi == null) return;
     // Ask for every facility, then keep the nearest one per category.
     final facilities = await widget.services.facilities.nearby(
       from: poi.position,

@@ -3,17 +3,17 @@ import '../../contracts/contracts.dart';
 /// Konfigurasi aset nyata PB04. Tidak mengubah coverage tile menjadi area layanan.
 ///
 /// Produk memakai [campus], batas layanan yang ditetapkan 24 November 2026
-/// (PRD §9.3/§22). [internalDemo] hanya untuk pengecualian demo eksplisit
-/// PRD §4/§9.3. [pendingServiceArea] tetap tersedia untuk keadaan tanpa batas.
-/// [withServiceArea] hanya untuk geometri yang telah ditetapkan tim dan memiliki
-/// sumber; constructor ini tidak memberikan persetujuan atas data tersebut.
+/// (PRD §9.3/§22). [pendingServiceArea] tetap tersedia untuk keadaan tanpa
+/// batas. [withServiceArea] hanya untuk geometri yang telah ditetapkan tim dan
+/// memiliki sumber; constructor ini tidak memberikan persetujuan atas data
+/// tersebut.
 final class AgamMapConfig implements MapConfig {
   AgamMapConfig.pendingServiceArea()
     : campusArea = const CampusArea(polygon: []),
       serviceAreaSource = null;
 
   /// Bounds coverage engineering OSM way/177629384 v19 + margin 200 m
-  /// (PRD §9.3). Dipakai bersama oleh batas produk dan area demo.
+  /// (PRD §9.3).
   static const engineeringBounds = CampusArea(
     polygon: [
       GeoPoint(-6.89545535, 107.60635935),
@@ -32,15 +32,6 @@ final class AgamMapConfig implements MapConfig {
         'PRODUK — batas layanan Kampus Ganesha + 200 m dari coverage '
         'engineering OSM way/177629384 v19 (PRD §9.3); ditetapkan '
         '24 November 2026, belum diverifikasi lapangan.',
-  );
-
-  /// Area engineering khusus demo internal, dari coverage OSM PRD §9.3.
-  /// Geometrinya sama dengan [campus]; berbeda hanya pada pusat kamera.
-  factory AgamMapConfig.internalDemo() => AgamMapConfig.withServiceArea(
-    area: engineeringBounds,
-    source:
-        'DEMO INTERNAL — coverage engineering OSM way/177629384 v19; '
-        'snapshot 4 November 2026 + margin 200 m (PRD §9.3).',
   );
 
   AgamMapConfig.withServiceArea({
@@ -75,13 +66,10 @@ final class AgamMapConfig implements MapConfig {
     attribution: '© OpenStreetMap contributors (ODbL) · © OpenMapTiles',
   );
 
-  /// Pusat kamera dari PRD §9.1: P08 normal, P01 Labtek V untuk demo internal.
+  /// Pusat kamera dari PRD §9.1 (P08 Oktagon, tengah area kampus).
   /// Bukan pintu masuk, lokasi pengguna, atau titik hasil survei baru.
   @override
-  GeoPoint get initialCenter =>
-      serviceAreaSource?.startsWith('DEMO INTERNAL') == true
-      ? const GeoPoint(-6.8905811, 107.6097754)
-      : const GeoPoint(-6.8890603, 107.6100470);
+  GeoPoint get initialCenter => const GeoPoint(-6.8890603, 107.6100470);
 
   /// Menolak aktivasi lokasi selama area belum ditetapkan atau titik invalid.
   /// Keanggotaan poligon mengikuti CampusArea pada kontrak v1.0.
