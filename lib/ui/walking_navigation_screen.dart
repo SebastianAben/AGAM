@@ -1,11 +1,10 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 
 import '../contracts/contracts.dart';
 import 'widgets/agam_components.dart';
 import 'widgets/agam_theme.dart';
 import 'widgets/offline_campus_map.dart';
+import 'widgets/trip_status_card.dart';
 
 /// UI06. Cari & Rute owns the session and returns to UI07 on arrival.
 class WalkingNavigationScreen extends StatefulWidget {
@@ -240,45 +239,11 @@ class _RouteSummary extends StatelessWidget {
   final VoidCallback? onEnd;
 
   @override
-  Widget build(BuildContext context) {
-    final distance = state.remainingDistanceM;
-    final eta = state.remainingEta;
-    final minutes = eta == null
-        ? null
-        : math.max(1, (eta.inSeconds / 60).ceil());
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(AgamRadius.card),
-        boxShadow: AgamShadows.floating,
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(target.name, style: AgamText.title),
-            const SizedBox(height: 4),
-            Text(
-              'Sisa ${distance == null ? '—' : '${distance.round()} m'}'
-              ' · ${minutes == null ? '—' : '~$minutes menit'}',
-              style: AgamText.label.copyWith(color: AgamColors.brand),
-            ),
-            if (target.isPlaceholderPoint) ...[
-              const SizedBox(height: 4),
-              const Text('Tujuan perkiraan', style: AgamText.caption),
-            ],
-            const SizedBox(height: 10),
-            AgamTonalButton(
-              label: 'Akhiri rute',
-              icon: Icons.close_rounded,
-              onPressed: onEnd,
-              foreground: AgamColors.danger,
-              background: AgamColors.dangerTint,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => TripStatusCard(
+    destination: target.name,
+    remainingDistanceM: state.remainingDistanceM,
+    remainingEta: state.remainingEta,
+    isApproximate: target.isPlaceholderPoint,
+    onEnd: onEnd,
+  );
 }
