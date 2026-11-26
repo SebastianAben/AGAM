@@ -549,7 +549,10 @@ void main() {
       // Closing the panel only hides it: "Lanjut ke mana?" (UI07) belongs
       // to the arrival card (PRD F07, 26 November 2026).
       expect(find.text('Lanjut ke mana?'), findsNothing);
-      expect(find.byTooltip('Tutup rekomendasi'), findsNothing);
+      expect(
+        find.byKey(const ValueKey('recommendation-dismiss')),
+        findsNothing,
+      );
       await tester.tap(
         find.byWidgetPredicate(
           (widget) =>
