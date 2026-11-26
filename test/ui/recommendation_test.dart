@@ -525,4 +525,34 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
     });
   });
+
+  testWidgets('pil Tutup adalah tombol untuk pembaca layar', (tester) async {
+    var dismissed = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: RecommendationCard(
+            view: const RecommendationView(pois: [], facilities: []),
+            onRoute: (_) {},
+            onDismiss: () => dismissed++,
+          ),
+        ),
+      ),
+    );
+    final semantics = tester.ensureSemantics();
+    expect(
+      tester.getSemantics(find.bySemanticsLabel('Tutup rekomendasi')),
+      isSemantics(
+        label: 'Tutup rekomendasi',
+        isButton: true,
+        hasTapAction: true,
+        hasEnabledState: true,
+        isEnabled: true,
+        isFocusable: true,
+      ),
+    );
+    semantics.dispose();
+    await tester.tap(find.byKey(const ValueKey('recommendation-dismiss')));
+    expect(dismissed, 1);
+  });
 }

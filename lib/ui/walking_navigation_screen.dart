@@ -12,6 +12,7 @@ import 'widgets/agam_theme.dart';
 import 'widgets/arrival_card.dart';
 import 'widgets/offline_campus_map.dart';
 import 'widgets/recommendation_card.dart';
+import 'widgets/trip_status_card.dart';
 
 /// Why the preview has no route to show yet (PRD §9.3, §11).
 enum RouteProblem { locating, outsideCampus, offNetwork, unavailable }
@@ -947,41 +948,13 @@ class _TripCard extends StatelessWidget {
   final VoidCallback? onEnd;
 
   @override
-  Widget build(BuildContext context) {
-    final distance = state.remainingDistanceM;
-    final eta = state.remainingEta;
-    return DecoratedBox(
-      decoration: _cardDecoration,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 14),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(target.name, style: AgamText.title),
-            const SizedBox(height: 4),
-            Text(
-              'Sisa ${distance == null ? '—' : '${distance.round()} m'}'
-              ' · ${eta == null ? '—' : _minutes(eta)}',
-              style: AgamText.label.copyWith(color: AgamColors.brand),
-            ),
-            if (target.isPlaceholderPoint) ...[
-              const SizedBox(height: 4),
-              const Text('Tujuan perkiraan', style: AgamText.caption),
-            ],
-            const SizedBox(height: 12),
-            AgamTonalButton(
-              label: 'Akhiri rute',
-              icon: Icons.close_rounded,
-              onPressed: onEnd,
-              foreground: AgamColors.danger,
-              background: AgamColors.dangerTint,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => TripStatusCard(
+    destination: target.name,
+    remainingDistanceM: state.remainingDistanceM,
+    remainingEta: state.remainingEta,
+    isApproximate: target.isPlaceholderPoint,
+    onEnd: onEnd,
+  );
 }
 
 class _InstructionPanel extends StatelessWidget {
