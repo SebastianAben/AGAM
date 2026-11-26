@@ -633,3 +633,64 @@ class AgamBackButton extends StatelessWidget {
     ),
   );
 }
+
+/// A compact text pill for a card's secondary action, placed at the right
+/// of the card's first row: "Akhiri rute" on the trip card, "Tutup" on
+/// "Lanjut ke mana?". Text, not an X, so the action says what it does. It
+/// is drawn 40 dp tall but its tap target is padded to 48 dp.
+class AgamTextPill extends StatelessWidget {
+  const AgamTextPill({
+    super.key,
+    required this.label,
+    required this.onPressed,
+    this.foreground = AgamColors.muted,
+    this.background = AgamColors.fill,
+    this.semanticLabel,
+  });
+
+  /// The quiet variant: no fill, a hairline border. Used for "Tutup" so it
+  /// sits below the filled "Rute" buttons on the same card.
+  const AgamTextPill.outlined({
+    super.key,
+    required this.label,
+    required this.onPressed,
+    this.foreground = AgamColors.muted,
+    this.semanticLabel,
+  }) : background = Colors.transparent;
+
+  final String label;
+  final VoidCallback? onPressed;
+  final Color foreground;
+  final Color background;
+
+  /// A longer name for screen readers when [label] alone is ambiguous.
+  final String? semanticLabel;
+
+  @override
+  Widget build(BuildContext context) => AgamPressFeedback(
+    child: TextButton(
+      onPressed: onPressed,
+      style: TextButton.styleFrom(
+        foregroundColor: foreground,
+        backgroundColor: background,
+        disabledForegroundColor: AgamColors.subtle,
+        disabledBackgroundColor: AgamColors.fill,
+        minimumSize: const Size(0, 40),
+        tapTargetSize: MaterialTapTargetSize.padded,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        shape: StadiumBorder(
+          side: background == Colors.transparent
+              ? const BorderSide(color: AgamColors.line)
+              : BorderSide.none,
+        ),
+        textStyle: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          fontFamily: 'PlusJakartaSans',
+          fontFeatures: [FontFeature.disable('liga')],
+        ),
+      ),
+      child: Text(label, semanticsLabel: semanticLabel),
+    ),
+  );
+}
