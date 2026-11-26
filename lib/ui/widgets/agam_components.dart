@@ -668,34 +668,29 @@ class AgamTextPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => AgamPressFeedback(
-    child: Semantics(
-      label: semanticLabel,
-      excludeSemantics: semanticLabel != null,
-      button: true,
-      child: TextButton(
-        onPressed: onPressed,
-        style: TextButton.styleFrom(
-          foregroundColor: foreground,
-          backgroundColor: background,
-          disabledForegroundColor: AgamColors.subtle,
-          disabledBackgroundColor: AgamColors.fill,
-          minimumSize: const Size(0, 40),
-          tapTargetSize: MaterialTapTargetSize.padded,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          shape: StadiumBorder(
-            side: background == Colors.transparent
-                ? const BorderSide(color: AgamColors.line)
-                : BorderSide.none,
-          ),
-          textStyle: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            fontFamily: 'PlusJakartaSans',
-            fontFeatures: [FontFeature.disable('liga')],
-          ),
+    child: TextButton(
+      onPressed: onPressed,
+      style: TextButton.styleFrom(
+        foregroundColor: foreground,
+        backgroundColor: background,
+        disabledForegroundColor: AgamColors.subtle,
+        disabledBackgroundColor: AgamColors.fill,
+        minimumSize: const Size(0, 40),
+        tapTargetSize: MaterialTapTargetSize.padded,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        shape: StadiumBorder(
+          side: background == Colors.transparent
+              ? const BorderSide(color: AgamColors.line)
+              : BorderSide.none,
         ),
-        child: Text(label),
+        textStyle: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          fontFamily: 'PlusJakartaSans',
+          fontFeatures: [FontFeature.disable('liga')],
+        ),
       ),
+      child: Text(label, semanticsLabel: semanticLabel),
     ),
   );
 }
