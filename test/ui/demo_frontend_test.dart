@@ -197,14 +197,8 @@ void main() {
     expect(services.trail.current.active, isTrue);
     expect(services.session.current.mode, SessionMode.trail);
     expect(services.navigation.current.target?.id, order[0]);
-    expect(
-      find.text(
-        'Rute menuju titik akses ${names[order[0]]} '
-        '(belum diverifikasi di lapangan).',
-      ),
-      findsOneWidget,
-    );
-    expect(find.textContaining('belum disurvei'), findsNothing);
+    expect(find.text('Tujuan perkiraan'), findsOneWidget);
+    expect(find.byType(SnackBar), findsNothing);
     await tester.pumpWidget(const SizedBox.shrink());
     await services.navigation.stop();
     await services.session.end();
@@ -231,13 +225,8 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
     expect(services.navigation.current.target?.id, after.first);
-    expect(
-      find.text(
-        'Rute menuju titik akses ${unverifiedSyntheticPois[6].name} '
-        '(belum diverifikasi di lapangan).',
-      ),
-      findsOneWidget,
-    );
+    expect(find.text('Tujuan perkiraan'), findsOneWidget);
+    expect(find.byType(SnackBar), findsNothing);
     await tester.pumpWidget(const SizedBox.shrink());
     await services.navigation.stop();
     await services.session.end();

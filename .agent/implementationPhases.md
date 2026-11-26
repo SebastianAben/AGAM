@@ -488,6 +488,10 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
 
 ### PB09 — Produksi konten 10 POI
 
+- **Tampilan kredit (26 November 2026, `LB`) · `in_progress`.** Detail
+  POI menampilkan teks kredit tanpa prefix path arsip internal. Metadata
+  menyimpan pasangan path dan kredit untuk penelusuran aset.
+
 - **Track:** di luar track developer; LA menyiapkan format dan validasi · **Requirement:** F03, A02
 - **Catatan:** agent dilarang membuat konten ini.
 - **Bagian LA (10 November 2026):** format aset dan aturan validasi untuk tim konten di [PB09-LA-01](../task-implementation/backend/PB09-LA-01-content-format.md); pemeriksaan otomatis `test/logic/data/content_assets_test.dart`.
@@ -523,6 +527,10 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
 - **Status:** `in_progress` — logic pencarian produk tersedia di `SearchService`; pengujian UI lintas branch dan acceptance fasilitas masih menunggu integrasi FE/data tim konten.
 
 ### PB11 — Navigasi jalan kaki di perangkat
+
+- **Label tujuan (26 November 2026, `LB`) · `in_progress`.** Trail dan
+  UI06 memakai **Tujuan perkiraan** untuk tujuan sementara. Catatan survei
+  tersedia di daftar cek PB11. Verifikasi titik akses dan lorong tertunda.
 
 - **UI06 layar penuh (26 November 2026, `LB`) · `in_progress`.** Cari &
   Rute membuka peta navigasi layar penuh ketika hasil Dijkstra tersedia.

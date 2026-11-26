@@ -54,6 +54,7 @@ void main() {
     await tester.tap(find.byTooltip('Profil & pengaturan'));
     await tester.pumpAndSettle();
     expect(find.text('Profil Pengguna'), findsOneWidget);
+    expect(find.text('Fakultas / Sekolah'), findsNothing);
     expect(find.text('Notifikasi & izin aplikasi'), findsOneWidget);
     await tester.pageBack();
     await tester.pumpAndSettle();
@@ -155,10 +156,8 @@ void main() {
       services.navigation.current.route!.path,
     );
     // Fake POIs have no verified access point.
-    expect(
-      find.text('Rute menuju titik akses yang belum diverifikasi di lapangan.'),
-      findsOneWidget,
-    );
+    expect(find.text('Tujuan perkiraan'), findsOneWidget);
+    expect(find.textContaining('Rute menuju titik akses'), findsNothing);
     await tester.tap(find.text('Akhiri rute'));
     // Stopping settles outside the fake clock, like the tile decoding above.
     await tester.runAsync(

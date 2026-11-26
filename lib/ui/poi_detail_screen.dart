@@ -800,7 +800,11 @@ class _PoiDetailScreenState extends State<PoiDetailScreen> {
     final attributions = _contentReady
         ? poi.metadata.assetAttribution
         : const <String>[];
-    final lines = [...sources, ...attributions];
+    final assetPrefix = RegExp(r'^assets/media/.+? — ');
+    final lines = {
+      ...sources,
+      for (final entry in attributions) entry.replaceFirst(assetPrefix, ''),
+    };
     return _section(
       icon: Icons.source_outlined,
       title: 'Sumber',

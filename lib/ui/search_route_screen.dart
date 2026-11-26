@@ -303,7 +303,7 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
     final poi = await widget.services.pois.poiById(id);
     if (!mounted) return;
     if (poi == null) {
-      _showMessage('POI tidak tersedia di dataset demo.');
+      _showMessage('Informasi gedung belum tersedia.');
       return;
     }
     await _openPoiDetail(poi);

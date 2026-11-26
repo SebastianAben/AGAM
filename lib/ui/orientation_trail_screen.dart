@@ -158,15 +158,6 @@ class _OrientationTrailScreenState extends State<OrientationTrailScreen> {
       if (targetPoi == null) return;
       await widget.services.session.start(SessionMode.trail);
       await widget.services.navigation.start(NavigationTarget.poi(targetPoi));
-      if (mounted) {
-        _message(
-          targetPoi.hasSurveyedEntrance
-              ? 'Rute menuju ${targetPoi.name} dimulai.'
-              : targetPoi.entrances.isEmpty
-              ? 'Rute menuju ${targetPoi.name} memakai titik tengah gedung.'
-              : 'Rute menuju titik akses ${targetPoi.name} (belum diverifikasi di lapangan).',
-        );
-      }
     } on StateError {
       if (mounted) _message('Trail belum dapat dimulai.');
     } finally {
@@ -827,6 +818,11 @@ class _TrailBottomArea extends StatelessWidget {
         ? 'Mulai Trail'
         : 'Mulai Trail: ${nextPoi!.name}';
     final remaining = navigation.remainingDistanceM;
+    final approximateDestination =
+        isActive &&
+        navigation.target?.isPlaceholderPoint == true &&
+        navigation.status != NavigationStatus.arrived &&
+        navigation.status != NavigationStatus.error;
     return DecoratedBox(
       decoration: const BoxDecoration(
         color: Colors.white,
@@ -858,6 +854,14 @@ class _TrailBottomArea extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 10),
+            ],
+            if (approximateDestination) ...[
+              const Text(
+                'Tujuan perkiraan',
+                style: AgamText.caption,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 4),
             ],
             Row(
               children: [

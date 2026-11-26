@@ -96,11 +96,6 @@ class ProfilePreviewScreen extends StatelessWidget {
                           },
                         ),
                         _InfoRow(
-                          icon: Icons.school_rounded,
-                          label: 'Fakultas / Sekolah',
-                          value: 'Belum tersedia',
-                        ),
-                        _InfoRow(
                           icon: Icons.my_location_rounded,
                           label: 'Akses Lokasi GPS',
                           value: 'Lihat izin perangkat',

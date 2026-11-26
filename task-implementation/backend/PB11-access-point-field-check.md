@@ -4,6 +4,13 @@ Dibuat oleh `tools/routing/plan_access_points.py` dari data OSM yang juga digamb
 
 ## Cara cek
 
+Semua 7 kandidat Labtek V masih berstatus `verified: false`. Jika suatu
+gedung belum punya kandidat, routing memakai titik tengah gedung. Trail dan
+UI06 menampilkan label ringkas **Tujuan perkiraan** untuk tujuan sementara.
+Arahan yang melewati lorong kandidat tetap menyebut status lorongnya sesuai
+PRD §11. Cek titik akses dan lorong secara terpisah sebelum mencatat hasil
+acceptance F06.
+
 1. Buka link peta tiap baris, lalu berdiri di titik tersebut.
 2. Tandai **Cocok** bila dari titik itu orang memang masuk ke gedung (pintu atau sisi lantai 1 yang terbuka).
 3. Tandai **Hapus** bila titik itu bukan jalan masuk (misalnya pagar, jendela, atau tembok tertutup).

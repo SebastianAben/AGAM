@@ -1,5 +1,43 @@
 # Session Handoff — AGAM
 
+## Pembersihan teks internal UI — 26 November 2026
+
+- Detail POI menampilkan kredit dan sumber. Prefix teknis
+  `assets/media/… — ` dibuang dari tampilan, dan kredit identik tampil
+  sekali. Path tetap tersedia di metadata untuk penelusuran aset.
+- Profil menghapus baris Fakultas / Sekolah yang selalu kosong.
+  Pencarian memakai **Informasi gedung belum tersedia** pada kegagalan
+  membuka detail demo. Penanda build uji dan sakelar developer tetap
+  mengikuti PRD.
+- PB09 dan PB10 tetap `in_progress`. Pemeriksaan mencakup 44 prefix di
+  dataset bawaan, 469 tes Flutter, `flutter analyze --no-pub`, dan
+  `git diff --check`. Perubahan tersedia di source lokal.
+
+## Audit catatan internal pada UI — 26 November 2026
+
+- Detail POI bagian **Sumber** merender `assetAttribution` langsung.
+  Prefix `assets/media/…` di metadata 10 POI terlihat bersama kredit.
+  Profil memuat baris statis **Fakultas / Sekolah — Belum tersedia**.
+- **Mode uji**, **Mode demo/trial**, dan fallback **POI tidak tersedia
+  di dataset demo** dibatasi ke build demo. Deskripsi teknis fasilitas
+  ada di JSON, sementara UI fasilitas memakai nama dan jarak.
+- Label **Tujuan perkiraan** dan arahan lorong kandidat mengikuti PRD §11.
+  APK OPPO dari commit `22c67c1` masih memuat pesan panjang sebelumnya
+  karena perubahan untuk menghapusnya baru ada di worktree.
+- Audit source dan dataset bawaan. Tidak ada perubahan kode UI atau
+  status PBI dan tidak ada pemeriksaan ulang pada emulator atau perangkat.
+
+## Catatan titik akses di Trail dan UI06 — 26 November 2026
+
+- Snackbar teknis saat Trail mulai dan uraian survei di ringkasan UI06
+  dihapus. Tujuan sementara diberi label ringkas **Tujuan perkiraan**
+  sesuai PRD §11. Status lorong pada langkah navigasi tetap mengikuti §11.
+- Rincian titik akses, fallback titik tengah, dan pemeriksaan lapangan
+  dicatat di [daftar cek PB11](../task-implementation/backend/PB11-access-point-field-check.md).
+  PB11 tetap `in_progress` sampai verifikasi lapangan.
+- `flutter analyze --no-pub` bersih, 469 tes Flutter lulus, dan
+  `git diff --check` bersih. Pemeriksaan UI memakai widget test.
+
 ## Atribusi peta ringkas — 26 November 2026
 
 - `MapAttribution` memakai teks 8 piksel logis dengan kontras lebih tinggi.
@@ -8,6 +46,15 @@
   dipertahankan. PB04 tetap `in_progress`.
 - Format 143 file bersih, `flutter analyze --no-pub` bersih, dan
   seluruh 469 tes Flutter lulus.
+- Commit `22c67c1` dipush ke `origin/LB` dan diintegrasikan ke
+  `origin/dev` lewat fast-forward. Sumber aplikasi dan aset hasil
+  integrasi cocok dengan input build produk ARM64.
+- Build debug produk, audit aset, dan verifikasi tanda tangan APK v2
+  lulus. `adb install --no-streaming -r` berhasil pada OPPO CPH2739
+  (Android 16). Waktu instalasi awal tetap sama. Cold start AGAM
+  `Status: ok` dalam 4.066 ms. APK perangkat cocok dengan hash
+  `308ad4249b53ba612704d52438faf2c4041ee00106c1c0f91dd26e8c5ee9953d`.
+  Salinan APK ada di `D:/CodexRuntime/agam-android/agam-dev-22c67c1-product-arm64.apk`.
 
 ## Batas kamera Jelajah — 26 November 2026
 

@@ -31,7 +31,11 @@ const _poi = Poi(
     sources: ['SINTETIS'],
     verifiedAt: null,
     owner: 'SINTETIS',
-    assetAttribution: [],
+    assetAttribution: [
+      'assets/media/synthetic-log/foto.jpg — Foto: SINTETIS',
+      'assets/media/synthetic-log/foto 2.jpg — Foto: SINTETIS',
+      'Pengisi suara: SINTETIS',
+    ],
     approved: true,
   ),
 );
@@ -145,6 +149,12 @@ void main() {
     await tester.tap(find.text('Tentang gedung'));
     await tester.pumpAndSettle();
 
+    await tester.scrollUntilVisible(find.text('Sumber'), 220);
+    expect(
+      find.text('SINTETIS\nFoto: SINTETIS\nPengisi suara: SINTETIS'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('assets/media/'), findsNothing);
     expect(_events(services), _onlyFeature(ActivityFeature.poiCard));
     await tester.pumpWidget(const SizedBox.shrink());
   });

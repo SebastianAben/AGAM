@@ -266,10 +266,7 @@ class _RouteSummary extends StatelessWidget {
             ),
             if (target.isPlaceholderPoint) ...[
               const SizedBox(height: 4),
-              const Text(
-                'Rute menuju titik akses yang belum diverifikasi di lapangan.',
-                style: AgamText.caption,
-              ),
+              const Text('Tujuan perkiraan', style: AgamText.caption),
             ],
             const SizedBox(height: 10),
             AgamTonalButton(
