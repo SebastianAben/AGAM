@@ -459,7 +459,21 @@ void main() {
       await tester.tap(find.byTooltip('Tutup informasi'));
       await _frames(tester);
       expect(_card, findsOneWidget);
-      await tester.tap(find.byTooltip('Tutup rekomendasi'));
+      // "Tutup" is a real button for screen readers, with the longer name.
+      final semantics = tester.ensureSemantics();
+      expect(
+        tester.getSemantics(find.bySemanticsLabel('Tutup rekomendasi')),
+        isSemantics(
+          label: 'Tutup rekomendasi',
+          isButton: true,
+          hasTapAction: true,
+          hasEnabledState: true,
+          isEnabled: true,
+          isFocusable: true,
+        ),
+      );
+      semantics.dispose();
+      await tester.tap(find.byKey(const ValueKey('recommendation-dismiss')));
       await _frames(tester, 3);
       expect(_card, findsNothing);
 
