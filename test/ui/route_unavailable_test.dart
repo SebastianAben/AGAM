@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:agam/contracts/contracts.dart';
 import 'package:agam/contracts/fakes/fake_data.dart';
 import 'package:agam/ui/search_route_screen.dart';
+import 'package:agam/ui/walking_navigation_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -75,6 +76,12 @@ void main() {
     await tester.ensureVisible(route);
     await tester.pump(const Duration(milliseconds: 400));
     await tester.tap(route);
+    // Rute opens the preview (the fake routing draws one); Mulai then meets
+    // the controller's error.
+    for (var i = 0; i < 6; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    await tester.tap(find.text(WalkingNavigationScreen.startLabel));
     // The fake session awaits a stream cancel that resolves outside the
     // fake clock, so give the failure path a few real milliseconds.
     for (var i = 0; i < 5; i++) {

@@ -233,8 +233,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             icon: const Icon(Icons.check_circle_outline, color: _blue),
             title: const Text('Akses lokasi diizinkan'),
             content: const Text(
-              'Lokasi diizinkan. Notifikasi belum diaktifkan, jadi '
-              'pemberitahuan POI mungkin tidak muncul.',
+              'Notifikasi belum diaktifkan, jadi pemberitahuan POI mungkin '
+              'tidak muncul.',
             ),
             actions: [
               FilledButton(

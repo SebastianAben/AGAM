@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Biru latar assets/media/logo.png (rata-rata piksel latar logo), agar
+         lapisan foreground ikon adaptif menyatu dengan latarnya. -->
+    <color name="ic_launcher_background">#09469F</color>
+</resources>

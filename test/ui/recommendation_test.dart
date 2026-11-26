@@ -218,7 +218,7 @@ void main() {
       return (services, navigation);
     }
 
-    testWidgets('halaman pencarian dari satu ketukan langsung memulai rute', (
+    testWidgets('Rute membuka pratinjau; Mulai rute memulai navigasi', (
       tester,
     ) async {
       _phone(tester, height: 1400);
@@ -229,14 +229,16 @@ void main() {
         location: _StaticLocation(_fixAt(_here.position)),
       );
       await tester.pumpWidget(
-        _app(
-          SearchRouteScreen(
-            services: services,
-            initialDestination: _next,
-            startRouteOnOpen: true,
-          ),
-        ),
+        _app(SearchRouteScreen(services: services, initialDestination: _next)),
       );
+      await _frames(tester, 4);
+      await tester.tap(find.widgetWithText(FilledButton, 'Rute').first);
+      await _frames(tester, 4);
+      // The preview shows the route; nothing has started yet.
+      expect(find.byType(WalkingNavigationScreen), findsOneWidget);
+      expect(navigation.started, isEmpty);
+      expect(services.session.current.mode, SessionMode.none);
+      await tester.tap(find.text(WalkingNavigationScreen.startLabel));
       await _frames(tester, 4);
       expect(navigation.started.single.id, _next.id);
       expect(services.session.current.mode, SessionMode.navigation);
@@ -295,8 +297,14 @@ void main() {
         NavigationState(status: NavigationStatus.arrived, target: target),
       );
       await _frames(tester, 5);
-      expect(find.byType(WalkingNavigationScreen), findsNothing);
-      expect(find.text('Anda telah tiba di ${_next.name}'), findsOneWidget);
+      // UI07 now takes the trip card's place on the same map.
+      expect(
+        find.descendant(
+          of: find.byType(WalkingNavigationScreen),
+          matching: find.text('Anda telah tiba di ${_next.name}'),
+        ),
+        findsOneWidget,
+      );
       await tester.pumpWidget(const SizedBox.shrink());
       await _frames(tester, 2);
     });
@@ -328,7 +336,11 @@ void main() {
       await tester.ensureVisible(route);
       await tester.tap(route);
       await _frames(tester, 4);
-      // One tap: the route to the recommended POI has started.
+      // Rute opens the preview of the recommended POI; Mulai starts it.
+      expect(find.byType(WalkingNavigationScreen), findsOneWidget);
+      expect(navigation.started, isEmpty);
+      await tester.tap(find.text(WalkingNavigationScreen.startLabel));
+      await _frames(tester, 4);
       expect(navigation.started.single.id, _next.id);
       expect(services.session.current.mode, SessionMode.navigation);
       expect(find.byType(WalkingNavigationScreen), findsOneWidget);
@@ -385,7 +397,7 @@ void main() {
     });
   });
 
-  group('setelah panel POI ditutup (peta)', () {
+  group('panel POI ditutup di peta: tanpa UI07', () {
     Future<(AppServices, _Session, List<Poi>)> openPanel(
       WidgetTester tester,
       _StubRecommendations recommendations, {
@@ -406,8 +418,8 @@ void main() {
         _app(
           ExploreMapScreen(
             services: services,
-            // The panel's Rute opens the destination card; a recommendation
-            // starts the route in one tap (PRD F07).
+            // The panel's Rute opens the destination card; closing the
+            // panel must never start a route by itself.
             onRoute: (_) {},
             onStartRoute: routed.add,
             onOpenSearch: searchBar ? (_) {} : null,
@@ -422,97 +434,68 @@ void main() {
       return (services, session, routed);
     }
 
-    testWidgets('menutup panel memunculkan UI07; Rute satu ketukan', (
-      tester,
-    ) async {
+    // PRD F07 (26 November 2026): "Lanjut ke mana?" appears only on the
+    // arrival card; closing a POI panel on the map just hides the panel.
+    testWidgets('menutup panel tidak memunculkan UI07', (tester) async {
       final recommendations = _StubRecommendations(_full());
       final (services, _, routed) = await openPanel(tester, recommendations);
       expect(_card, findsNothing);
 
       await tester.tap(find.byTooltip('Tutup informasi'));
       await _frames(tester);
-      expect(_card, findsOneWidget);
-      // No fix on the map: measured from the closed POI, and said so.
-      final call = recommendations.calls.single;
-      expect(call.afterPoiId, _here.id);
-      expect(call.from, _here.position);
-      expect(find.textContaining('dari ${_here.name}'), findsWidgets);
-
-      await tester.tap(
-        find.byKey(ValueKey('recommendation-route-${_next.id}')),
-      );
-      await _frames(tester, 3);
-      expect(routed.map((p) => p.id), [_next.id]);
+      expect(find.byTooltip('Tutup informasi'), findsNothing);
       expect(_card, findsNothing);
+      expect(find.text(RecommendationCard.title), findsNothing);
+      expect(recommendations.calls, isEmpty);
+      expect(routed, isEmpty);
       expect(_featureUsed(services), isEmpty);
 
       await tester.pumpWidget(const SizedBox.shrink());
     });
 
-    testWidgets('kartu dapat ditutup dan hilang saat panel dibuka lagi', (
+    testWidgets('panel dibuka dan ditutup berulang tetap tanpa UI07', (
       tester,
     ) async {
-      final (_, session, _) = await openPanel(
-        tester,
-        _StubRecommendations(_full()),
-      );
+      final recommendations = _StubRecommendations(_full());
+      final (_, session, _) = await openPanel(tester, recommendations);
       await tester.tap(find.byTooltip('Tutup informasi'));
       await _frames(tester);
-      expect(_card, findsOneWidget);
-      // "Tutup" is a real button for screen readers, with the longer name.
-      final semantics = tester.ensureSemantics();
-      expect(
-        tester.getSemantics(find.bySemanticsLabel('Tutup rekomendasi')),
-        isSemantics(
-          label: 'Tutup rekomendasi',
-          isButton: true,
-          hasTapAction: true,
-          hasEnabledState: true,
-          isEnabled: true,
-          isFocusable: true,
-        ),
-      );
-      semantics.dispose();
-      await tester.tap(find.byKey(const ValueKey('recommendation-dismiss')));
-      await _frames(tester, 3);
       expect(_card, findsNothing);
 
-      // A panel opening again replaces the card.
-      session.fire(_here.id);
-      await _frames(tester);
-      await tester.tap(find.byTooltip('Tutup informasi'));
-      await _frames(tester);
-      expect(_card, findsOneWidget);
       session.fire(_next.id);
       await _frames(tester);
+      expect(find.byTooltip('Tutup informasi'), findsOneWidget);
+      await tester.tap(find.byTooltip('Tutup informasi'));
+      await _frames(tester);
       expect(_card, findsNothing);
+      expect(find.text(RecommendationCard.title), findsNothing);
+      expect(recommendations.calls, isEmpty);
 
       await tester.pumpWidget(const SizedBox.shrink());
     });
 
-    testWidgets('ponsel kecil: kartu tidak menutupi kontrol peta', (
+    testWidgets('ponsel kecil: menutup panel tanpa UI07 dan tanpa galat', (
       tester,
     ) async {
       // 360×640 minus the shell's bottom bar, with the search bar shown as
-      // in the app, so the controls sit below it.
+      // in the app.
+      final recommendations = _StubRecommendations(
+        Recommendation(
+          poiIds: [_next.id, _later.id, fakePois[3].id],
+          nearbyFacilities: _full().nearbyFacilities,
+        ),
+      );
       await openPanel(
         tester,
-        _StubRecommendations(
-          Recommendation(
-            poiIds: [_next.id, _later.id, fakePois[3].id],
-            nearbyFacilities: _full().nearbyFacilities,
-          ),
-        ),
+        recommendations,
         size: const Size(360, 560),
         searchBar: true,
       );
       await tester.tap(find.byTooltip('Tutup informasi'));
       await _frames(tester);
-      expect(_card, findsOneWidget);
-      final controls = tester.getRect(
-        find.byTooltip('Sembunyikan penanda POI'),
-      );
-      expect(tester.getRect(_card).top, greaterThan(controls.bottom));
+      expect(_card, findsNothing);
+      expect(recommendations.calls, isEmpty);
+      expect(find.byTooltip('Sembunyikan penanda POI'), findsOneWidget);
       expect(tester.takeException(), isNull);
 
       await tester.pumpWidget(const SizedBox.shrink());
@@ -530,19 +513,46 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
     });
 
-    testWidgets('reduced motion: tampil tanpa animasi', (tester) async {
-      await openPanel(
-        tester,
-        _StubRecommendations(_full()),
-        reduceMotion: true,
-      );
+    testWidgets('reduced motion: menutup panel tanpa UI07', (tester) async {
+      final recommendations = _StubRecommendations(_full());
+      await openPanel(tester, recommendations, reduceMotion: true);
       await tester.tap(find.byTooltip('Tutup informasi'));
       await tester.pump();
       await tester.pump();
-      expect(_card, findsOneWidget);
-      expect(_opacities(tester).every((o) => o == 1), isTrue);
+      expect(_card, findsNothing);
+      expect(recommendations.calls, isEmpty);
 
       await tester.pumpWidget(const SizedBox.shrink());
     });
+  });
+
+  testWidgets('pil Tutup adalah tombol untuk pembaca layar', (tester) async {
+    var dismissed = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: RecommendationCard(
+            view: const RecommendationView(pois: [], facilities: []),
+            onRoute: (_) {},
+            onDismiss: () => dismissed++,
+          ),
+        ),
+      ),
+    );
+    final semantics = tester.ensureSemantics();
+    expect(
+      tester.getSemantics(find.bySemanticsLabel('Tutup rekomendasi')),
+      isSemantics(
+        label: 'Tutup rekomendasi',
+        isButton: true,
+        hasTapAction: true,
+        hasEnabledState: true,
+        isEnabled: true,
+        isFocusable: true,
+      ),
+    );
+    semantics.dispose();
+    await tester.tap(find.byKey(const ValueKey('recommendation-dismiss')));
+    expect(dismissed, 1);
   });
 }

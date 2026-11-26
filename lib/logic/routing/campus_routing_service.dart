@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math' as math;
 
 import '../../contracts/contracts.dart';
+import 'route_planner.dart' show RouteStartOffNetworkException;
 
 /// One straight piece of the walking graph. [passage] is `null` for an
 /// outdoor path, otherwise whether the ground-floor passage it belongs to has
@@ -14,16 +15,21 @@ typedef _Edge = ({GeoPoint a, GeoPoint b, bool? passage});
 ///
 /// [passages] adds ground-floor passages through buildings as extra edges; an
 /// end that is not a graph vertex (an access point) becomes a new vertex.
+/// [corridors] adds the ground-floor corridors mapped in OSM
+/// (`highway=corridor`, `assets/routing/corridors.geojson`) as passages with
+/// the same rule: unverified unless marked `verified: true`.
 /// Only the largest connected network is kept, so a start or destination is
 /// never snapped to an isolated piece that no route can reach.
 class CampusRoutingService implements RoutingService {
   CampusRoutingService.fromGeoJson(
     String source, {
     String? passages,
+    String? corridors,
     this.graphOnly = false,
   }) : _edges = _mainNetwork([
          ..._readEdges(jsonDecode(source)),
          if (passages != null) ..._readPassages(jsonDecode(passages)),
+         if (corridors != null) ..._readPassages(jsonDecode(corridors)),
        ]);
 
   /// Rute demo hanya berisi ruas graf sampai titik proyeksi tujuan.
@@ -41,8 +47,12 @@ class CampusRoutingService implements RoutingService {
     required GeoPoint from,
     required GeoPoint to,
   }) async {
-    final start = _snap(from);
-    final end = _snap(to);
+    final start = _snap(from) ?? (throw const RouteStartOffNetworkException());
+    final end =
+        _snap(to) ??
+        (throw const RouteUnavailableException(
+          'Titik tujuan di luar jaringan jalur.',
+        ));
     final graph = <GeoPoint, Map<GeoPoint, double>>{};
     final passages = <(GeoPoint, GeoPoint), bool>{};
 
@@ -77,7 +87,8 @@ class CampusRoutingService implements RoutingService {
     return _describe(route, passages);
   }
 
-  ({int index, double part, GeoPoint point}) _snap(GeoPoint point) {
+  /// The nearest point on the network, or `null` beyond [_maxSnapM].
+  ({int index, double part, GeoPoint point})? _snap(GeoPoint point) {
     var best = _maxSnapM;
     ({int index, double part, GeoPoint point})? result;
     for (var i = 0; i < _edges.length; i++) {
@@ -85,13 +96,20 @@ class CampusRoutingService implements RoutingService {
       final projection = projectOnSegment(point, a, b);
       if (projection.distanceM <= best) {
         best = projection.distanceM;
-        result = (index: i, part: projection.fraction, point: projection.point);
+        // A point already on the edge (e.g. a door) is cut in as itself, so
+        // rounding does not add a second, almost identical vertex.
+        final onEdge =
+            projection.distanceM < .01 &&
+            projection.fraction > 0 &&
+            projection.fraction < 1;
+        result = (
+          index: i,
+          part: projection.fraction,
+          point: onEdge ? point : projection.point,
+        );
       }
     }
-    return result ??
-        (throw const RouteUnavailableException(
-          'Titik di luar jaringan jalur.',
-        ));
+    return result;
   }
 
   static List<GeoPoint> _shortestPath(
@@ -308,6 +326,14 @@ class CampusRoutingService implements RoutingService {
     throw const FormatException('Koordinat graf tidak valid.');
   }
 }
+
+/// The maneuver at [b] when walking [a] → [b] → [c].
+Maneuver maneuverAt(GeoPoint a, GeoPoint b, GeoPoint c) =>
+    CampusRoutingService._turn(a, b, c);
+
+/// The spoken text for an outdoor [maneuver] (no passage).
+String outdoorInstruction(Maneuver maneuver) =>
+    CampusRoutingService._instruction(maneuver, null);
 
 /// Projection in a local plane, suitable for short segments within campus.
 ({GeoPoint point, double fraction, double distanceM}) projectOnSegment(

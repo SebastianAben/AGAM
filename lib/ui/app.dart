@@ -6,6 +6,8 @@ import 'package:flutter/services.dart';
 import '../contracts/app_services.dart';
 import '../contracts/models/content.dart';
 import '../contracts/models/account.dart';
+import '../contracts/models/navigation.dart';
+import 'walking_navigation_screen.dart';
 import '../logic/session/trigger_notifier.dart';
 import 'widgets/agam_motion.dart';
 import 'explore_map_screen.dart';
@@ -197,26 +199,29 @@ class _AgamMainShellState extends State<AgamMainShell> {
 
   /// Search opens over the map, like Google Maps; "Tampilkan di peta"
   /// closes it and focuses the chosen building on the Jelajah map.
-  Future<void> _openSearch(
-    FacilityCategory? facility, {
-    Poi? destination,
-    bool startRoute = false,
-  }) => Navigator.of(context).push<void>(
-    AgamMotion.route(
-      (searchContext) => SearchRouteScreen(
-        services: widget.services,
-        initialFacility: facility,
-        initialDestination: destination,
-        startRouteOnOpen: startRoute,
-        autofocus: facility == null && destination == null,
-        internalDemo: widget.internalDemo,
-        onShowPoiOnMap: (id) {
-          Navigator.of(searchContext).pop();
-          _selectTab(0);
-          _mapRequests.add(id);
-        },
-      ),
-    ),
+  Future<void> _openSearch(FacilityCategory? facility) =>
+      Navigator.of(context).push<void>(
+        AgamMotion.route(
+          (searchContext) => SearchRouteScreen(
+            services: widget.services,
+            initialFacility: facility,
+            autofocus: facility == null,
+            internalDemo: widget.internalDemo,
+            onShowPoiOnMap: (id) {
+              Navigator.of(searchContext).pop();
+              _selectTab(0);
+              _mapRequests.add(id);
+            },
+          ),
+        ),
+      );
+
+  /// Rute anywhere on Jelajah (the POI card, its detail, a recommendation)
+  /// opens the route preview straight away, without the search page.
+  Future<void> _openRoute(Poi poi) => WalkingNavigationScreen.open(
+    context,
+    services: widget.services,
+    target: NavigationTarget.poi(poi),
   );
 
   Future<void> _openProfile() => Navigator.of(context).push<void>(
@@ -253,10 +258,8 @@ class _AgamMainShellState extends State<AgamMainShell> {
                   onPoiAction: widget.onPoiAction,
                   onAutomaticPoi: () => _selectTab(0),
                   onOpenSearch: _openSearch,
-                  // The route card lives on the search page (UI05/UI06).
-                  onRoute: (poi) => _openSearch(null, destination: poi),
-                  onStartRoute: (poi) =>
-                      _openSearch(null, destination: poi, startRoute: true),
+                  onRoute: _openRoute,
+                  onStartRoute: _openRoute,
                   internalDemo: widget.internalDemo,
                 ),
                 OrientationTrailScreen(

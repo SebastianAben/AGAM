@@ -1,5 +1,72 @@
 # Session Handoff — AGAM
 
+## Gelombang 2: preview rute, navigasi satu layar, selasar OSM — 26 November 2026
+
+- **Branch:** `feat/route-preview-wave2` dari `dev` @ `22f28ad` (branch fitur atas
+  instruksi pengguna, seperti PR #14–#20). Belum di-commit. Paket A–D dikerjakan
+  sub agent paralel di worktree `.claude/worktrees/wave2-{a,b,c,d}` (branch
+  `wave2/*`, perubahan tidak di-commit), lalu diterapkan ke checkout utama
+  sebagai patch; paket E (audit copy) setelahnya.
+- **Keputusan pengguna (final):** rekomendasi "Lanjut ke mana?" hanya setelah
+  tiba (PRD F07/§23); routing diperbaiki dalam paket ini; atribusi peta menciut
+  otomatis (diverifikasi ke OSMF Attribution Guidelines, revisi 10 September
+  2026, oldid=14786; PRD §14); semua tombol Rute membuka preview, navigasi
+  mulai dengan Mulai rute di layar yang sama (PRD §23). Setelah uji emulator,
+  pengguna menyetujui opsi 1+3: garis lurus luar jaringan digambar abu-abu dan
+  selasar OSM `highway=corridor` dipakai sebagai lorong kandidat (PRD §11/§23).
+- **Yang berubah:**
+  1. Ikon: launcher legacy + adaptif (latar `#09469F`, diukur dari logo) dan
+     ikon notifikasi `ic_stat_agam` untuk sesi lokasi, trigger, dan
+     audio_service; `res/raw/keep.xml` menahan ikon dari shrinker.
+  2. Rekomendasi tidak lagi muncul saat kartu POI ditutup (`explore_map_screen`).
+  3. Preview rute + navigasi satu layar (`walking_navigation_screen.dart`):
+     rute dihitung tanpa sesi, Mulai rute memulai sesi dan menjeda narasi;
+     dipakai kartu POI, detail, rekomendasi, Cari (termasuk fasilitas), Trail.
+  4. Atribusi `MapAttribution` pindah ke `lib/ui/widgets/map_attribution.dart`,
+     menciut jadi ⓘ (48 px) setelah 5 detik/sentuhan pertama.
+  5. Routing: `lib/logic/routing/route_planner.dart` (`planWalkingRoute`) dipakai
+     preview dan controller; pintu gedung tempat pengguna berada ikut dicoba;
+     garis luar jaringan berbobot 2× (`kOffNetworkWeight`, nilai engineering);
+     selasar OSM dari `tools/routing/export_osm_corridors.py` →
+     `assets/routing/corridors.geojson` (didaftarkan di `pubspec.yaml`, dimuat
+     di `main.dart`). Labtek V tengah → Labtek VII: 253 m → 161,6 m lewat
+     selasar utara/timur (oracle `tools/routing/check_corridor_route.py`).
+  6. Transisi: `AgamMotion.route` berlatar kanvas (tanpa fade ke hitam),
+     `AgamMotion.mapRoute` 280/200 ms, reduced-motion tersedia; kamera mendekat
+     (zoom 18,5) saat Mulai; kartu tiba boleh 85 % tinggi layar.
+  7. Pesan gagal rute per sebab: lokasi belum terbaca, di luar kampus, terlalu
+     jauh dari jalur, lainnya.
+  8. Copy (paket E): 3 string diperbaiki (trail selesai, dialog notifikasi
+     onboarding, catatan suara kartu tiba).
+- **Pemeriksaan:** `flutter analyze --no-pub` bersih; `flutter test --no-pub`
+  504 lulus (baseline 469); `git diff --check` bersih. Emulator `agam_lean`
+  (API 36, demo, GPS simulasi) menjalankan 9 skenario brief: preview langsung
+  dari kartu POI, Mulai tanpa fade hitam, narasi PLAYING → PAUSED, tutup kartu
+  tanpa rekomendasi, tiba + rekomendasi + Rute → preview, Labtek V → VII lewat
+  selasar, fasilitas dipreview, pesan luar kampus, atribusi menciut/dibuka,
+  ikon launcher dan notifikasi AGAM. Screenshot di `build/wave2-evidence/`
+  (lokal, tidak di-track). Bukan bukti field test.
+- **Terbuka:**
+  - Selasar OSM dan titik akses masih `verified: false`; bobot 2× perlu
+    dikalibrasi saat field test PB11. Titik akses dekat selasar (mis. pintu
+    timur 1 Labtek V) kini menempel ke selasar, bukan ke boulevard.
+  - Kamera navigasi tidak mengikuti pengguna saat berjalan (perlu tombol
+    pusatkan); arahan yang tampil kadang langkah berikutnya, bukan langkah
+    saat ini (terlihat di emulator); latar `FlutterMap` sebelum tile muncul
+    masih abu-abu bawaan.
+  - Splash: `splash_logo.png` bersudut putih, di `drawable/` (mdpi), dan biru
+    logo `#09469F` ≠ latar splash `#0D3F8F`; belum diubah.
+  - Build release (shrinker vs `ic_stat_agam`) belum dijalankan.
+  - Baris audio `PoiDetailScreen` overflow ±4 px di lebar 390 bila POI tanpa
+    audio (temuan paket C).
+  - Di mode Trail, Akhiri rute ikut menghentikan trail; detail dari kartu tiba
+    trail menampilkan Rute yang belum tersedia.
+  - Penggunaan AI dicatat di PB20.
+- **Merge `dev` (PR #21, kartu status UI06):** conflict diselesaikan di
+  branch ini. `_TripCard` kini memanggil `TripStatusCard`; alur preview dan
+  "rekomendasi hanya setelah tiba" dari gelombang 2 dipertahankan, jadi tes
+  dev yang menutup rekomendasi di peta diganti. Aksesibilitas pil **Tutup**
+  dites langsung pada `RecommendationCard` (belum ada pemanggil `onDismiss`).
 ## Kartu status rute UI06 dan "Lanjut ke mana?" — 26 November 2026
 
 - Branch `feat/end-route-card` dari `22f28ad`

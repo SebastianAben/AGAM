@@ -156,8 +156,8 @@ class GeolocatorPositionSource implements PositionSource {
               notificationText: sessionNotificationText,
               notificationChannelName: 'Sesi lokasi',
               notificationIcon: AndroidResource(
-                name: 'ic_launcher',
-                defType: 'mipmap',
+                name: 'ic_stat_agam',
+                defType: 'drawable',
               ),
               enableWakeLock: true,
               setOngoing: true,

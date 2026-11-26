@@ -85,7 +85,7 @@ class LocalTriggerNotifier implements TriggerNotifier {
 
     await _plugin.initialize(
       settings: const InitializationSettings(
-        android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+        android: AndroidInitializationSettings('@drawable/ic_stat_agam'),
       ),
       onDidReceiveNotificationResponse: (r) => _handle(r.actionId, r.payload),
       onDidReceiveBackgroundNotificationResponse:

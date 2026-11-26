@@ -3,6 +3,8 @@ import 'dart:ui' show ImageFilter;
 import 'package:animations/animations.dart';
 import 'package:flutter/material.dart';
 
+import 'agam_theme.dart';
+
 abstract final class AgamMotion {
   static const easeOut = Cubic(0.23, 1, 0.32, 1);
   static const drawer = Cubic(0.32, 0.72, 0, 1);
@@ -57,7 +59,9 @@ abstract final class AgamMotion {
   }
 
   /// Pushed pages slide along the horizontal axis they were opened on;
-  /// reduced motion swaps the slide for an instant change.
+  /// reduced motion swaps the slide for an instant change. The fill is the
+  /// app's canvas: a transparent fill let the navigator's black show
+  /// through while one page faded out and the next faded in.
   static Route<T> route<T>(WidgetBuilder builder) => PageRouteBuilder<T>(
     transitionDuration: const Duration(milliseconds: 320),
     reverseTransitionDuration: const Duration(milliseconds: 260),
@@ -69,7 +73,29 @@ abstract final class AgamMotion {
             animation: animation,
             secondaryAnimation: secondary,
             transitionType: SharedAxisTransitionType.horizontal,
-            fillColor: Colors.transparent,
+            fillColor: AgamColors.canvas,
+            child: child,
+          ),
+  );
+
+  /// A full-screen map page (the route preview): it fades in over the page
+  /// it was opened from in 280 ms and out in 200 ms, on [easeOut], while the
+  /// page's own card rises from the bottom on the same animation. Nothing
+  /// slides sideways, so the map reads as laid over the current view.
+  /// Reduced motion shows and removes it at once.
+  static Route<T> mapRoute<T>(WidgetBuilder builder) => PageRouteBuilder<T>(
+    transitionDuration: const Duration(milliseconds: 280),
+    reverseTransitionDuration: const Duration(milliseconds: 200),
+    pageBuilder: (context, _, _) => builder(context),
+    transitionsBuilder: (context, animation, secondary, child) =>
+        MediaQuery.disableAnimationsOf(context)
+        ? child
+        : FadeTransition(
+            opacity: CurvedAnimation(
+              parent: animation,
+              curve: easeOut,
+              reverseCurve: easeOut.flipped,
+            ),
             child: child,
           ),
   );

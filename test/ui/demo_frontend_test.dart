@@ -10,7 +10,9 @@ import 'package:agam/ui/orientation_trail_screen.dart';
 import 'package:agam/ui/poi_detail_screen.dart';
 import 'package:agam/ui/profile_preview_screen.dart';
 import 'package:agam/ui/search_route_screen.dart';
+import 'package:agam/ui/walking_navigation_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../logic/trail/synthetic_trail.dart';
@@ -20,12 +22,13 @@ AppServices demoServices({
   PoiRepository? pois,
   TrailService Function(SessionController session)? trail,
   NavigationController? navigation,
+  LocationService? location,
 }) {
   final fake = AppServices.fake(tick: const Duration(hours: 1));
   final session = _RecordingSession();
   return AppServices(
     permissions: fake.permissions,
-    location: fake.location,
+    location: location ?? fake.location,
     pois: pois ?? fake.pois,
     session: session,
     audio: fake.audio,
@@ -94,6 +97,21 @@ class _RecordingNavigation implements NavigationController {
     current = const NavigationState.idle();
     _states.add(current);
   }
+}
+
+class _HeldLocation implements LocationService {
+  _HeldLocation(GeoPoint position)
+    : lastFix = LocationFix(
+        position: position,
+        accuracyM: 5,
+        timestamp: DateTime(2026),
+      );
+
+  @override
+  final LocationFix? lastFix;
+
+  @override
+  Stream<LocationFix> get positions => const Stream.empty();
 }
 
 class _RecordingSession implements SessionController, PoiTrialControl {
@@ -213,6 +231,8 @@ void main() {
       pois: FakePoiRepository(pois: unverifiedSyntheticPois, facilities: []),
       trail: (_) => _RotatingTrail(before, after),
       navigation: _RecordingNavigation(),
+      // SYNTHETIC: a fix already in memory, so the preview can plan.
+      location: _HeldLocation(unverifiedSyntheticPois.first.position),
     );
     await tester.pumpWidget(
       MaterialApp(
@@ -220,14 +240,26 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    // Before the first start the card of trailOrder 1 is the next stop.
+    // Before the first start the card of trailOrder 1 is the next stop. Its
+    // Rute opens the preview; "Mulai rute" starts the trail.
     await tester.tap(find.widgetWithText(FilledButton, 'Rute'));
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
+    expect(services.session.current.mode, SessionMode.none);
+    await tester.tap(find.text(WalkingNavigationScreen.startLabel));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    expect(services.session.current.mode, SessionMode.trail);
     expect(services.navigation.current.target?.id, after.first);
     expect(find.text('Tujuan perkiraan'), findsOneWidget);
     expect(find.byType(SnackBar), findsNothing);
+    // This navigation never leaves "calculating"; let the start give up.
+    await tester.pump(const Duration(seconds: 13));
     await tester.pumpWidget(const SizedBox.shrink());
+    // The route map asked rootBundle for the placeholder style inside this
+    // test's fake zone; a cached future from that zone would never resolve
+    // for the next test's map.
+    rootBundle.clear();
     await services.navigation.stop();
     await services.session.end();
   });

@@ -9,6 +9,7 @@ import '../contracts/models/discovery.dart';
 import '../contracts/models/navigation.dart';
 import '../contracts/models/session.dart';
 import 'poi_detail_screen.dart';
+import 'walking_navigation_screen.dart';
 import 'widgets/agam_components.dart';
 import 'widgets/agam_motion.dart';
 import 'widgets/agam_theme.dart';
@@ -137,32 +138,59 @@ class _OrientationTrailScreenState extends State<OrientationTrailScreen> {
       _navigation.target?.id == poi.id &&
       _navigation.status == NavigationStatus.arrived;
 
-  Future<void> _continueTrail([Poi? destination]) async {
+  bool _canContinue(Poi? destination) {
     if (_samplePreview) {
       _message('Trail belum tersedia.');
-      return;
+      return false;
     }
-    if (_busy) return;
+    if (_busy) return false;
     if (destination == null && _nextPoi == null) {
       _message('Semua gedung pada trail sudah dikunjungi.');
-      return;
+      return false;
     }
+    return true;
+  }
 
+  /// Starts the trail session and its navigation; throws [StateError] when
+  /// the trail cannot start.
+  Future<void> _startTrail(Poi? destination) async {
+    await widget.services.trail.start();
+    // The first start picks the nearest POI and rotates the order, so the
+    // next stop is read only after start().
+    final targetPoi =
+        destination ?? _poiById(widget.services.trail.current.nextPoiId);
+    if (targetPoi == null) throw StateError('Trail belum dapat dimulai.');
+    await widget.services.session.start(SessionMode.trail);
+    await widget.services.navigation.start(NavigationTarget.poi(targetPoi));
+  }
+
+  Future<void> _continueTrail([Poi? destination]) async {
+    if (!_canContinue(destination)) return;
     setState(() => _busy = true);
     try {
-      await widget.services.trail.start();
-      // The first start picks the nearest POI and rotates the order, so the
-      // next stop is read only after start().
-      final targetPoi =
-          destination ?? _poiById(widget.services.trail.current.nextPoiId);
-      if (targetPoi == null) return;
-      await widget.services.session.start(SessionMode.trail);
-      await widget.services.navigation.start(NavigationTarget.poi(targetPoi));
+      await _startTrail(destination);
     } on StateError {
       if (mounted) _message('Trail belum dapat dimulai.');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  /// Rute on a stop opens the route preview; "Mulai rute" there starts the
+  /// trail. Trail may still choose another first stop when it starts (the
+  /// nearest one), and the route screen then follows that stop.
+  Future<void> _routeTrail([Poi? destination]) async {
+    if (!_canContinue(destination)) return;
+    final poi = destination ?? _nextPoi;
+    if (poi == null) return;
+    await WalkingNavigationScreen.open(
+      context,
+      services: widget.services,
+      target: NavigationTarget.poi(poi),
+      trail: true,
+      start: () => _startTrail(destination),
+      end: _endTrail,
+    );
   }
 
   Future<void> _endTrail() async {
@@ -173,6 +201,8 @@ class _OrientationTrailScreenState extends State<OrientationTrailScreen> {
   }
 
   Future<void> _openPoiDetails(Poi poi) async {
+    // The detail pops itself after Rute; the preview opens once it is gone.
+    var routeRequested = false;
     await Navigator.of(context).push<void>(
       AgamMotion.route(
         (_) => PoiDetailScreen(
@@ -182,10 +212,13 @@ class _OrientationTrailScreenState extends State<OrientationTrailScreen> {
           settings: widget.services.settings,
           checkedIn: _progress.visited.contains(poi.id),
           navigationAvailable: !_samplePreview,
-          onNavigate: () => _continueTrail(poi),
+          onNavigate: () async {
+            routeRequested = true;
+          },
         ),
       ),
     );
+    if (mounted && routeRequested) await _routeTrail(poi);
   }
 
   void _showCheckInStatus(Poi poi, {required bool checkedIn}) {
@@ -310,7 +343,7 @@ class _OrientationTrailScreenState extends State<OrientationTrailScreen> {
                               // service may still pick the nearest start.
                               onRoute: _samplePreview
                                   ? null
-                                  : () => _continueTrail(),
+                                  : () => _routeTrail(),
                               onCheckIn: () => _showCheckInStatus(
                                 visible[i],
                                 checkedIn: _progress.visited.contains(
@@ -511,7 +544,7 @@ class _BadgeCard extends StatelessWidget {
               const SizedBox(height: 3),
               Text(
                 progress.isComplete
-                    ? 'Trail selesai — lencana terbuka.'
+                    ? 'Trail selesai. Lencana terbuka.'
                     : 'Kunjungi semua gedung untuk membukanya.',
                 style: AgamText.caption,
               ),

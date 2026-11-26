@@ -546,10 +546,13 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Lihat'), findsNothing);
       expect(session.current.mode, SessionMode.explore);
-      // Closing the panel offers the next POIs (UI07); the card floats over
-      // the map, so put it away before tapping the marker again.
-      await tester.tap(find.byKey(const ValueKey('recommendation-dismiss')));
-      await tester.pumpAndSettle();
+      // Closing the panel only hides it: "Lanjut ke mana?" (UI07) belongs
+      // to the arrival card (PRD F07, 26 November 2026).
+      expect(find.text('Lanjut ke mana?'), findsNothing);
+      expect(
+        find.byKey(const ValueKey('recommendation-dismiss')),
+        findsNothing,
+      );
       await tester.tap(
         find.byWidgetPredicate(
           (widget) =>

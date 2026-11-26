@@ -48,6 +48,9 @@ Future<RoutingService> _loadCampusRouting() async =>
     CampusRoutingService.fromGeoJson(
       await rootBundle.loadString('assets/routing/ganesha-walk-demo.geojson'),
       passages: await rootBundle.loadString('assets/routing/passages.geojson'),
+      corridors: await rootBundle.loadString(
+        'assets/routing/corridors.geojson',
+      ),
     );
 
 /// Build produk: Firebase, akun asli dengan gerbang login (UI10), batas
@@ -64,6 +67,8 @@ Future<
 _createProductionAppServices() async {
   final map = AgamMapConfig.campus();
   final routing = await _loadCampusRouting();
+  // Pintu gedung tempat pengguna berada ikut dicoba sebagai titik awal rute.
+  var latestPois = const <Poi>[];
   final la = await createLaServices(
     bundledOnly: false,
     developerTrialAvailable: false,
@@ -73,8 +78,10 @@ _createProductionAppServices() async {
       routing: routing,
       map: map,
       session: session,
+      pois: () => latestPois,
     ),
   );
+  la.pois.watchPois().listen((pois) => latestPois = pois);
   // One store for trail progress, so deleting the account clears it too.
   final trailVisits = AccountVisitStore();
   final account = await createLaAccountServices(la, trailVisits: trailVisits);
@@ -137,6 +144,8 @@ Future<
 _createAppServices() async {
   final map = AgamMapConfig.internalDemo();
   final routing = await _loadCampusRouting();
+  // Pintu gedung tempat pengguna berada ikut dicoba sebagai titik awal rute.
+  var latestPois = const <Poi>[];
   final la = await createLaServices(
     bundledOnly: true,
     developerTrialAvailable: const bool.fromEnvironment('AGAM_INTERNAL_DEMO'),
@@ -146,8 +155,10 @@ _createAppServices() async {
       routing: routing,
       map: map,
       session: session,
+      pois: () => latestPois,
     ),
   );
+  la.pois.watchPois().listen((pois) => latestPois = pois);
   // Akun asli (createLaAccountServices) dipasang di jalur produksi bersama
   // gerbang login FE; demo tetap fake.
   final activity = FakeActivityLogger();

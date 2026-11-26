@@ -3,12 +3,14 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../contracts/contracts.dart';
 import '../../logic/map/offline_map_tiles.dart';
 import 'agam_motion.dart';
 import 'agam_theme.dart';
+import 'map_attribution.dart';
+
+export 'map_attribution.dart' show MapAttribution;
 
 class OfflineCampusMap extends StatefulWidget {
   const OfflineCampusMap({
@@ -24,6 +26,7 @@ class OfflineCampusMap extends StatefulWidget {
     this.initialFocus,
     this.highlight,
     this.routePath = const [],
+    this.routeLeadIn = false,
     this.onMapReady,
     this.attributionPadding = const EdgeInsets.all(10),
   });
@@ -33,6 +36,12 @@ class OfflineCampusMap extends StatefulWidget {
   final EdgeInsets? attributionPadding;
   final GeoPoint? initialFocus;
   final List<GeoPoint> routePath;
+
+  /// Whether the first piece of [routePath] is the unmapped straight walk
+  /// from the user to the path or a building door. It is drawn as thin grey
+  /// dots, apart from the route, so the map does not suggest a mapped way
+  /// across a building.
+  final bool routeLeadIn;
   final VoidCallback? onMapReady;
 
   /// A non-POI place to point at, such as a facility chosen as a
@@ -96,7 +105,7 @@ class OfflineCampusMapState extends State<OfflineCampusMap>
   /// Longer trips take longer (450–650 ms) and lift the zoom a little at
   /// mid-flight so the campus between both places stays readable. Returns
   /// the flight time: zero before the map is ready or under reduced motion.
-  Duration flyTo(GeoPoint point) {
+  Duration flyTo(GeoPoint point, {double zoom = 17}) {
     _pendingCenter = point;
     if (!_ready) return Duration.zero;
     final camera = _controller.camera;
@@ -108,7 +117,7 @@ class OfflineCampusMapState extends State<OfflineCampusMap>
     );
     _animateCamera(
       target,
-      17,
+      zoom,
       camera.rotation,
       duration: duration,
       curve: AgamMotion.travel,
@@ -212,7 +221,10 @@ class OfflineCampusMapState extends State<OfflineCampusMap>
         fit: StackFit.expand,
         children: [
           Listener(
-            onPointerDown: (_) => _motion.stop(),
+            onPointerDown: (_) {
+              _motion.stop();
+              MapAttribution.notifyMapTouched();
+            },
             child: FlutterMap(
               mapController: _controller,
               options: MapOptions(
@@ -244,18 +256,33 @@ class OfflineCampusMapState extends State<OfflineCampusMap>
                   PolylineLayer(
                     simplificationTolerance: 0,
                     polylines: [
-                      Polyline(
-                        points: widget.routePath.map(_latLng).toList(),
-                        pattern: StrokePattern.dashed(
-                          segments: const [10, 8],
-                          patternFit: PatternFit.appendDot,
+                      if (widget.routeLeadIn)
+                        Polyline(
+                          points: [
+                            _latLng(widget.routePath[0]),
+                            _latLng(widget.routePath[1]),
+                          ],
+                          pattern: const StrokePattern.dotted(spacingFactor: 2),
+                          color: AgamColors.muted,
+                          strokeWidth: 4,
+                          strokeCap: StrokeCap.round,
                         ),
-                        color: AgamColors.brand,
-                        strokeWidth: 5,
-                        borderColor: Colors.white,
-                        borderStrokeWidth: 1.5,
-                        strokeCap: StrokeCap.round,
-                      ),
+                      if (!widget.routeLeadIn || widget.routePath.length > 2)
+                        Polyline(
+                          points: widget.routePath
+                              .skip(widget.routeLeadIn ? 1 : 0)
+                              .map(_latLng)
+                              .toList(),
+                          pattern: StrokePattern.dashed(
+                            segments: const [10, 8],
+                            patternFit: PatternFit.appendDot,
+                          ),
+                          color: AgamColors.brand,
+                          strokeWidth: 5,
+                          borderColor: Colors.white,
+                          borderStrokeWidth: 1.5,
+                          strokeCap: StrokeCap.round,
+                        ),
                     ],
                   ),
                 if ((widget.userPosition, widget.userAccuracyM) case (
@@ -622,57 +649,5 @@ class _UserDot extends StatelessWidget {
       border: Border.all(color: Colors.white, width: 3),
       boxShadow: const [BoxShadow(color: Color(0x400B1F44), blurRadius: 6)],
     ),
-  );
-}
-
-/// The required OpenStreetMap and OpenMapTiles credit.
-class MapAttribution extends StatelessWidget {
-  const MapAttribution({super.key});
-
-  @override
-  Widget build(BuildContext context) => DecoratedBox(
-    decoration: BoxDecoration(
-      color: Colors.white.withValues(alpha: .88),
-      borderRadius: BorderRadius.circular(10),
-    ),
-    // Wraps to a second line rather than overflow on narrow screens or
-    // with large system text.
-    child: Wrap(
-      children: [
-        _credit(
-          context,
-          '© OpenStreetMap contributors (ODbL)',
-          'https://www.openstreetmap.org/copyright',
-        ),
-        _credit(context, '© OpenMapTiles', 'https://openmaptiles.org/'),
-      ],
-    ),
-  );
-
-  Widget _credit(BuildContext context, String label, String url) => TextButton(
-    style: TextButton.styleFrom(
-      foregroundColor: AgamColors.ink,
-      textStyle: const TextStyle(
-        fontSize: 8,
-        fontWeight: FontWeight.w600,
-        letterSpacing: 0,
-        fontFamily: 'PlusJakartaSans',
-      ),
-      minimumSize: const Size(0, 26),
-      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-    ),
-    onPressed: () async {
-      final opened = await launchUrl(
-        Uri.parse(url),
-        mode: LaunchMode.externalApplication,
-      );
-      if (!opened && context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Tautan atribusi tidak dapat dibuka.')),
-        );
-      }
-    },
-    child: Text(label),
   );
 }
