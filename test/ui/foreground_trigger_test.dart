@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:agam/contracts/contracts.dart';
 import 'package:agam/logic/search/poi_search_service.dart';
 import 'package:agam/logic/session/poi_trial_control.dart';
+import 'package:agam/logic/trail/account_visit_store.dart';
 import 'package:agam/ui/app.dart';
 import 'package:agam/ui/widgets/offline_campus_map.dart';
 import 'package:flutter/material.dart';
@@ -26,22 +27,22 @@ AppServices demoServices({LocationService? location}) {
     navigation: _UnavailableNavigation(),
     search: PoiSearchService(pois: fake.pois),
     recommendations: fake.recommendations,
-    trail: _UnavailableTrail(),
+    trail: const UnavailableTrailService(),
     facilities: fake.facilities,
   );
 }
 
-// Any access to unfinished runtime services must fail this test.
+// Starting or stopping unfinished navigation must fail this test; screens
+// may only observe its idle state. The demo trail screen reads the trail
+// service, which has no order here.
 class _UnavailableNavigation implements NavigationController {
+  @override
+  NavigationState get current => const NavigationState.idle();
+  @override
+  Stream<NavigationState> get state => const Stream.empty();
   @override
   dynamic noSuchMethod(Invocation invocation) =>
       throw StateError('Demo accessed navigation: ${invocation.memberName}');
-}
-
-class _UnavailableTrail implements TrailService {
-  @override
-  dynamic noSuchMethod(Invocation invocation) =>
-      throw StateError('Demo accessed trail: ${invocation.memberName}');
 }
 
 class _RecordingSession implements SessionController, PoiTrialControl {

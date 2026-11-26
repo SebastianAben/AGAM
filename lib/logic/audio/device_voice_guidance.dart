@@ -58,8 +58,8 @@ class FlutterTtsEngine implements TtsEngine {
 }
 
 /// Membacakan arahan navigasi dengan mesin TTS Android, locale `id-ID`
-/// (PRD §10). Hanya untuk arahan belokan; narasi, prompt, dan pengumuman
-/// tiba memakai file audio.
+/// (PRD §10): arahan belokan dan pengumuman tiba di fasilitas. Narasi,
+/// prompt, dan pengumuman tiba di POI memakai file audio.
 ///
 /// Suara dianggap tersedia hanya jika suara `id-ID` **offline** terpasang.
 /// Jika tidak, [speak] diam dan UI tetap menampilkan arahan visual

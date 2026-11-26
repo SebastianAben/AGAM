@@ -75,6 +75,34 @@ abstract final class AgamMotion {
   );
 }
 
+/// [AnimatedSize] that steps aside under reduced motion. A zero duration is
+/// not enough: `RenderAnimatedSize` then re-dirties itself during its own
+/// layout and throws in debug builds, so the child is laid out directly.
+class AgamAnimatedSize extends StatelessWidget {
+  const AgamAnimatedSize({
+    super.key,
+    required this.child,
+    this.milliseconds = 280,
+    this.curve = AgamMotion.easeOut,
+    this.alignment = Alignment.center,
+  });
+
+  final Widget child;
+  final int milliseconds;
+  final Curve curve;
+  final AlignmentGeometry alignment;
+
+  @override
+  Widget build(BuildContext context) => MediaQuery.disableAnimationsOf(context)
+      ? child
+      : AnimatedSize(
+          duration: Duration(milliseconds: milliseconds),
+          curve: curve,
+          alignment: alignment,
+          child: child,
+        );
+}
+
 /// One-shot entrance for list content: fades in and rises 10 px, staggered
 /// by [order]. It plays the first time [play] is true and never repeats, so
 /// switching tabs back and forth does not replay it.

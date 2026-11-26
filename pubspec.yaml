@@ -97,6 +97,8 @@ flutter:
     - assets/map/ganesha.pmtiles
     - assets/map/agam-style.json
     - assets/map/ganesha.manifest.json
+    - assets/routing/ganesha-walk-demo.geojson
+    - assets/routing/passages.geojson
 
   fonts:
     - family: PlusJakartaSans

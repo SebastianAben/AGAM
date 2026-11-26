@@ -457,6 +457,10 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Lihat'), findsNothing);
       expect(session.current.mode, SessionMode.explore);
+      // Closing the panel offers the next POIs (UI07); the card floats over
+      // the map, so put it away before tapping the marker again.
+      await tester.tap(find.byTooltip('Tutup rekomendasi'));
+      await tester.pumpAndSettle();
       await tester.tap(
         find.byWidgetPredicate(
           (widget) =>

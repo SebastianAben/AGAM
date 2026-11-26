@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../contracts/app_services.dart';
+import '../contracts/models/activity.dart';
 import '../contracts/models/content.dart';
 import '../contracts/models/audio.dart';
 import '../contracts/models/location.dart';
@@ -19,6 +20,7 @@ import 'widgets/agam_poi_panel.dart';
 import 'widgets/agam_theme.dart';
 import 'widgets/facility_labels.dart';
 import 'widgets/offline_campus_map.dart';
+import 'widgets/recommendation_card.dart';
 
 /// UI02 Explore Map. UI03 trigger and UI04 detail are states layered over it.
 class ExploreMapScreen extends StatefulWidget {
@@ -35,6 +37,7 @@ class ExploreMapScreen extends StatefulWidget {
     this.onAutomaticPoi,
     this.onOpenSearch,
     this.onRoute,
+    this.onStartRoute,
   });
 
   final VoidCallback? onAutomaticPoi;
@@ -46,6 +49,12 @@ class ExploreMapScreen extends StatefulWidget {
   /// Starts the route flow to a POI. Without it, or in the internal demo
   /// where the campus graph is missing, "Rute" explains it is unavailable.
   final ValueChanged<Poi>? onRoute;
+
+  /// Starts navigating to a POI in one tap (a recommendation, Rute on the
+  /// POI detail). Falls back to [onRoute] when not given.
+  final ValueChanged<Poi>? onStartRoute;
+
+  ValueChanged<Poi>? get _startRoute => onStartRoute ?? onRoute;
   final AppServices services;
   final bool embedded;
   final bool isActive;
@@ -72,11 +81,17 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
   bool _sessionActive = false;
   bool _showDetail = false;
   String? _triggeredPoiId;
+  // A POI the user opened from the map panel, not from a trigger.
+  String? _panelViewId;
   bool _changingSession = false;
   bool _openingDetail = false;
   bool _appVisible = true;
   final _activeTriggerIds = <String>{};
   String? _locationMessage;
+  // UI07 after a POI panel is closed; the counter drops late answers once
+  // a panel opens again or the card is dismissed.
+  RecommendationView? _recommendation;
+  int _recommendRequest = 0;
 
   @override
   void initState() {
@@ -126,6 +141,7 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
           _triggeredPoiId = null;
           _showPois = true;
           _showDetail = false;
+          _clearRecommendation();
         });
         _mapKey.currentState?.focusOn(poi.position);
       }),
@@ -218,6 +234,7 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
       _selectedPoi = poi;
       _triggeredPoiId = poi.id;
       _showDetail = true;
+      _clearRecommendation();
     });
     widget.onAutomaticPoi?.call();
     _loadFacilities();
@@ -272,23 +289,35 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
   }
 
   Future<void> _openPoiById(String id) async {
+    // Requests come from a trigger's "Lihat", unless the user asked for this
+    // POI from the map panel and the request was routed through
+    // [ExploreMapScreen.onPoiAction].
+    final fromPanel = _panelViewId == id;
+    _panelViewId = null;
     final poi = await widget.services.pois.poiById(id);
-    if (mounted && poi != null) _openDetail(poi);
+    if (mounted && poi != null) _openDetail(poi, fromTrigger: !fromPanel);
   }
 
-  Future<void> _openDetail(Poi poi) async {
+  /// [fromTrigger] opens the detail without `featureUsed`: right after a
+  /// trigger its time would match the arrival at the POI (PRD §15.5).
+  Future<void> _openDetail(Poi poi, {bool fromTrigger = false}) async {
     if (_openingDetail) return;
     _openingDetail = true;
     try {
       await Navigator.of(context).push(
         AgamMotion.route<void>(
-          (_) => PoiDetailScreen(
+          (context) => PoiDetailScreen(
             poi: poi,
+            activity: fromTrigger ? null : widget.services.activity,
             audio: widget.services.audio,
             settings: widget.services.settings,
             checkedIn: false,
-            navigationAvailable: !widget.internalDemo,
-            onNavigate: () async => _showNotice('Navigasi belum tersedia.'),
+            navigationAvailable: widget._startRoute != null,
+            // The route card lives on the search page, as from the panel.
+            onNavigate: () async {
+              Navigator.of(context).pop();
+              widget._startRoute?.call(poi);
+            },
           ),
         ),
       );
@@ -303,12 +332,58 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
       _selectedPoi = poi;
       _showPois = true;
       _showDetail = true;
+      _clearRecommendation();
     });
     _mapKey.currentState?.focusOn(poi.position);
     _loadFacilities();
   }
 
+  /// Closing the panel (its X or back) offers where to go next (F07).
+  /// "Lewati" declines the POI instead, so it does not come here.
+  void _closePanel() {
+    final closed = _selectedPoi;
+    _activeTriggerIds.remove(_triggeredPoiId);
+    setState(() {
+      _triggeredPoiId = null;
+      _showDetail = false;
+    });
+    if (closed != null) _recommendAfter(closed);
+  }
+
+  /// From the user's position when the map has one, else from the closed
+  /// POI. Nothing is logged: right after a trigger its time would match the
+  /// visit (PRD §15.5, rules §5.1).
+  Future<void> _recommendAfter(Poi poi) async {
+    final request = ++_recommendRequest;
+    final position = _fix?.position;
+    final from = position ?? poi.position;
+    try {
+      final result = await widget.services.recommendations.recommend(
+        from: from,
+        afterPoiId: poi.id,
+      );
+      if (!mounted || request != _recommendRequest || _showDetail) return;
+      setState(
+        () => _recommendation = RecommendationView.resolve(
+          result,
+          pois: _pois,
+          from: from,
+          trailActive: widget.services.trail.current.active,
+          origin: position == null ? poi.name : null,
+        ),
+      );
+    } catch (_) {
+      // Optional; the map stays as it was.
+    }
+  }
+
+  void _clearRecommendation() {
+    _recommendRequest++;
+    _recommendation = null;
+  }
+
   Future<void> _poiAction(Poi poi, TriggerAction action) async {
+    final fromTrigger = _triggeredPoiId == poi.id;
     if (action == TriggerAction.skip) {
       _activeTriggerIds.remove(poi.id);
       setState(() {
@@ -330,9 +405,23 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
           return;
         }
       }
+      // A fresh start from a POI the user picked on the map; never from the
+      // trigger card, whose time would match the arrival (PRD §15.5).
+      if (action == TriggerAction.listen && !fromTrigger) {
+        widget.services.activity.log(
+          const ActivityEvent.featureUsed(feature: ActivityFeature.narration),
+        );
+      }
       final onAction = widget.onPoiAction;
       if (onAction != null) {
-        await onAction(poi.id, action);
+        if (action == TriggerAction.view && !fromTrigger) _panelViewId = poi.id;
+        try {
+          await onAction(poi.id, action);
+        } finally {
+          // The view request has been delivered by now (or was dropped); a
+          // later notification "Lihat" must not count as a panel open.
+          _panelViewId = null;
+        }
       } else {
         switch (action) {
           case TriggerAction.listen:
@@ -340,7 +429,7 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
               AudioClip(poiId: poi.id, kind: AudioClipKind.narration),
             );
           case TriggerAction.view:
-            if (mounted) _openDetail(poi);
+            if (mounted) _openDetail(poi, fromTrigger: fromTrigger);
           case TriggerAction.skip:
             if (audio.current.clip?.poiId == poi.id &&
                 audio.current.clip?.kind == AudioClipKind.prompt) {
@@ -380,15 +469,7 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
     return PopScope(
       canPop: !widget.isActive || !_showDetail,
       onPopInvokedWithResult: (didPop, result) {
-        if (!didPop && widget.isActive && _showDetail) {
-          if (_triggeredPoiId != null) {
-            _activeTriggerIds.remove(_triggeredPoiId);
-          }
-          setState(() {
-            _triggeredPoiId = null;
-            _showDetail = false;
-          });
-        }
+        if (!didPop && widget.isActive && _showDetail) _closePanel();
       },
       child: Scaffold(
         backgroundColor: AgamColors.canvas,
@@ -433,16 +514,22 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
                 left: 16,
                 right: 16,
                 bottom: 16,
+                // The stack stays below the map controls, so a tall
+                // recommendation scrolls instead of covering them.
+                top:
+                    (widget.onOpenSearch == null ? 12 : 126) +
+                    _MapControls.height +
+                    12,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     const MapAttribution(),
                     const SizedBox(height: 10),
                     // Location speaks through the dot on the map; words
                     // appear only when something needs the user's action.
-                    AnimatedSize(
-                      duration: AgamMotion.duration(context, 240),
+                    AgamAnimatedSize(
+                      milliseconds: 240,
                       curve: AgamMotion.easeOut,
                       alignment: Alignment.bottomCenter,
                       child: switch (_locationMessage ??
@@ -455,6 +542,36 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
                         ),
                         null => const SizedBox(width: double.infinity),
                       },
+                    ),
+                    // UI07 after a closed panel: a dismissible card, at most
+                    // half the map and never over the map controls.
+                    Flexible(
+                      child: RecommendationPresence(
+                        child: switch (_recommendation) {
+                          final view? => Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: ConstrainedBox(
+                              constraints: BoxConstraints(
+                                maxHeight: constraints.maxHeight * .5,
+                              ),
+                              child: SingleChildScrollView(
+                                child: RecommendationCard(
+                                  view: view,
+                                  floating: true,
+                                  routeAvailable: widget._startRoute != null,
+                                  onRoute: (poi) {
+                                    setState(_clearRecommendation);
+                                    widget._startRoute?.call(poi);
+                                  },
+                                  onDismiss: () =>
+                                      setState(_clearRecommendation),
+                                ),
+                              ),
+                            ),
+                          ),
+                          null => null,
+                        },
+                      ),
                     ),
                     _SessionCard(
                       active: _sessionActive,
@@ -499,24 +616,14 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
                                       handle: handle,
                                       expanded: expanded,
                                       onToggleExpanded: toggle,
-                                      onClose: () {
-                                        _activeTriggerIds.remove(
-                                          _triggeredPoiId,
-                                        );
-                                        setState(() {
-                                          _triggeredPoiId = null;
-                                          _showDetail = false;
-                                        });
-                                      },
+                                      onClose: _closePanel,
                                       onSkip: () =>
                                           _poiAction(poi, TriggerAction.skip),
                                       onView: () =>
                                           _poiAction(poi, TriggerAction.view),
                                       onListen: () =>
                                           _poiAction(poi, TriggerAction.listen),
-                                      routeAvailable:
-                                          !widget.internalDemo &&
-                                          widget.onRoute != null,
+                                      routeAvailable: widget.onRoute != null,
                                       onRoute: () => widget.onRoute?.call(poi),
                                       audio: widget.services.audio,
                                     ),
@@ -709,6 +816,9 @@ class _MapControls extends StatelessWidget {
     required this.onCenter,
     required this.onLayers,
   });
+
+  /// Three 48 px buttons and two 1 px dividers.
+  static const height = 3 * 48.0 + 2;
 
   final bool showPois;
   final IconData locationIcon;
@@ -1090,8 +1200,8 @@ class _PoiSheet extends StatelessWidget {
                     if (triggered)
                       _PromptCard(poi: poi)
                     else
-                      AnimatedSize(
-                        duration: AgamMotion.duration(context, 240),
+                      AgamAnimatedSize(
+                        milliseconds: 240,
                         curve: AgamMotion.easeOut,
                         alignment: Alignment.topCenter,
                         child: Text(

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../contracts/models/activity.dart';
 import '../contracts/models/audio.dart';
 import '../contracts/models/content.dart';
 import '../contracts/services/la_services.dart';
@@ -23,9 +24,16 @@ class PoiDetailScreen extends StatefulWidget {
     required this.checkedIn,
     this.navigationAvailable = true,
     this.settings,
+    this.activity,
   });
 
   final SettingsStore? settings;
+
+  /// Records `featureUsed` (PRD §15.5): `poiCard` once when this screen
+  /// opens and `narration` each time the user starts the narration afresh
+  /// (never on resume). Null when the screen was opened from a POI trigger,
+  /// because the event's time would match the arrival at that POI.
+  final ActivityLogger? activity;
   final Poi poi;
   final AudioService audio;
   final Future<void> Function() onNavigate;
@@ -48,6 +56,9 @@ class _PoiDetailScreenState extends State<PoiDetailScreen> {
   @override
   void initState() {
     super.initState();
+    widget.activity?.log(
+      const ActivityEvent.featureUsed(feature: ActivityFeature.poiCard),
+    );
     if (_audioAvailable) {
       unawaited(
         NarrationEnvelope.load(widget.poi.media.narrationAudio!).then((value) {
@@ -611,6 +622,9 @@ class _PoiDetailScreenState extends State<PoiDetailScreen> {
     } else if (_currentNarration && _playback.status == PlaybackStatus.paused) {
       await widget.audio.resume();
     } else {
+      widget.activity?.log(
+        const ActivityEvent.featureUsed(feature: ActivityFeature.narration),
+      );
       await widget.audio.play(
         AudioClip(poiId: widget.poi.id, kind: AudioClipKind.narration),
       );
@@ -650,8 +664,8 @@ class _PoiDetailScreenState extends State<PoiDetailScreen> {
                 ),
               ],
             ),
-            AnimatedSize(
-              duration: AgamMotion.duration(context, 240),
+            AgamAnimatedSize(
+              milliseconds: 240,
               curve: AgamMotion.easeOut,
               alignment: Alignment.topCenter,
               child: _transcriptExpanded

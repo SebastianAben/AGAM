@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 
 import 'contracts/contracts.dart';
@@ -8,8 +9,10 @@ import 'logic/map/agam_map_config.dart';
 import 'logic/routing/campus_routing_service.dart';
 import 'logic/routing/device_navigation_controller.dart';
 import 'logic/search/poi_search_service.dart';
+import 'logic/search/recommendation_bootstrap.dart';
 import 'logic/search/repository_facility_service.dart';
 import 'logic/trail/account_visit_store.dart';
+import 'logic/trail/trail_bootstrap.dart';
 import 'ui/app.dart';
 import 'logic/session/trigger_notifier.dart';
 import 'firebase_options.dart';
@@ -39,11 +42,19 @@ Future<void> main() async {
   );
 }
 
+/// Graf jalan kaki kampus dan lorong tembus gedung yang dibundel (PRD §11).
+/// Rute dihitung di perangkat; posisi pengguna tidak dikirim ke mana pun.
+Future<RoutingService> _loadCampusRouting() async =>
+    CampusRoutingService.fromGeoJson(
+      await rootBundle.loadString('assets/routing/ganesha-walk-demo.geojson'),
+      passages: await rootBundle.loadString('assets/routing/passages.geojson'),
+    );
+
 /// Build produk: Firebase, akun asli dengan gerbang login (UI10), batas
 /// layanan Kampus Ganesha + 200 m (PRD §9.3), dan layanan asli LA/LB yang
-/// sama dengan demo. Fitur yang datanya belum ada (graf jalur
-/// kampus, urutan resmi trail, rekomendasi) memakai layanan berstatus "belum
-/// tersedia", bukan data palsu.
+/// sama dengan demo. Routing memakai graf jalur kampus yang dibundel; trail
+/// memakai urutan keliling dari dataset. Rekomendasi (F07) memakai trail dan
+/// penyimpanan kunjungan yang sama.
 ///
 /// Seperti demo, permintaan buka POI dan aksi dari notifikasi trigger
 /// diteruskan ke UI; tanpa ini notifikasi POI tidak membuka kartunya.
@@ -52,7 +63,7 @@ Future<
 >
 _createProductionAppServices() async {
   final map = AgamMapConfig.campus();
-  const routing = UnavailableCampusRouting();
+  final routing = await _loadCampusRouting();
   final la = await createLaServices(
     bundledOnly: false,
     developerTrialAvailable: false,
@@ -64,7 +75,23 @@ _createProductionAppServices() async {
       session: session,
     ),
   );
-  final account = await createLaAccountServices(la);
+  // One store for trail progress, so deleting the account clears it too.
+  final trailVisits = AccountVisitStore();
+  final account = await createLaAccountServices(la, trailVisits: trailVisits);
+  String? currentUid() => account.auth.current.account?.uid;
+  final trail = createDeviceTrailService(
+    pois: la.pois,
+    location: la.location,
+    session: la.session,
+    navigation: la.navigation,
+    map: map,
+    activity: account.activity,
+    currentUid: currentUid,
+    accounts: account.auth.state,
+    routingAvailable: true,
+    visits: trailVisits,
+  );
+  final facilities = RepositoryFacilityService(la.pois);
 
   final services = AppServices(
     permissions: la.permissions,
@@ -80,9 +107,15 @@ _createProductionAppServices() async {
     routing: routing,
     navigation: la.navigation,
     search: PoiSearchService(pois: la.pois),
-    recommendations: const UnavailableRecommendationService(),
-    trail: const UnavailableTrailService(),
-    facilities: RepositoryFacilityService(la.pois),
+    recommendations: createRecommendationService(
+      pois: la.pois,
+      facilities: facilities,
+      visits: trailVisits,
+      currentUid: currentUid,
+      trail: trail,
+    ),
+    trail: trail,
+    facilities: facilities,
   );
   return (
     services,
@@ -93,17 +126,17 @@ _createProductionAppServices() async {
   );
 }
 
-/// Demo memakai seluruh layanan asli LA dan LB. Fitur yang datanya belum ada
-/// memakai layanan asli berstatus "belum tersedia", bukan data palsu: graf
-/// jalur kampus (routing), urutan resmi trail, dan rekomendasi. Akun demo
-/// tetap fake karena demo tidak menjalankan Firebase; gerbang login hanya
-/// ada di build produk.
+/// Demo memakai seluruh layanan asli LA dan LB, termasuk routing pada graf
+/// jalur kampus yang dibundel, trail keliling, dan rekomendasi (F07) yang
+/// berbagi trail serta penyimpanan kunjungan.
+/// Akun demo tetap fake karena demo tidak menjalankan Firebase; gerbang login
+/// hanya ada di build produk.
 Future<
   (AppServices, Stream<String>, Future<void> Function(String, TriggerAction))
 >
 _createAppServices() async {
   final map = AgamMapConfig.internalDemo();
-  const routing = UnavailableCampusRouting();
+  final routing = await _loadCampusRouting();
   final la = await createLaServices(
     bundledOnly: true,
     developerTrialAvailable: const bool.fromEnvironment('AGAM_INTERNAL_DEMO'),
@@ -118,6 +151,24 @@ _createAppServices() async {
   // Akun asli (createLaAccountServices) dipasang di jalur produksi bersama
   // gerbang login FE; demo tetap fake.
   final activity = FakeActivityLogger();
+  // The demo has no login: a synthetic uid keeps trail progress in local
+  // storage only, like a signed-in account. Trail and recommendations share
+  // one store so they see the same visits.
+  String? currentUid() => 'internal-demo';
+  final visits = AccountVisitStore();
+  final trail = createDeviceTrailService(
+    pois: la.pois,
+    location: la.location,
+    session: la.session,
+    navigation: la.navigation,
+    map: map,
+    activity: activity,
+    currentUid: currentUid,
+    accounts: const Stream.empty(),
+    routingAvailable: true,
+    visits: visits,
+  );
+  final facilities = RepositoryFacilityService(la.pois);
 
   return (
     AppServices(
@@ -134,9 +185,15 @@ _createAppServices() async {
       routing: routing,
       navigation: la.navigation,
       search: PoiSearchService(pois: la.pois),
-      recommendations: const UnavailableRecommendationService(),
-      trail: const UnavailableTrailService(),
-      facilities: RepositoryFacilityService(la.pois),
+      recommendations: createRecommendationService(
+        pois: la.pois,
+        facilities: facilities,
+        visits: visits,
+        currentUid: currentUid,
+        trail: trail,
+      ),
+      trail: trail,
+      facilities: facilities,
     ),
     la.triggerResponder.viewRequests,
     (id, action) => la.triggerResponder.handleAction(

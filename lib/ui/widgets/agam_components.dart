@@ -251,8 +251,8 @@ class AgamPrimaryButton extends StatelessWidget {
                 // the icon sits. Size only to the incoming label and glide
                 // the width, so the icon slides instead of snapping when
                 // the outgoing label is removed.
-                child: AnimatedSize(
-                  duration: AgamMotion.duration(context, 240),
+                child: AgamAnimatedSize(
+                  milliseconds: 240,
                   curve: AgamMotion.easeOut,
                   child: AnimatedSwitcher(
                     duration: AgamMotion.duration(context, 240),

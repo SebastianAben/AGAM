@@ -1,7 +1,10 @@
 import 'dart:async';
 
 import 'package:agam/contracts/contracts.dart';
+import 'package:agam/contracts/fakes/fake_la_services.dart';
+import 'package:agam/contracts/fakes/fake_lb_services.dart';
 import 'package:agam/logic/search/poi_search_service.dart';
+import 'package:agam/logic/trail/account_visit_store.dart';
 import 'package:agam/logic/session/poi_trial_control.dart';
 import 'package:agam/ui/orientation_trail_screen.dart';
 import 'package:agam/ui/poi_detail_screen.dart';
@@ -10,14 +13,21 @@ import 'package:agam/ui/search_route_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../logic/trail/synthetic_trail.dart';
+
 // Synthetic service fixtures; these tests do not simulate a real GPS journey.
-AppServices demoServices() {
+AppServices demoServices({
+  PoiRepository? pois,
+  TrailService Function(SessionController session)? trail,
+  NavigationController? navigation,
+}) {
   final fake = AppServices.fake(tick: const Duration(hours: 1));
+  final session = _RecordingSession();
   return AppServices(
     permissions: fake.permissions,
     location: fake.location,
-    pois: fake.pois,
-    session: _RecordingSession(),
+    pois: pois ?? fake.pois,
+    session: session,
     audio: fake.audio,
     voice: fake.voice,
     settings: fake.settings,
@@ -25,25 +35,65 @@ AppServices demoServices() {
     activity: fake.activity,
     map: fake.map,
     routing: fake.routing,
-    navigation: _UnavailableNavigation(),
+    // The demo routes on the bundled campus graph, like the product build.
+    navigation: navigation ?? fake.navigation,
     search: PoiSearchService(pois: fake.pois),
     recommendations: fake.recommendations,
-    trail: _UnavailableTrail(),
+    trail: trail?.call(session) ?? const UnavailableTrailService(),
     facilities: fake.facilities,
   );
 }
 
-// Any access to unfinished runtime services must fail this test.
-class _UnavailableNavigation implements NavigationController {
+/// Synthetic trail whose start() rotates the loop, like the first start of
+/// the device trail service near another stop.
+class _RotatingTrail implements TrailService {
+  _RotatingTrail(this._before, this._after);
+
+  final List<String> _before;
+  final List<String> _after;
+  final _changes = StreamController<TrailProgress>.broadcast();
+  late TrailProgress _current = TrailProgress(
+    order: _before,
+    visited: const {},
+    active: false,
+  );
+
   @override
-  dynamic noSuchMethod(Invocation invocation) =>
-      throw StateError('Demo accessed navigation: ${invocation.memberName}');
+  TrailProgress get current => _current;
+  @override
+  Stream<TrailProgress> get progress => _changes.stream;
+  @override
+  Future<void> start() async {
+    _current = TrailProgress(order: _after, visited: const {}, active: true);
+    _changes.add(_current);
+  }
+
+  @override
+  Future<void> stop() async {}
+  @override
+  Future<void> reset() async {}
 }
 
-class _UnavailableTrail implements TrailService {
+class _RecordingNavigation implements NavigationController {
+  final _states = StreamController<NavigationState>.broadcast();
   @override
-  dynamic noSuchMethod(Invocation invocation) =>
-      throw StateError('Demo accessed trail: ${invocation.memberName}');
+  NavigationState current = const NavigationState.idle();
+  @override
+  Stream<NavigationState> get state => _states.stream;
+  @override
+  Future<void> start(NavigationTarget target) async {
+    current = NavigationState(
+      status: NavigationStatus.calculating,
+      target: target,
+    );
+    _states.add(current);
+  }
+
+  @override
+  Future<void> stop() async {
+    current = const NavigationState.idle();
+    _states.add(current);
+  }
 }
 
 class _RecordingSession implements SessionController, PoiTrialControl {
@@ -115,6 +165,84 @@ void main() {
     await services.session.end();
   });
 
+  testWidgets('demo trail follows the trail service order and starts there', (
+    tester,
+  ) async {
+    // Synthetic rotated order, as if the nearest POI were the fifth stop.
+    final order = [
+      for (var i = 0; i < 10; i++) unverifiedSyntheticPois[(4 + i) % 10].id,
+    ];
+    final services = demoServices(
+      pois: FakePoiRepository(pois: unverifiedSyntheticPois, facilities: []),
+      trail: (session) => FakeTrailService(session: session, order: order),
+      navigation: _RecordingNavigation(),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: OrientationTrailScreen(services: services, internalDemo: true),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final names = {for (final poi in unverifiedSyntheticPois) poi.id: poi.name};
+    expect(find.text('Urutan trail belum tersedia.'), findsNothing);
+    // The first card in the list is the start picked by the service.
+    final firstCard = tester.getTopLeft(find.text(names[order[0]]!).first).dy;
+    final secondCard = tester.getTopLeft(find.text(names[order[1]]!).first).dy;
+    expect(firstCard, lessThan(secondCard));
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Mulai Trail'));
+    // A route in progress keeps an indicator moving; pump a bounded time.
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    expect(services.trail.current.active, isTrue);
+    expect(services.session.current.mode, SessionMode.trail);
+    expect(services.navigation.current.target?.id, order[0]);
+    expect(
+      find.text(
+        'Rute menuju titik akses ${names[order[0]]} '
+        '(belum diverifikasi di lapangan).',
+      ),
+      findsOneWidget,
+    );
+    expect(find.textContaining('belum disurvei'), findsNothing);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await services.navigation.stop();
+    await services.session.end();
+  });
+
+  testWidgets('next stop route goes to the start picked by the service', (
+    tester,
+  ) async {
+    final before = [for (final poi in unverifiedSyntheticPois) poi.id];
+    final after = [...before.skip(6), ...before.take(6)];
+    final services = demoServices(
+      pois: FakePoiRepository(pois: unverifiedSyntheticPois, facilities: []),
+      trail: (_) => _RotatingTrail(before, after),
+      navigation: _RecordingNavigation(),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: OrientationTrailScreen(services: services, internalDemo: true),
+      ),
+    );
+    await tester.pumpAndSettle();
+    // Before the first start the card of trailOrder 1 is the next stop.
+    await tester.tap(find.widgetWithText(FilledButton, 'Rute'));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    expect(services.navigation.current.target?.id, after.first);
+    expect(
+      find.text(
+        'Rute menuju titik akses ${unverifiedSyntheticPois[6].name} '
+        '(belum diverifikasi di lapangan).',
+      ),
+      findsOneWidget,
+    );
+    await tester.pumpWidget(const SizedBox.shrink());
+    await services.navigation.stop();
+    await services.session.end();
+  });
+
   testWidgets('alias search opens a map and detail without changing Explore', (
     tester,
   ) async {
@@ -154,7 +282,8 @@ void main() {
     await tester.pumpAndSettle();
     final detail = tester.widget<PoiDetailScreen>(find.byType(PoiDetailScreen));
     expect(detail.poi.id, 'P01');
-    expect(detail.navigationAvailable, isFalse);
+    // The demo routes too: Rute on the detail starts navigation.
+    expect(detail.navigationAvailable, isTrue);
     await tester.pumpWidget(const SizedBox.shrink());
     await services.session.end();
   });

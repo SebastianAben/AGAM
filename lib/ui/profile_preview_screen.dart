@@ -262,6 +262,36 @@ class ProfilePreviewScreen extends StatelessWidget {
                           background: AgamColors.dangerTint,
                           label: 'Keluar akun',
                         ),
+                        const SizedBox(height: 8),
+                        // Quieter than logout on purpose: the destructive
+                        // step lives in the dialog, behind the password.
+                        TextButton.icon(
+                          key: const ValueKey('delete-account'),
+                          onPressed: services?.auth.current.isSignedIn == true
+                              ? () => _confirmDeleteAccount(
+                                  context,
+                                  services!.auth,
+                                )
+                              : null,
+                          icon: const Icon(
+                            Icons.delete_outline_rounded,
+                            size: 18,
+                          ),
+                          label: const Text('Hapus akun'),
+                          style: TextButton.styleFrom(
+                            foregroundColor: AgamColors.danger,
+                            minimumSize: const Size.fromHeight(48),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(
+                                AgamRadius.control,
+                              ),
+                            ),
+                            textStyle: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -313,6 +343,239 @@ Future<void> _confirmLogout(BuildContext context, AuthService auth) async {
       context,
     ).showSnackBar(const SnackBar(content: Text('Akun belum dapat keluar.')));
   }
+}
+
+/// Asks for the password and deletes the account (PRD §16). The dialog
+/// deletes in place and stays open on failure; on success the profile closes
+/// and the auth gate in `app.dart` is already showing UI10.
+Future<void> _confirmDeleteAccount(
+  BuildContext context,
+  AuthService auth,
+) async {
+  final messenger = ScaffoldMessenger.of(context);
+  final deleted = await showDialog<bool>(
+    context: context,
+    barrierDismissible: false,
+    animationStyle: MediaQuery.disableAnimationsOf(context)
+        ? AnimationStyle.noAnimation
+        : null,
+    builder: (_) => _DeleteAccountDialog(auth: auth),
+  );
+  if (deleted != true || !context.mounted) return;
+  Navigator.of(context).popUntil((route) => route.isFirst);
+  messenger.showSnackBar(const SnackBar(content: Text('Akun telah dihapus.')));
+}
+
+class _DeleteAccountDialog extends StatefulWidget {
+  const _DeleteAccountDialog({required this.auth});
+
+  final AuthService auth;
+
+  @override
+  State<_DeleteAccountDialog> createState() => _DeleteAccountDialogState();
+}
+
+class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
+  final _password = TextEditingController();
+  bool _obscure = true;
+  bool _busy = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _password.addListener(_onPasswordChanged);
+  }
+
+  @override
+  void dispose() {
+    _password
+      ..removeListener(_onPasswordChanged)
+      ..dispose();
+    super.dispose();
+  }
+
+  void _onPasswordChanged() {
+    // Rebuilds the confirm button; a stale error clears once the user edits.
+    setState(() => _error = null);
+  }
+
+  bool get _canSubmit => !_busy && _password.text.isNotEmpty;
+
+  Future<void> _submit() async {
+    if (!_canSubmit) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await widget.auth.deleteAccount(password: _password.text);
+      if (mounted) Navigator.of(context).pop(true);
+      return;
+    } on AuthException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _error = _message(error.code);
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _error = _message(AuthErrorCode.unknown);
+      });
+    }
+  }
+
+  static String _message(AuthErrorCode code) => switch (code) {
+    AuthErrorCode.wrongCredentials => 'Password salah. Periksa lalu coba lagi.',
+    AuthErrorCode.network =>
+      'Butuh koneksi internet untuk menghapus akun. Periksa koneksi lalu '
+          'coba lagi.',
+    AuthErrorCode.tooManyRequests =>
+      'Terlalu banyak percobaan. Coba lagi nanti.',
+    _ => 'Akun belum dapat dihapus. Coba lagi.',
+  };
+
+  @override
+  Widget build(BuildContext context) => PopScope(
+    canPop: !_busy,
+    child: AlertDialog(
+      scrollable: true,
+      icon: const Icon(
+        Icons.delete_outline_rounded,
+        color: AgamColors.danger,
+        size: 28,
+      ),
+      title: const Text('Hapus akun?'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Akun dihapus permanen dan tidak dapat dipulihkan. '
+            'Yang ikut dihapus:',
+          ),
+          const SizedBox(height: 10),
+          const _DeletedItem('Profil akun (peran dan tanggal daftar)'),
+          const _DeletedItem('Seluruh log aktivitas akun'),
+          const _DeletedItem(
+            'Progres trail, POI dikunjungi, dan pengaturan akun ini di '
+            'perangkat ini',
+          ),
+          const _DeletedItem('Akun login (email dan password)'),
+          const SizedBox(height: 16),
+          TextField(
+            key: const ValueKey('delete-account-password'),
+            controller: _password,
+            enabled: !_busy,
+            autofocus: true,
+            obscureText: _obscure,
+            autocorrect: false,
+            enableSuggestions: false,
+            keyboardType: TextInputType.visiblePassword,
+            autofillHints: const [AutofillHints.password],
+            textInputAction: TextInputAction.done,
+            onSubmitted: (_) => _submit(),
+            cursorColor: AgamColors.brand,
+            decoration: InputDecoration(
+              labelText: 'Password',
+              helperText: 'Masukkan password untuk mengonfirmasi.',
+              helperMaxLines: 2,
+              // A live region, so screen readers read the error as it
+              // appears.
+              error: switch (_error) {
+                final error? => Semantics(
+                  liveRegion: true,
+                  child: Text(
+                    error,
+                    style: AgamText.caption.copyWith(color: AgamColors.danger),
+                  ),
+                ),
+                null => null,
+              },
+              filled: true,
+              fillColor: AgamColors.fill,
+              prefixIcon: const Icon(Icons.lock_outline_rounded, size: 20),
+              suffixIcon: IconButton(
+                tooltip: _obscure
+                    ? 'Tampilkan password'
+                    : 'Sembunyikan password',
+                onPressed: _busy
+                    ? null
+                    : () => setState(() => _obscure = !_obscure),
+                icon: Icon(
+                  _obscure
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
+                ),
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AgamRadius.control),
+                borderSide: BorderSide.none,
+              ),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: _busy ? null : () => Navigator.of(context).pop(false),
+          child: const Text('Batal'),
+        ),
+        FilledButton(
+          key: const ValueKey('delete-account-confirm'),
+          onPressed: _canSubmit ? _submit : null,
+          style: FilledButton.styleFrom(backgroundColor: AgamColors.danger),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (_busy) ...[
+                const SizedBox.square(
+                  dimension: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(width: 10),
+              ],
+              Text(_busy ? 'Menghapus…' : 'Hapus akun'),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _DeletedItem extends StatelessWidget {
+  const _DeletedItem(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 6),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.only(top: 7, right: 10),
+          child: SizedBox.square(
+            dimension: 5,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: AgamColors.danger,
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+        ),
+        Expanded(child: Text(text, style: AgamText.bodySmall)),
+      ],
+    ),
+  );
 }
 
 /// The account identity on the onboarding ground, closed at the bottom by

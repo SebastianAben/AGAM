@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
 import '../contracts/app_services.dart';
+import '../contracts/models/activity.dart';
 import '../contracts/models/content.dart';
 import '../contracts/models/discovery.dart';
 import '../contracts/models/geo.dart';
@@ -13,8 +15,10 @@ import 'widgets/agam_arrival.dart';
 import 'widgets/agam_components.dart';
 import 'widgets/agam_motion.dart';
 import 'widgets/agam_theme.dart';
+import 'widgets/arrival_card.dart';
 import 'widgets/facility_labels.dart';
 import 'widgets/offline_campus_map.dart';
+import 'widgets/recommendation_card.dart';
 
 /// UI05 Search & Destination plus the active UI06 navigation summary.
 /// Search/routing implementations are injected from AppServices.
@@ -26,6 +30,7 @@ class SearchRouteScreen extends StatefulWidget {
     this.initialFacility,
     this.autofocus = false,
     this.initialDestination,
+    this.startRouteOnOpen = false,
     this.onTabSelected,
     this.internalDemo = false,
     this.onShowPoiOnMap,
@@ -45,6 +50,10 @@ class SearchRouteScreen extends StatefulWidget {
 
   /// Opens with this building already chosen, from "Rute" on the map.
   final Poi? initialDestination;
+
+  /// Starts the route to [initialDestination] as soon as the page shows, for
+  /// one-tap actions (a recommendation, Rute on a POI detail; PRD F07).
+  final bool startRouteOnOpen;
   final ValueChanged<int>? onTabSelected;
   final bool internalDemo;
 
@@ -59,6 +68,8 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
   List<Facility> _facilities = const [];
   List<SearchResult> _results = const [];
   SearchResult? _destination;
+  // Set by [SearchRouteScreen.startRouteOnOpen] until the POIs have loaded.
+  SearchResult? _pendingRoute;
   // One map lives in the destination card while it is open, so switching
   // destinations moves its camera instead of rebuilding it at the new place.
   final _cardMap = GlobalKey<OfflineCampusMapState>();
@@ -77,34 +88,68 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
   StreamSubscription<List<Poi>>? _poiSubscription;
   StreamSubscription<List<Facility>>? _facilitySubscription;
   StreamSubscription<NavigationState>? _navigationSubscription;
+  // `featureUsed` (PRD §15.5) is logged at most once per feature per visit:
+  // `search` when a typed search first returns results, `facilities` when a
+  // facility category first filters the page. Only the feature is sent.
+  final _loggedFeatures = <ActivityFeature>{};
+  // UI07 after arrival; the request counter drops answers that come back
+  // after the route changed.
+  RecommendationView? _recommendation;
+  int _recommendRequest = 0;
+
+  void _logOnce(ActivityFeature feature) {
+    if (!_loggedFeatures.add(feature)) return;
+    widget.services.activity.log(ActivityEvent.featureUsed(feature: feature));
+  }
 
   @override
   void initState() {
     super.initState();
     _poiSubscription = widget.services.pois.watchPois().listen((value) {
-      if (mounted) setState(() => _pois = value);
+      if (!mounted) return;
+      setState(() => _pois = value);
+      // A one-tap route waits for the POIs it needs to build its target.
+      if (_pendingRoute case final destination?
+          when _poiFor(destination) != null) {
+        _pendingRoute = null;
+        _startRoute(destination);
+      }
     });
     _facilitySubscription = widget.services.pois.watchFacilities().listen((
       value,
     ) {
       if (mounted) setState(() => _facilities = value);
     });
-    if (!widget.internalDemo) {
-      _navigation = widget.services.navigation.current;
-      _navigationSubscription = widget.services.navigation.state.listen((
-        value,
-      ) {
-        if (mounted) setState(() => _navigation = value);
-      });
+    _navigation = widget.services.navigation.current;
+    _navigationSubscription = widget.services.navigation.state.listen((value) {
+      if (!mounted) return;
+      final arrived =
+          value.status == NavigationStatus.arrived &&
+          _navigation.status != NavigationStatus.arrived;
+      setState(() => _navigation = value);
+      // The arrival card replaces the route card at the top of the list;
+      // bring it into view if the list was scrolled down meanwhile.
+      if (arrived) {
+        _recommendAfter(value.target);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _revealCard();
+        });
+      }
+    });
+    if (_navigation.status == NavigationStatus.arrived) {
+      _recommendAfter(_navigation.target);
     }
     _facilityFilter = widget.initialFacility;
+    if (_facilityFilter != null) _logOnce(ActivityFeature.facilities);
     if (widget.initialDestination case final poi?) {
-      _destination = SearchResult(
+      final destination = SearchResult(
         kind: SearchResultKind.poi,
         id: poi.id,
         name: poi.name,
         score: 1,
       );
+      _destination = destination;
+      if (widget.startRouteOnOpen) _pendingRoute = destination;
     }
     _query.addListener(_runSearch);
     _focus.addListener(() => setState(() {}));
@@ -148,6 +193,7 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
       );
       if (mounted && request == _searchRequest) {
         setState(() => _results = result);
+        if (result.isNotEmpty) _logOnce(ActivityFeature.search);
       }
     } catch (_) {
       if (mounted && request == _searchRequest) {
@@ -164,6 +210,7 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
     setState(() {
       _facilityFilter = _facilityFilter == category ? null : category;
     });
+    if (_facilityFilter != null) _logOnce(ActivityFeature.facilities);
     _runSearch();
   }
 
@@ -219,16 +266,28 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
     _arriveAfter = map.flyTo(point) * .55;
   }
 
-  Future<void> _openPoiDetail(Poi poi) async {
+  /// [onArrival] opens the detail without `featureUsed`: right after arriving
+  /// its time would match the arrival at the POI (PRD §15.5, rules §5.1).
+  Future<void> _openPoiDetail(Poi poi, {bool onArrival = false}) async {
     await Navigator.of(context).push<void>(
       AgamMotion.route(
-        (_) => PoiDetailScreen(
+        (context) => PoiDetailScreen(
+          activity: onArrival ? null : widget.services.activity,
           poi: poi,
           audio: widget.services.audio,
           settings: widget.services.settings,
           checkedIn: false,
-          navigationAvailable: false,
-          onNavigate: () async => _showMessage('Navigasi belum tersedia.'),
+          onNavigate: () async {
+            Navigator.of(context).pop();
+            final result = SearchResult(
+              kind: SearchResultKind.poi,
+              id: poi.id,
+              name: poi.name,
+              score: 1,
+            );
+            _selectDestination(result);
+            await _startRoute(result);
+          },
         ),
       ),
     );
@@ -244,11 +303,51 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
     await _openPoiDetail(poi);
   }
 
-  Future<void> _startRoute(SearchResult result) async {
-    if (widget.internalDemo) {
-      _showMessage('Graf rute kampus belum tersedia.');
-      return;
+  /// UI07 under the arrival card: next POIs from where the user now stands
+  /// (or the arrival point), excluding the POI just reached. Nothing is
+  /// logged (PRD §15.5, rules §5.1).
+  Future<void> _recommendAfter(NavigationTarget? target) async {
+    if (target == null) return;
+    _recommendation = null;
+    final request = ++_recommendRequest;
+    final from = widget.services.location.lastFix?.position ?? target.point;
+    try {
+      final result = await widget.services.recommendations.recommend(
+        from: from,
+        afterPoiId: target.kind == NavigationTargetKind.poi ? target.id : null,
+      );
+      final pois = await widget.services.pois.watchPois().first;
+      if (!mounted || request != _recommendRequest) return;
+      setState(
+        () => _recommendation = RecommendationView.resolve(
+          result,
+          pois: pois,
+          from: from,
+          trailActive: widget.services.trail.current.active,
+        ),
+      );
+    } catch (_) {
+      // Recommendations are optional; the arrival card stands on its own.
     }
+  }
+
+  void _clearRecommendation() {
+    _recommendRequest++;
+    _recommendation = null;
+  }
+
+  Future<void> _routeToRecommended(Poi poi) async {
+    final result = SearchResult(
+      kind: SearchResultKind.poi,
+      id: poi.id,
+      name: poi.name,
+      score: 1,
+    );
+    _selectDestination(result);
+    await _startRoute(result);
+  }
+
+  Future<void> _startRoute(SearchResult result) async {
     if (_routing) return;
     final poi = _poiFor(result);
     final facility = _facilityFor(result);
@@ -263,6 +362,7 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
       _routing = true;
       _error = null;
       _destination = result;
+      _clearRecommendation();
     });
     var sessionStarted = false;
     try {
@@ -284,7 +384,7 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
         setState(() => _destination = result);
         if (target.isPlaceholderPoint) {
           _showMessage(
-            'Rute pratinjau menuju titik gedung. Pintu masuk belum disurvei.',
+            'Rute menuju titik akses yang belum diverifikasi di lapangan.',
           );
         }
       }
@@ -308,7 +408,7 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
   }
 
   Future<void> _stopRoute() async {
-    if (widget.internalDemo) {
+    if (widget.internalDemo && _navigation.status == NavigationStatus.idle) {
       setState(() => _destination = null);
       return;
     }
@@ -318,6 +418,7 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
       setState(() {
         _destination = null;
         _navigation = const NavigationState.idle();
+        _clearRecommendation();
       });
     }
   }
@@ -331,7 +432,6 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
   @override
   Widget build(BuildContext context) {
     final activeRoute =
-        !widget.internalDemo &&
         _navigation.status != NavigationStatus.idle &&
         _navigation.status != NavigationStatus.error;
     final currentTarget = _navigation.target;
@@ -376,9 +476,8 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
                     sliver: SliverList.list(
                       children: [
-                        AnimatedSize(
-                          duration: AgamMotion.duration(context, 280),
-                          curve: AgamMotion.easeOut,
+                        AgamAnimatedSize(
+                          milliseconds: 280,
                           alignment: Alignment.topCenter,
                           child: selected == null
                               ? const SizedBox(width: double.infinity)
@@ -745,11 +844,11 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
                   child: Text(poi.name, style: AgamText.title),
                 ),
                 const SizedBox(height: 16),
-                // The demo has no campus graph, so "Rute" explains itself.
-                const AgamRouteButton(
-                  available: false,
-                  onPressed: null,
+                AgamRouteButton(
+                  available: true,
                   primary: true,
+                  onPressed: _routing ? null : () => _startRoute(destination),
+                  busy: _routing,
                 ),
                 const SizedBox(height: 10),
                 AgamTonalButton(
@@ -807,13 +906,17 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
     );
   }
 
+  // During navigation the marker sits where the route ends: the access point
+  // the controller chose, not necessarily the target's first entrance.
   GeoPoint? _pointFor(SearchResult result) =>
       _navigation.target?.id == result.id
-      ? _navigation.target!.point
+      ? (_navigation.route?.path.lastOrNull ?? _navigation.target!.point)
       : _poiFor(result)?.position ?? _facilityFor(result)?.position;
 
   Widget _routeCard(SearchResult destination, {required bool activeRoute}) {
-    if (widget.internalDemo) return _demoPoiCard(destination);
+    if (_hasArrivedAt(destination)) return _arrivalCard(destination);
+    // An active route shows its progress in the regular card.
+    if (widget.internalDemo && !activeRoute) return _demoPoiCard(destination);
     final route = _navigation.route;
     final step = _navigation.currentStep;
     final eta = _navigation.remainingEta ?? route?.eta;
@@ -900,7 +1003,10 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
                   child: Column(
                     children: [
                       Text(
-                        eta == null ? '—' : '${eta.inMinutes}',
+                        // Rounded up: a 50 s walk reads "1 menit", not "0".
+                        eta == null
+                            ? '—'
+                            : '${math.max(1, (eta.inSeconds / 60).ceil())}',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 26,
@@ -980,6 +1086,64 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
     );
   }
 
+  bool _hasArrivedAt(SearchResult destination) =>
+      _navigation.status == NavigationStatus.arrived &&
+      _navigation.target?.id == destination.id;
+
+  /// The destination card once navigation reports arrival. The map keeps
+  /// its key, so it carries over from the route card without moving.
+  Widget _arrivalCard(SearchResult destination) {
+    final poi = _poiFor(destination);
+    final facility = _facilityFor(destination);
+    final point = _pointFor(destination);
+    final recommendation = _recommendation;
+    final arrival = ArrivalCard(
+      name: _navigation.target?.name ?? destination.name,
+      kind: _navigation.target?.kind ?? NavigationTargetKind.poi,
+      voice: widget.services.voice,
+      onFinish: _stopRoute,
+      onOpenDetail: poi == null
+          ? null
+          : () => _openPoiDetail(poi, onArrival: true),
+      map: point == null
+          ? null
+          : OfflineCampusMap(
+              key: _cardMap,
+              config: widget.services.map,
+              initialFocus: point,
+              pois: [?poi],
+              selectedPoiId: destination.id,
+              highlight: facility == null
+                  ? null
+                  : MapHighlight(
+                      point: facility.position,
+                      label: facility.name,
+                      icon: facilityIcon(facility.category),
+                    ),
+              onSelectPoi: _openPoiDetail,
+              attributionPadding: const EdgeInsets.all(8),
+            ),
+    );
+    // UI07: the next places sit right under the arrival, one tap from a route.
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        arrival,
+        RecommendationPresence(
+          child: recommendation == null
+              ? null
+              : Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: RecommendationCard(
+                    view: recommendation,
+                    onRoute: _routeToRecommended,
+                  ),
+                ),
+        ),
+      ],
+    );
+  }
+
   Widget _resultRow(SearchResult result) => AgamListRow(
     icon: result.kind == SearchResultKind.poi
         ? Icons.apartment_rounded
@@ -1009,16 +1173,12 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
   Widget _routeIcon(SearchResult result) => IconButton(
     tooltip: 'Rute',
     icon: const Icon(Icons.directions_rounded),
-    color: widget.internalDemo ? AgamColors.subtle : AgamColors.brand,
+    color: AgamColors.brand,
     style: IconButton.styleFrom(
       backgroundColor: AgamColors.fill,
       fixedSize: const Size(44, 44),
     ),
-    onPressed: _routing
-        ? null
-        : widget.internalDemo
-        ? () => _showMessage(AgamRouteButton.unavailableMessage)
-        : () => _startRoute(result),
+    onPressed: _routing ? null : () => _startRoute(result),
   );
 
   Widget _emptyCard(

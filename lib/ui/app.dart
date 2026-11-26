@@ -197,23 +197,27 @@ class _AgamMainShellState extends State<AgamMainShell> {
 
   /// Search opens over the map, like Google Maps; "Tampilkan di peta"
   /// closes it and focuses the chosen building on the Jelajah map.
-  Future<void> _openSearch(FacilityCategory? facility, {Poi? destination}) =>
-      Navigator.of(context).push<void>(
-        AgamMotion.route(
-          (searchContext) => SearchRouteScreen(
-            services: widget.services,
-            initialFacility: facility,
-            initialDestination: destination,
-            autofocus: facility == null && destination == null,
-            internalDemo: widget.internalDemo,
-            onShowPoiOnMap: (id) {
-              Navigator.of(searchContext).pop();
-              _selectTab(0);
-              _mapRequests.add(id);
-            },
-          ),
-        ),
-      );
+  Future<void> _openSearch(
+    FacilityCategory? facility, {
+    Poi? destination,
+    bool startRoute = false,
+  }) => Navigator.of(context).push<void>(
+    AgamMotion.route(
+      (searchContext) => SearchRouteScreen(
+        services: widget.services,
+        initialFacility: facility,
+        initialDestination: destination,
+        startRouteOnOpen: startRoute,
+        autofocus: facility == null && destination == null,
+        internalDemo: widget.internalDemo,
+        onShowPoiOnMap: (id) {
+          Navigator.of(searchContext).pop();
+          _selectTab(0);
+          _mapRequests.add(id);
+        },
+      ),
+    ),
+  );
 
   Future<void> _openProfile() => Navigator.of(context).push<void>(
     AgamMotion.route(
@@ -251,6 +255,8 @@ class _AgamMainShellState extends State<AgamMainShell> {
                   onOpenSearch: _openSearch,
                   // The route card lives on the search page (UI05/UI06).
                   onRoute: (poi) => _openSearch(null, destination: poi),
+                  onStartRoute: (poi) =>
+                      _openSearch(null, destination: poi, startRoute: true),
                   internalDemo: widget.internalDemo,
                 ),
                 OrientationTrailScreen(

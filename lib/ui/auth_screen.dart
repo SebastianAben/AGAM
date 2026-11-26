@@ -217,8 +217,8 @@ class _AuthScreenState extends State<AuthScreen> {
     },
   );
 
-  Widget _noticeSlot() => AnimatedSize(
-    duration: AgamMotion.duration(context, 240),
+  Widget _noticeSlot() => AgamAnimatedSize(
+    milliseconds: 240,
     curve: AgamMotion.easeOut,
     alignment: Alignment.topCenter,
     child: _notice == null
@@ -1031,8 +1031,8 @@ class _ConsentRow extends StatelessWidget {
             ),
           ),
         ),
-        AnimatedSize(
-          duration: AgamMotion.duration(context, 220),
+        AgamAnimatedSize(
+          milliseconds: 220,
           curve: AgamMotion.easeOut,
           alignment: Alignment.topCenter,
           child: missing

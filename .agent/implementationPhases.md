@@ -40,11 +40,11 @@ Bagian satu track yang selesai tetapi belum terintegrasi dicatat sebagai `in_pro
 | Sprint 1 | 0 | 4 | 0 | 4 |
 | Sprint 2 | 0 | 5 | 0 | 5 |
 | Sprint 3 | 0 | 5 | 0 | 5 |
-| Sprint 4 | 0 | 3 | 2 | 5 |
+| Sprint 4 | 0 | 4 | 1 | 5 |
 | Sprint 5 | 0 | 0 | 3 | 3 |
-| **Seluruh PBI** | **0** | **17** | **5** | **22** |
+| **Seluruh PBI** | **0** | **18** | **4** | **22** |
 
-PBI aktif: PB01–PB12, PB15–PB17, PB21, PB22. PBI planned: PB13, PB14, PB18–PB20.
+PBI aktif: PB01–PB12, PB14–PB17, PB21, PB22. PBI planned: PB13, PB18–PB20.
 Tidak ada PBI berstatus `blocked`/`deferred`; blocker bagian pekerjaan tetap
 dicatat pada PBI masing-masing. Angka ini menghitung status deliverable, bukan
 persentase kode atau acceptance yang telah terpenuhi. PB17 dikoreksi dari
@@ -259,7 +259,7 @@ Progres trail, POI dikunjungi, dan pengaturan disimpan per akun (PRD §15.1). Im
 | S1 — Week 10 | Kontrak, fondasi aplikasi, lokasi, peta | PB01, PB02, PB03, PB04 | `in_progress` |
 | S2 — Week 11 | Geofence, sesi, trigger, kartu POI, audio | PB05, PB06, PB07, PB08, PB09 | `in_progress` — integrasi demo layanan LA/UI03/UI04 tersedia; simulasi native dan uji HP terdahulu parsial. Trigger fisik, konten lengkap, playback/acceptance belum selesai |
 | S3 — Week 12 | Pencarian dan navigasi; akun dan log aktivitas | PB10, PB11, PB12, PB21, PB22 | `in_progress` — pencarian POI repository pada demo tersedia; UI rute pratinjau, routing/navigation masih fake; LA PB12 teruji unit. PB21: login wajib, UI10 dan gerbang login tersambung di jalur produk; hapus akun di UI09 belum. PB22: event akun, `appOpen` dan mode tercatat; `featureUsed`/`trailCompleted` belum |
-| S4 — Week 13 | Eyes-free, rekomendasi, trail, fasilitas, offline; Feature Freeze | PB13, PB14, PB15, PB16, PB17 | `in_progress` — PB15 UI pratinjau, PB16 pengaturan nyata/kategori placeholder, PB17 verifikasi offline parsial. PB13/PB14 tetap `planned` |
+| S4 — Week 13 | Eyes-free, rekomendasi, trail, fasilitas, offline; Feature Freeze | PB13, PB14, PB15, PB16, PB17 | `in_progress` — PB15 UI pratinjau, PB16 pengaturan nyata/kategori placeholder, PB17 verifikasi offline parsial. PB14 rekomendasi UI07 dan PB15 trail keliling tersambung di kedua build (25 November 2026). PB13 tetap `planned` |
 | S5 — Week 14 | Uji acceptance, perbaikan, rilis v1.0 | PB18, PB19, PB20 | `planned` |
 
 ## 5. Sprint 1 — Kontrak, Fondasi, Lokasi, dan Peta
@@ -521,6 +521,7 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
   Integrasi bootstrap dan verifikasi lapangan tertunda. PB11 tetap `in_progress`.
 
 - **Titik akses (24 November 2026, branch `feat/access-points-trail-data`):** tujuan rute kini *titik akses* (pintu atau sisi lantai 1 yang terbuka), boleh lebih dari satu per gedung; navigasi menuju yang terdekat ([CL] PRD F06/§11). `tools/routing/plan_access_points.py` (fiona + shapely dari `tools/tiles/requirements-campus.txt`) mengambil setiap ruas jaringan utama graf yang menempel ke poligon gedung OSM (`tools/tiles/ganesha.gpkg`), lalu dikoreksi lewat peninjauan peta oleh pengguna 25 November 2026 (8 titik ditambah di sudut yang menghadap boulevard, GKU Barat, dan Labtek X; 6 titik di Oktagon/TVST dihapus; disimpan di `tools/routing/access_overrides.json`): 41 kandidat untuk 10 gedung (Labtek V 7, Labtek VI 6, Labtek VII 4, Labtek VIII 6, Labtek X & XI 7, GKU Barat 3, GKU Timur 2, Oktagon 2, TVST 2, Labtek I 2), semuanya `verified: false`. Empat kandidat lorong tembus gedung (Labtek V, VII, VIII dari selasar; Labtek X dari koreksi peta, menembus bangunan penghubung X–XI) di `assets/routing/passages.geojson` menyambung selasar V–VI dan VII–VIII ke jaringan; titik dan lorong yang sudah `verified: true` tidak ditimpa saat script dijalankan ulang; daftar cek lapangan di `task-implementation/backend/PB11-access-point-field-check.md`. Kontrak `PoiEntrance.verified` ditambahkan: `hasSurveyedEntrance` hanya benar untuk titik terverifikasi, sedangkan `navigationPoint` memakai titik pertama (pemilihan titik terdekat dikerjakan saat routing disambungkan). Temuan: graf draf terdiri atas 17 potongan; selasar Labtek V–VI dan VII–VIII kini tersambung lewat lorong kandidat, sedangkan selasar GKU Timur–Lab Doping tetap terputus. GKU Barat hanya punya titik di jalan servis utara (3,2 m); jalur sisi timurnya ±5 m dari dinding.
+- **Gelombang 1 (25 November 2026, branch `feat/field-test-wave1`):** routing di perangkat aktif di build produk dan demo: graf + `passages.geojson` dimuat dari aset, titik hanya ditempel ke jaringan terhubung terpanjang, tujuan = titik akses dengan jarak jalan kaki terpendek (dihitung ulang tiap reroute), tiba ≤15 m dari titik akses mana pun. Kontrak `NavigationTarget.candidates` (perlu review LA/LB/FE). Arahan lorong kandidat: "lewat lorong dalam gedung (belum diverifikasi)". Rute ke ke-41 titik akses lulus test. Tombol Rute di panel peta, detail POI, dan kartu pencarian aktif di demo. Belum diuji di perangkat/lapangan.
 - **Track:** LB (graf, `RoutingService`, `NavigationController`), FE (UI06), LA (sesi Navigasi) · **Requirement:** F06, A01
 - **Dependency eksternal:** verifikasi titik akses di lapangan.
 - **Done:** rute tampil ke titik akses tujuan yang sudah diverifikasi; rerouting berjalan; tidak ada request routing ke server.
@@ -528,6 +529,7 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
 
 ### PB12 — Arahan suara navigasi dan deteksi tiba
 
+- **Gelombang 1 (25 November 2026, branch `feat/field-test-wave1`):** tiba di fasilitas diumumkan TTS bila suara `id-ID` tersedia; kartu tiba di Cari & Rute (`lib/ui/widgets/arrival_card.dart`) dengan Lihat Detail POI dan Selesai, layar bergulir ke kartu tiba, catatan cara memasang data suara bila TTS tidak ada. Detail yang dibuka dari kartu tiba tidak mencatat `featureUsed`.
 - **Track:** LA (`VoiceGuidance`, audio tiba), LB (event tiba), FE (tampilan tiba) · **Requirement:** F04, F06
 - **Done:** arahan suara di setiap belokan; pengumuman tiba saat ≤15 m dari tujuan.
 - **Ada di source (10 November 2026, LA):**
@@ -552,7 +554,8 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
   - `lib/logic/account/account_bootstrap.dart`: `createLaAccountServices(la)`; pengaturan mengikuti akun, akun yang keluar dari luar aplikasi ikut mengakhiri sesi.
   - Test: `test/logic/account/device_auth_service_test.dart`, tambahan per akun di `test/logic/settings/device_settings_store_test.dart`.
 - **Pembaruan 24 November 2026:** jalur produk `lib/main.dart` memakai `createLaAccountServices` (akun asli); UI10 `lib/ui/auth_screen.dart` dan gerbang login di `lib/ui/app.dart` tersambung (`test/ui/auth_gate_test.dart`). **Belum:** tombol hapus akun di UI09, progres trail per akun dalam perangkaian produk (PB15), test rules emulator (`tools/firestore/rules.test.mjs`, Firebase CLI tidak terpasang di mesin ini), dan uji perangkat dengan project `agam-9e704`.
-- **Status:** `in_progress` — login wajib tersambung di jalur produk; hapus akun di UI09, test rules emulator, dan uji perangkat belum
+- **Gelombang 1 (25 November 2026, branch `feat/field-test-wave1`):** tombol "Hapus akun" di UI09 dengan konfirmasi password, daftar data yang dihapus (PRD §16), pesan error Bahasa Indonesia, kembali ke UI10. Temuan LA: `DeviceAuthService.deleteAccount` dapat gagal di tengah jalan (sesi sudah berakhir, log mungkin terhapus) sementara pengguna tetap login.
+- **Status:** `in_progress` — login wajib dan hapus akun tersambung; test rules emulator dan uji perangkat belum
 
 ### PB22 — Log aktivitas internal
 
@@ -566,6 +569,7 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
   - `lib/logic/account/activity_recorders.dart`: `SessionActivityRecorder` (`modeStart`/`modeEnd` dari `SessionController`, ganti mode = akhir lama + awal baru, tanpa alasan berakhir) dan `AppOpenRecorder` (sekali per proses; bila belum login dicatat saat login pertama; tidak dicatat bila aplikasi dibuka dari notifikasi trigger). Info perangkat dari package_info_plus ^10.2.2 dan device_info_plus ^13.3.0, dipotong 1–64 karakter.
   - Test: `test/logic/account/activity_log_test.dart` (field per event dibandingkan dengan daftar rules; uji mutasi: menyisipkan `lat` menggagalkan 8 test).
 - **Belum:** event `featureUsed` (pencarian, kartu POI, narasi, fasilitas) dan `trailCompleted` belum dipanggil di mana pun; test rules emulator dan pemeriksaan lalu lintas jaringan di perangkat. Event akun, `appOpen`, dan mode sudah dicatat di jalur produk lewat `createLaAccountServices`.
+- **Gelombang 1 (25 November 2026, branch `feat/field-test-wave1`):** `featureUsed` dicatat untuk `search` (sekali per kunjungan saat pencarian pertama berhasil), `facilities` (sekali per kunjungan saat kategori pertama menjadi filter), `poiCard` (setiap detail dibuka sendiri), `narration` (setiap narasi dimulai baru); `trailCompleted` dicatat lewat trail. Keputusan PM 25 November 2026: aksi dari trigger POI atau kartu tiba tidak dicatat (rules §5.1), sehingga statistik narasi lebih rendah dari pemakaian sebenarnya. Test rules emulator dan audit jaringan perangkat belum.
 - **Status:** `in_progress` — bagian LA tersedia dan teruji unit
 
 ## 8. Sprint 4 — Eyes-free, Rekomendasi, Trail, Fasilitas; Feature Freeze
@@ -588,10 +592,12 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
 
 - **Track:** LB (`RecommendationService`), FE (UI07) · **Requirement:** F07
 - **Done:** rekomendasi muncul setelah kartu ditutup/tiba dan dapat langsung dinavigasikan.
-- **Status:** `planned`
+- **Gelombang 1 (25 November 2026, branch `feat/field-test-wave1`):** `RepositoryRecommendationService` tersambung di kedua build (`lib/logic/search/recommendation_bootstrap.dart`, berbagi `AccountVisitStore` dan trail). Kartu UI07 "Lanjut ke mana?" (1–3 POI + 2 fasilitas, jarak garis lurus ±) muncul di bawah kartu tiba dan di peta setelah panel POI ditutup (tidak setelah Lewati); Rute satu ketukan langsung memulai navigasi. Tidak ada log aktivitas. Celah: kunjungan mode Explore tidak dicatat ke `AccountVisitStore`, jadi rekomendasi hanya mengecualikan check-in trail.
+- **Status:** `in_progress` — tersambung dan lulus test otomatis; belum diuji di perangkat/lapangan
 
 ### PB15 — Orientation Trail
 
+- **Gelombang 1 (25 November 2026, branch `feat/field-test-wave1`):** `createDeviceTrailService` tersambung di kedua build (demo memakai uid lokal `internal-demo`). Trail dimulai dari POI terdekat (posisi terakhir atau fix berikutnya, maks. 3 detik; tanpa fix mulai dari `trailOrder` 1), titik awal disimpan per akun dan dipilih ulang saat reset; trail dapat dimulai dengan titik akses kandidat; `trailCompleted` dicatat sekali (tanggal saja). Hapus akun ikut menghapus kunjungan dan titik awal trail di perangkat.
 - **Track:** LB (`TrailService`), FE (UI08), LA (sesi Trail) · **Requirement:** F08
 - **Urutan trail (24 November 2026):** keliling terpendek dengan jarak antar-POI diukur di antara titik akses terdekat, diisi ke `trailOrder` 1–10: Labtek V → Labtek VIII → GKU Timur → Labtek VII → Labtek I → Oktagon → Labtek X & XI → TVST → Labtek VI → GKU Barat. Trail dimulai dari POI terdekat dengan pengguna lalu searah putaran ([CL] PRD F08/§12). **Belum:** rotasi urutan dan penyimpanan titik awal per akun di `DeviceTrailService`, perangkaian di `main.dart` (masih `UnavailableTrailService`), dan `_canRoute` yang kini menolak titik akses kandidat (`hasSurveyedEntrance` false) sehingga trail tidak dapat dimulai sebelum verifikasi.
 - **Dependency eksternal:** verifikasi titik akses di lapangan.
@@ -607,6 +613,7 @@ LB mengerjakan persiapan Sprint 3 di Sprint 2 karena tidak ada PBI Sprint 2 yang
   termasuk wiring Pengaturan → sesi → re-entry dan pemisahan UI produk.
   Tidak menambah fasilitas atau mengubah status PBI; retest HP belum.
 
+- **Gelombang 1 (25 November 2026, branch `feat/field-test-wave1`):** jarak/ETA kartu rute kini terisi karena routing aktif; rute ke fasilitas memakai titik fasilitas.
 - **Track:** LB (`FacilityService`), FE (UI09), LA (data fasilitas di `PoiRepository`) · **Requirement:** F05, F07 · **Prioritas:** Should
 - **Dependency eksternal:** dataset fasilitas.
 - **Status:** `in_progress` — kategori fasilitas dan placeholder FE tampil; UI09 auto-play/Akhiri tersambung SettingsStore/SessionController LA dan diuji widget. Dataset fasilitas/layanan terdekat serta acceptance F05/F07 belum tersedia.
