@@ -1,0 +1,123 @@
+{
+  "version": 8,
+  "name": "AGAM · Jalan kaki Ganesha",
+  "metadata": {
+    "agam:status": "draft_walk_network",
+    "agam:sourceAsset": "assets/map/ganesha.pmtiles",
+    "agam:attribution": [
+      {
+        "label": "© OpenStreetMap contributors (ODbL)",
+        "url": "https://www.openstreetmap.org/copyright"
+      },
+      {
+        "label": "© OpenMapTiles",
+        "url": "https://openmaptiles.org/"
+      }
+    ]
+  },
+  "sources": {
+    "openmaptiles": {
+      "type": "vector",
+      "tiles": [],
+      "minzoom": 12,
+      "maxzoom": 18
+    }
+  },
+  "layers": [
+    {
+      "id": "background",
+      "type": "background",
+      "paint": {
+        "background-color": "#EAE7DF"
+      }
+    },
+    {
+      "id": "green",
+      "type": "fill",
+      "source": "openmaptiles",
+      "source-layer": "green",
+      "paint": {
+        "fill-color": "#C4D9BA"
+      }
+    },
+    {
+      "id": "building-footprint",
+      "type": "fill",
+      "source": "openmaptiles",
+      "source-layer": "building",
+      "paint": {
+        "fill-color": "#DFC7AD",
+        "fill-outline-color": "#B49A82"
+      }
+    },
+    {
+      "id": "building-shadow",
+      "type": "fill",
+      "source": "openmaptiles",
+      "source-layer": "building_shadow",
+      "paint": {
+        "fill-color": "#777063",
+        "fill-opacity": 0.26
+      }
+    },
+    {
+      "id": "building-wall",
+      "type": "fill",
+      "source": "openmaptiles",
+      "source-layer": "building_wall",
+      "paint": {
+        "fill-color": "#A48C76"
+      }
+    },
+    {
+      "id": "building-roof",
+      "type": "fill",
+      "source": "openmaptiles",
+      "source-layer": "building_roof",
+      "paint": {
+        "fill-color": "#E6C9AA",
+        "fill-outline-color": "#B49A82"
+      }
+    },
+    {
+      "id": "road-edge",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "paint": {
+        "line-color": "#C1B6A7",
+        "line-width": 4
+      }
+    },
+    {
+      "id": "roads",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "paint": {
+        "line-color": "#D9CCBA",
+        "line-width": 2.8
+      }
+    },
+    {
+      "id": "walk-edge",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "walk",
+      "paint": {
+        "line-color": "#718278",
+        "line-width": 4.4
+      }
+    },
+    {
+      "id": "walk",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "walk",
+      "paint": {
+        "line-color": "#FFFDF7",
+        "line-width": 2.8
+      }
+    }
+  ]
+}

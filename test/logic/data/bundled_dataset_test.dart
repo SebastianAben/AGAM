@@ -10,6 +10,7 @@ import 'dart:io';
 
 import 'package:agam/contracts/contracts.dart';
 import 'package:agam/logic/data/poi_codec.dart';
+import 'package:agam/logic/map/agam_map_config.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// (id, nama, kategori, lat, lng) dari PRD §9.1. Radius seluruh POI 15 m.
@@ -147,39 +148,112 @@ void main() {
   });
 
   group('hal yang masih tertunda (PRD §22)', () {
-    test('konten belum berstatus siap rilis', () {
+    // P01–P02 disetujui 14 November 2026, P03–P10 23 November 2026, setelah
+    // teks, foto, dan audio lengkap (video opsional, keputusan PM).
+    // Isi minimum POI yang disetujui diperiksa content_assets_test.dart.
+    test('seluruh 10 POI siap rilis', () {
+      expect(result.pois, hasLength(10));
       for (final poi in result.pois) {
-        expect(poi.metadata.isPlaceholder, isTrue, reason: poi.id);
-        expect(poi.metadata.approved, isFalse, reason: poi.id);
+        expect(poi.metadata.approved, isTrue, reason: poi.id);
+        expect(poi.metadata.isPlaceholder, isFalse, reason: poi.id);
       }
     });
 
-    test('media belum tersedia', () {
+    // Foto dan audio sudah tersedia (14 November 2026); keberadaan file dan
+    // pendaftarannya diperiksa content_assets_test.dart.
+    // Video opsional (keputusan PM 23 November 2026); hanya GKUB yang punya.
+    test('video hanya tersedia untuk GKUB', () {
       for (final poi in result.pois) {
-        expect(poi.media.photos, isEmpty, reason: poi.id);
-        expect(poi.media.narrationAudio, isNull, reason: poi.id);
-        expect(poi.media.video, isNull, reason: poi.id);
+        expect(
+          poi.media.video,
+          poi.id == 'P06' ? 'assets/media/P06/video.mp4' : isNull,
+          reason: poi.id,
+        );
       }
     });
 
-    test(
-      'pintu masuk belum disurvei; navigasi memakai titik tengah gedung',
-      () {
-        for (final poi in result.pois) {
-          expect(poi.hasSurveyedEntrance, isFalse, reason: poi.id);
-          expect(poi.navigationPoint, poi.position, reason: poi.id);
+    test('setiap gedung punya titik akses di sekelilingnya', () {
+      for (final poi in result.pois) {
+        expect(poi.entrances, isNotEmpty, reason: poi.id);
+        final points = {
+          for (final entrance in poi.entrances)
+            (entrance.position.lat, entrance.position.lng),
+        };
+        expect(points, hasLength(poi.entrances.length), reason: poi.id);
+        for (final entrance in poi.entrances) {
+          // Titik akses ada di dinding gedung yang sama. Gedung terpanjang
+          // (Labtek VII, ±104 m) menaruh titiknya ±98 m dari titik POI.
+          expect(
+            poi.position.distanceTo(entrance.position),
+            lessThan(110),
+            reason: '${poi.id} ${entrance.label}',
+          );
+          // Kandidat memakai label buatan script; titik yang sudah dicek di
+          // lapangan boleh berlabel bebas (mis. "Pintu timur").
+          if (!entrance.verified) {
+            expect(entrance.label, startsWith('Titik akses'), reason: poi.id);
+          }
+          expect(entrance.label.trim(), isNotEmpty, reason: poi.id);
         }
-      },
-    );
-
-    test('urutan trail belum ditetapkan', () {
-      for (final poi in result.pois) {
-        expect(poi.trailOrder, isNull, reason: poi.id);
+        expect(poi.navigationPoint, poi.entrances.first.position);
+        // Navigasi ke kandidat tetap ditandai belum memenuhi F06.
+        expect(
+          poi.hasSurveyedEntrance,
+          poi.entrances.any((entrance) => entrance.verified),
+          reason: poi.id,
+        );
       }
     });
 
-    test('dataset fasilitas belum tersedia', () {
-      expect(result.facilities, isEmpty);
+    test('urutan trail memakai 1–10 tepat satu kali', () {
+      final orders = [for (final poi in result.pois) poi.trailOrder];
+      expect(orders, everyElement(isNotNull));
+      expect(orders.toSet(), {for (var i = 1; i <= 10; i++) i});
+    });
+
+    test('dataset fasilitas disetujui dan merujuk POI yang ada', () {
+      final facilities = result.facilities;
+      expect(facilities, hasLength(26));
+      expect(facilities.map((f) => f.id).toSet(), hasLength(facilities.length));
+      // Every category the map chips offer has at least one entry.
+      expect(
+        facilities.map((f) => f.category).toSet(),
+        FacilityCategory.values.toSet(),
+      );
+      final poiIds = result.pois.map((p) => p.id).toSet();
+      final campus = AgamMapConfig.campus();
+      for (final facility in facilities) {
+        expect(facility.metadata.approved, isTrue, reason: facility.id);
+        expect(facility.metadata.isPlaceholder, isFalse, reason: facility.id);
+        expect(facility.metadata.sources, isNotEmpty, reason: facility.id);
+        if (facility.buildingId case final building?) {
+          expect(poiIds, contains(building), reason: facility.id);
+        }
+        expect(
+          campus.isInsideCampus(facility.position),
+          isTrue,
+          reason: facility.id,
+        );
+      }
+    });
+
+    test('toilet, musala, dan kantin sesuai daftar fasilitas tiap POI', () {
+      const keyword = {
+        FacilityCategory.toilet: 'Toilet',
+        FacilityCategory.musala: 'Mushalla',
+        FacilityCategory.kantin: 'Kantin',
+      };
+      for (final MapEntry(key: category, value: word) in keyword.entries) {
+        final expected = {
+          for (final poi in result.pois)
+            if (poi.facilities.contains(word)) poi.id,
+        };
+        final actual = {
+          for (final f in result.facilities)
+            if (f.category == category) f.buildingId,
+        };
+        expect(actual, expected, reason: category.name);
+      }
     });
   });
 }

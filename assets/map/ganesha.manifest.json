@@ -1,0 +1,98 @@
+{
+  "schemaVersion": 2,
+  "generator": "AGAM GeoPackage → MVT + GeoJSON",
+  "status": "draft — belum diverifikasi lapangan",
+  "source": {
+    "url": "https://download.geofabrik.de/asia/indonesia/java-latest.osm.pbf",
+    "sha256": "091e9183554ac4a91b399726dd85e6d1050ea4fe4b1f0b772962c3764a195d3c",
+    "replicationTimestamp": "2026-11-03T21:24:23Z"
+  },
+  "boundary": {
+    "status": "verified_osm_snapshot",
+    "osmType": "way",
+    "osmId": 177629384,
+    "sourceUrl": "https://www.openstreetmap.org/api/0.6/way/177629384/full.json",
+    "verifiedOn": "2026-11-04",
+    "verifiedBy": "Inspeksi agent: nama Institut Teknologi Bandung, amenity university; lokasi Ganesha cocok dengan 10 POI PRD 9.1. Bukan survei batas resmi.",
+    "snapshot": "campus-boundary.osm.json",
+    "sha256": "253567b5d47f8f5cebc492cbec0d4760fcaffd2f6e3ab5cb195701a6070c0b2b",
+    "osmVersion": 19,
+    "osmTimestamp": "2026-07-24T05:11:05Z",
+    "marginM": 200,
+    "method": "OSM polygon envelope; spherical R=6371008.8 m; latitude margin 200/R, longitude margin at maximum absolute expanded latitude; outward rounding to 8 decimal places"
+  },
+  "requestedBounds": [
+    107.60635935,
+    -6.89545535,
+    107.61454265,
+    -6.88552795
+  ],
+  "sourceLicense": "ODbL-1.0",
+  "attribution": "<a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors (ODbL)</a> <a href=\"https://openmaptiles.org/\">© OpenMapTiles</a>",
+  "masterSha256": "5d945f5d29714a1f482342c969b7d9e9664a48f282295b9af693c458963b55c7",
+  "layers": {
+    "building": 683,
+    "green": 92,
+    "transportation": 333,
+    "walk": 1256,
+    "sidewalk": 318,
+    "gate": 73,
+    "crossing": 56,
+    "poi": 10,
+    "label": 10
+  },
+  "graph": {
+    "filename": "ganesha-walk-demo.geojson",
+    "sha256": "c2dcc076cd768508fcc2e2657c07bbfd14bc3df23ff559684765d64653df7200",
+    "vertices": 1170,
+    "edges": 1256,
+    "componentSizes": [
+      985,
+      65,
+      32,
+      19,
+      14,
+      10,
+      9,
+      8,
+      4,
+      4,
+      4,
+      4,
+      3,
+      3,
+      2,
+      2,
+      2
+    ]
+  },
+  "output": {
+    "filename": "ganesha.pmtiles",
+    "sizeBytes": 516943,
+    "sha256": "258afdf66661caa95b0a90ee1bc8d29f6998c3b81815ee86f03777227feda6cb",
+    "bounds": [
+      107.6063594,
+      -6.8954554,
+      107.6145426,
+      -6.885528
+    ],
+    "attributionHtml": "<a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap contributors (ODbL)</a> <a href=\"https://openmaptiles.org/\">© OpenMapTiles</a>",
+    "minZoom": 12,
+    "maxZoom": 18,
+    "addressedTiles": 85,
+    "tileEntries": 85,
+    "tileContents": 85,
+    "featureCountsAcrossUniqueTiles": {
+      "green": 818,
+      "transportation": 2629,
+      "walk": 9057,
+      "gate": 511,
+      "building_shadow": 1600,
+      "building_wall": 1642,
+      "building_roof": 1610,
+      "crossing": 392,
+      "poi": 70,
+      "building": 3462
+    }
+  }
+}

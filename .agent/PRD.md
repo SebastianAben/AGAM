@@ -3,13 +3,13 @@
 | Atribut | Nilai |
 | --- | --- |
 | Status dokumen | **Kontrak produk kerja v1.0** untuk tim dan coding agent; diturunkan dari PRD resmi dan diperbarui dengan keputusan tim |
-| Status implementasi | Belum ada implementasi. Repository baru berisi dokumentasi (2 November 2026) |
+| Status implementasi | Source tersedia sebagian (16 November 2026): demo empat tab FE terintegrasi dengan peta/lokasi/Explore/trigger/detail/audio/pencarian repository. Trail/rute/fasilitas/akun tetap dibatasi sesuai dependency; pengaturan auto-play/Akhiri memakai LA. Source `046b646` + WIP lulus analyze, 271 test Flutter terbaru, 21 test pipeline terdahulu; APK demo fungsional terbaru terpasang di OPPO, hash perangkat cocok, cold start command sukses; kontrol peta dan pencarian-ke-peta aktif, watermark kecil di header/atas peta, panel POI interaktif menempel navigasi. Smoke visual/playback terbaru dan field belum terbukti. Rekap: 15 PBI in_progress, 7 planned, 0 done; lihat implementationPhases/handoff. Login produk, routing/trail asli dan acceptance lapangan belum selesai. |
 | Tanggal | 2 November 2026 |
 | Sumber resmi | Draft PRD W9 (`Kelompok 03_Draft PRD.docx.pdf`, bagian 1–4) dan presentasi PRD lengkap (`Transformasi Digital-PRD-Kel.Warung.pdf`, halaman 1–23). Keduanya berada di luar repository |
 | Mata kuliah | II4011 Transformasi Digital — Prof. Ir. Kridanto Surendro, M.Sc., Ph.D. |
 | Tim | Kelompok 03 / Warung; keputusan produk dipegang Project Manager |
 | Platform | Aplikasi mobile Android (APK) |
-| Stack | Flutter / Dart, Fused Location Provider (`geolocator`), OpenStreetMap (tile vektor dibundel), Firebase Firestore + JSON bawaan, `flutter_tts` |
+| Stack | Flutter / Dart, Fused Location Provider (`geolocator`), OpenStreetMap (tile vektor dibundel), Firebase Firestore + JSON bawaan, Firebase Auth (email + password), `flutter_tts` |
 
 Kata **wajib**, **dilarang**, **sebaiknya**, dan **dapat** bersifat normatif. Requirement di dokumen ini adalah **target**; tidak ada yang boleh dilaporkan sebagai selesai tanpa evidence (lihat `.agent/rules.md`).
 
@@ -41,6 +41,8 @@ Seluruh perhitungan (lokasi, geofence, rute, pencarian, rekomendasi) dilakukan *
 | Mahasiswa baru / yang belum familiar dengan Ganesha | Belum mengenal tata letak kampus; berpindah gedung antarkelas dengan waktu sempit | Menemukan gedung/ruang kuliah dengan cepat, memahami fungsi gedung, mengetahui fasilitas terdekat |
 | Pengunjung (calon mahasiswa, orang tua, tamu acara/seminar) | Datang sesekali dengan waktu terbatas | Menuju gedung tujuan tanpa banyak bertanya dan memperoleh informasi fasilitas gedung |
 
+**[CL] Role akun.** Saat daftar, pengguna memilih salah satu role yang mewakili kelompok target di atas: **Mahasiswa ITB** (`mahasiswaItb`) atau **Pengunjung** (`pengunjung`). Role diisi sendiri, tidak diverifikasi, dan tidak membedakan fitur; role hanya dipakai tim untuk memisahkan statistik.
+
 ## 4. Tujuan dan Non-Tujuan
 
 | ID | Tujuan |
@@ -57,7 +59,11 @@ Seluruh perhitungan (lokasi, geofence, rute, pencarian, rekomendasi) dilakukan *
 | NG03 | Versi awal tidak menyediakan augmented reality |
 | NG04 | Tidak mengirim, menyimpan di server, atau membagikan riwayat lokasi pengguna kepada pihak lain |
 
-Di luar lingkup v1 (keputusan tim): **login/akun/role pengguna**, **bahasa selain Bahasa Indonesia**, dan **backend milik tim**.
+Di luar lingkup v1 (keputusan tim): **bahasa selain Bahasa Indonesia** dan **backend/server milik tim**. Akun pengguna memakai layanan terkelola Firebase (Auth + Firestore), bukan server milik tim.
+
+**[CL] Akun wajib (keputusan PM 6 November 2026).** Pengguna wajib daftar atau login sebelum memakai aplikasi. Login tidak membuka fitur tambahan. Data akun dipakai internal oleh tim developer untuk menghitung jumlah pengguna, success metric, dan log aktivitas ([§15.5](#155-log-aktivitas)). Seluruh batas privasi NG04 dan A01 tetap berlaku.
+
+**Pengecualian demo internal (dihentikan 26 November 2026).** Pengecualian sementara `--dart-define=AGAM_INTERNAL_DEMO=true` (instruksi 14 November 2026) telah dihapus atas keputusan pengguna/PM pada 26 November 2026. Seluruh build kini merupakan **build produk utuh** dengan Firebase Auth/Firestore, gerbang login wajib (UI10), dan layanan asli LA/LB. Catatan historis penyesuaian demo tetap tersimpan di Change Log [§23](#23-perbedaan-terhadap-prd-baseline-w9) dan handoff.
 
 ## 5. Skenario Utama
 
@@ -66,16 +72,18 @@ Raka (18 tahun, mahasiswa baru S1 Teknik Informatika) datang pertama kali ke Gan
 1. **Onboarding.** Membuka AGAM; aplikasi menjelaskan bahwa lokasi hanya diproses di ponsel, lalu meminta izin lokasi (akurat) dan notifikasi.
 2. **Peta.** Peta kampus, posisi Raka, dan penanda 10 POI tampil.
 3. **Mulai sesi.** Raka memilih Orientation Trail (atau Explore) dan mulai berjalan.
-4. **Trigger.** Saat masuk radius 15 m dari GKUT dan bertahan ≥5 detik, ponsel bergetar dan terdengar prompt: *"Anda mendekati Gedung Kuliah Umum Timur. Apakah Anda ingin mendengarkan ceritanya?"*
+4. **Trigger.** Saat mendekati ≤15 m dari area kontak radius 5 m GKUT dan bertahan ≥5 detik, ponsel bergetar dan terdengar prompt: *"Anda mendekati Gedung Kuliah Umum Timur. Apakah Anda ingin mendengarkan ceritanya?"*
 5. **Eksplorasi.** Raka mengetuk tombol besar **Dengarkan**; kartu POI terbuka (foto, fungsi, fasilitas, trivia) dan narasi diputar. POI tercatat "dikunjungi"; selama Raka masih di area, trigger tidak berulang.
 6. **Pencarian.** Raka mengetik "labtek 5"; aplikasi mengenali alias sebagai Labtek V.
 7. **Navigasi.** Rute jalan kaki, jarak, ETA, dan arahan suara di setiap belokan tampil. POI lain yang dilewati hanya memunculkan notifikasi ringkas tanpa audio.
-8. **Tiba.** Dalam jarak ≤15 m dari pintu masuk Labtek V, aplikasi mengumumkan *"Anda telah tiba di Labtek V"*, menawarkan kartu informasi, merekomendasikan POI berikutnya yang terdekat dan belum dikunjungi, serta fasilitas terdekat.
+8. **Tiba.** Dalam jarak ≤15 m dari titik akses Labtek V, aplikasi mengumumkan *"Anda telah tiba di Labtek V"*, menawarkan kartu informasi, merekomendasikan POI berikutnya yang terdekat dan belum dikunjungi, serta fasilitas terdekat.
 9. **Progres.** Progres trail (mis. 3/10) tersimpan di ponsel dan dapat dilanjutkan di hari lain.
 
 ## 6. Mode Aplikasi dan Sesi Lokasi
 
 AGAM memiliki empat mode. **Sesi** adalah mode Explore, Navigasi, atau Orientation Trail yang dimulai pengguna.
+
+**[CL] Prasyarat login.** Seluruh mode hanya tersedia setelah pengguna login. Alur pertama kali: Daftar/Login (UI10) → Onboarding & Izin Lokasi (UI01). UI10 tampil sebelum seluruh UI01; UI01 tidak dipecah. Logout mengakhiri sesi aktif dan kembali ke UI10.
 
 | Mode | Fungsi | Pembacaan lokasi | Trigger POI |
 | --- | --- | --- | --- |
@@ -99,12 +107,12 @@ Semua berprioritas **Must**.
 | ID | Requirement | Deskripsi | Acceptance criteria |
 | --- | --- | --- | --- |
 | F01 | Location Awareness | Membaca posisi melalui Fused Location Provider (GPS + Wi-Fi/seluler) setiap ±3 detik atau 5 m perpindahan dan menampilkannya di peta kampus | Posisi tampil ≤10 detik setelah izin diberikan dan diperbarui saat berjalan; akurasi yang dilaporkan ≤20 m di area terbuka kampus pada perangkat uji |
-| F02 | Location-Based Trigger | Geofence lingkaran per POI **radius 15 m [CL]** dihitung in-app dengan haversine; trigger saat masuk area dan bertahan ≥5 detik; cooldown 10 menit per POI; berjalan di foreground dan background **selama sesi** | Notifikasi dan prompt suara POI yang benar muncul ≤10 detik setelah masuk radius; tidak terpicu ulang selama pengguna tetap di area; berhasil pada ≥8 dari 10 POI saat field test |
-| F03 | Multimodal Exploration | Kartu POI memuat foto, deskripsi fungsi gedung, fasilitas di dalam gedung, trivia/sejarah singkat, dan narasi audio 45–90 detik; video narasi untuk GKUB dan GKUT | Seluruh 10 POI memiliki minimal 1 foto, teks, dan narasi audio yang dapat diputar, dijeda, dan diulang **[CL: termasuk P01–P05]**; video GKUB/GKUT dapat diputar di kartu; sumber konten dicantumkan pada setiap kartu |
+| F02 | Location-Based Trigger | Area kontak trigger **radius 5 m** dengan jarak pendekatan POI **15 m [CL]** dihitung in-app dengan haversine; trigger saat masuk area dan bertahan ≥5 detik; cooldown 10 menit per POI; berjalan di foreground dan background **selama sesi** | Kartu saat foreground atau notifikasi saat background, disertai prompt suara POI yang benar, muncul ≤10 detik setelah masuk area pendekatan; tidak terpicu ulang selama pengguna tetap di area; berhasil pada ≥8 dari 10 POI saat field test |
+| F03 | Multimodal Exploration | Kartu POI memuat foto, deskripsi fungsi gedung, fasilitas di dalam gedung, trivia/sejarah singkat, dan narasi audio 45–90 detik; video narasi untuk GKUB dan GKUT bila tersedia **[CL: keputusan PM 23 November 2026 — video opsional]** | Seluruh 10 POI memiliki minimal 1 foto, teks, dan narasi audio yang dapat diputar, dijeda, dan diulang **[CL: termasuk P01–P05]**; video GKUB/GKUT, bila tersedia, dapat diputar di kartu; sumber konten dicantumkan pada setiap kartu |
 | F04 | Eyes-Free Interaction | Prompt suara dan getar saat trigger; tombol aksi besar (Dengarkan/Lewati); opsi auto-play narasi; arahan navigasi suara; kontrol dari notifikasi saat layar terkunci | Pengguna dapat menerima trigger, memutar narasi, dan mengikuti navigasi sampai tujuan tanpa membaca teks layar (diuji ≥3 penguji) |
 | F05 | Search & Destination | Pencarian gedung, fasilitas, dan ruang/unit penting dengan alias (angka Arab/Romawi, singkatan seperti "GKUT", "Labtek Biru") dan filter kategori | "labtek 5", "Labtek V", atau "lab 5" menampilkan Labtek V di urutan teratas; seluruh 10 POI dan kategori fasilitas dapat ditemukan; respons ≤1 detik |
-| F06 | Navigation | Rute jalan kaki dari posisi pengguna ke **pintu masuk** gedung/fasilitas tujuan: garis rute, jarak, ETA, arahan belokan visual + suara; rerouting bila menyimpang >25 m; deteksi tiba pada radius 15 m | Penguji mencapai ≥4 dari 5 tujuan acak hanya dengan panduan aplikasi; pengumuman tiba muncul saat pengguna ≤15 m dari titik tujuan |
-| F07 | Contextual Recommendation | Setelah kartu POI ditutup atau tiba di tujuan, merekomendasikan 1–3 POI berikutnya berdasarkan jarak terdekat, status belum dikunjungi, dan urutan trail, serta fasilitas terdekat | Rekomendasi muncul setelah kartu ditutup atau setelah tiba; rekomendasi dapat langsung dinavigasikan dengan satu ketukan |
+| F06 | Navigation | Rute jalan kaki dari posisi pengguna ke **titik akses** gedung/fasilitas tujuan, yaitu pintu masuk atau sisi lantai 1 yang terbuka ke jalur pejalan kaki **[CL: keputusan 24 November 2026]**: garis rute, jarak, ETA, arahan belokan visual + suara; rerouting bila menyimpang >25 m; deteksi tiba pada radius 15 m | Penguji mencapai ≥4 dari 5 tujuan acak hanya dengan panduan aplikasi; pengumuman tiba muncul saat pengguna ≤15 m dari titik tujuan |
+| F07 | Contextual Recommendation | Setelah tiba di tujuan, merekomendasikan 1–3 POI berikutnya berdasarkan jarak terdekat, status belum dikunjungi, dan urutan trail, serta fasilitas terdekat. **[CL]** Menutup kartu POI di peta tidak memunculkan rekomendasi (keputusan 26 November 2026) | Rekomendasi "Lanjut ke mana?" muncul di kartu tiba, tidak saat kartu POI ditutup; satu ketukan Rute pada rekomendasi membuka preview rute, dan navigasi dimulai dengan tombol Mulai rute **[CL: 26 November 2026]** |
 | F08 | Orientation Trail | Rute tur berurutan yang menghubungkan 10 POI, check-in otomatis saat trigger, progres kunjungan, dan lencana penyelesaian, dilengkapi informasi layanan dan fasilitas per gedung | Pengguna dapat memulai trail; setiap POI tercatat "dikunjungi" otomatis saat trigger; progres (x/10) tetap tersimpan setelah aplikasi ditutup; lencana muncul saat seluruh POI selesai |
 
 ## 8. Additional Requirements (A01–A03)
@@ -119,7 +127,7 @@ Semua berprioritas **Must**.
 
 ### 9.1 Dataset POI
 
-Koordinat dalam derajat desimal (lintang selatan bernilai negatif). Koordinat adalah titik tengah gedung dari PRD; **koordinat pintu masuk belum tersedia** (lihat [§22](#22-hal-tertunda-tbd)).
+Koordinat dalam derajat desimal (lintang selatan bernilai negatif). Koordinat adalah titik tengah gedung dari PRD. Titik akses tiap gedung disimpan di `entrances[]`; saat ini berupa kandidat hasil perhitungan dari graf jalan kaki yang belum diverifikasi di lapangan (lihat [§11](#11-navigasi-dan-routing) dan [§22](#22-hal-tertunda-tbd)).
 
 | ID | Nama | Alias awal | Kategori | Lat | Lng | Radius | Konten |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -128,8 +136,8 @@ Koordinat dalam derajat desimal (lintang selatan bernilai negatif). Koordinat ad
 | P03 | Labtek VII | labtek 7, lab 7 | Gedung laboratorium dan perkuliahan | -6.8901169 | 107.6105714 | 15 m | foto, teks, audio |
 | P04 | Labtek VIII | labtek 8, lab 8 | Gedung laboratorium dan perkuliahan | -6.8905954 | 107.6105760 | 15 m | foto, teks, audio |
 | P05 | Labtek X & XI | Labtek Biru, labtek 10, labtek 11 | Gedung laboratorium dan perkuliahan | -6.8889940 | 107.6095767 | 15 m | foto, teks, audio |
-| P06 | Gedung Kuliah Umum Barat | GKUB | Gedung perkuliahan | -6.89053 | 107.60890 | 15 m | foto, teks, audio, video |
-| P07 | Gedung Kuliah Umum Timur | GKUT | Gedung perkuliahan | -6.8903881 | 107.6119990 | 15 m | foto, teks, audio, video |
+| P06 | Gedung Kuliah Umum Barat | GKUB | Gedung perkuliahan | -6.89053 | 107.60890 | 15 m | foto, teks, audio, video (opsional) |
+| P07 | Gedung Kuliah Umum Timur | GKUT | Gedung perkuliahan | -6.8903881 | 107.6119990 | 15 m | foto, teks, audio, video (opsional) |
 | P08 | Oktagon | — | Gedung perkuliahan | -6.8890603 | 107.6100470 | 15 m | foto, teks, audio |
 | P09 | TVST | — | Gedung perkuliahan | -6.8895043 | 107.6100594 | 15 m | foto, teks, audio |
 | P10 | Labtek I | Mektan, labtek 1 | Gedung laboratorium dan perkuliahan | -6.8892078 | 107.6111876 | 15 m | foto, teks, audio |
@@ -141,21 +149,65 @@ Jarak antar-POI terdekat ±49 m (P08–P09) dan ±50 m (P01–P02), sehingga rad
 1. Posisi diperoleh dari Fused Location Provider (plugin `geolocator`). POI tidak membutuhkan perangkat keras; cukup koordinat tersimpan.
 2. Pembacaan dengan akurasi lebih buruk dari **20 m diabaikan** untuk trigger (tetap boleh ditampilkan di peta).
 3. Setiap pembaruan, jarak haversine ke seluruh POI dihitung.
-4. Pengguna dianggap **masuk** jika jarak ≤ radius POI dan bertahan **≥5 detik** (dwell).
-5. **Histeresis:** pengguna dianggap keluar hanya jika jarak > radius + margin. Nilai margin adalah pilihan engineering, dikalibrasi saat field test, dan dicatat di dokumen ini.
+4. **[CL — instruksi PM 16 November 2026, diperluas 28 November 2026]** Koordinat trigger menjadi area kontak lingkaran radius **5 m**. Radius pendekatan per POI tetap **15 m** pada dataset; jarak ke area kontak = max(0, jarak haversine ke pusat − 5 m). Pengguna dianggap **masuk** jika berada di salah satu dari dua zona berikut dan bertahan **≥5 detik** (dwell): (a) jarak ke area kontak pusat ≤ radius POI (batas efektif ≤20 m dari pusat), **atau** (b) jarak ≤**10 m** dari salah satu `entrances[]` milik POI tersebut (**keputusan PM 28 November 2026, Opsi 1B**; 33/41 titik akses berjarak >20 m dari pusat gedung, sedangkan jarak terdekat antar-titik akses dari dua POI berbeda adalah 20,0 m sehingga radius 10 m tidak tumpang tindih). Tidak mengubah koordinat/data POI atau radius tiba navigasi 15 m.
+5. **Histeresis:** pengguna dianggap keluar hanya jika jarak ke area kontak pusat > radius + margin (default >25 m dari pusat) **dan** jarak ke seluruh `entrances[]` POI tersebut >**15 m** (radius pintu 10 m + margin 5 m). Nilai margin adalah pilihan engineering, dikalibrasi saat field test, dan dicatat di dokumen ini.
 6. **Cooldown 10 menit** per POI setelah trigger; trigger tidak berulang selama pengguna tetap di area.
-7. Respons trigger bergantung pada mode: Explore/Trail → getar + prompt audio + notifikasi + tombol Dengarkan/Lihat/Lewati; Navigasi → notifikasi ringkas tanpa audio untuk POI yang bukan tujuan.
-8. Trigger di dalam sesi otomatis mencatat POI sebagai **dikunjungi** (check-in trail).
+7. Respons trigger bergantung pada mode dan visibilitas: Explore/Trail saat aplikasi tampil (`resumed`) → kartu POI otomatis + prompt audio (atau narasi sesuai auto-play); latar belakang/layar mati → notifikasi + getar + audio. Kartu menampilkan POI terdekat di antara trigger yang masih aktif dan membuka tab Jelajah, termasuk setelah kembali dari latar belakang (dan banner notifikasi latar belakang ditutup otomatis saat kembali ke foreground); keluar area/akhir sesi menutup kartu otomatis. Lewati (dari kartu maupun dari notifikasi) / Back menutup kartu sampai kunjungan berikutnya. Navigasi di latar belakang tetap notifikasi ringkas tanpa audio untuk POI yang bukan tujuan (POI tujuan aktif tidak memicu trigger ganda), dan di foreground menampilkan pil ringkas sementara tanpa audio. Tidak ada trigger tanpa sesi; aplikasi yang dimatikan paksa tidak dijamin berjalan.
+8. Trigger di dalam sesi otomatis mencatat POI sebagai **dikunjungi** (check-in trail). **[CL — keputusan PM 28 November 2026]** Pada mode Orientation Trail (`SessionMode.trail`), check-in juga dicatat otomatis saat navigasi mencapai `NavigationStatus.arrived` pada POI tujuan, sehingga pengguna yang tiba di titik akses gedung selalu langsung tercatat check-in tanpa harus masuk lebih dekat ke pusat gedung.
 9. **Efisiensi baterai:** interval pembaruan diperlambat (±10 detik) bila pengguna diam atau berada >200 m dari POI terdekat.
 10. Radius disimpan per POI di data sehingga dapat dikalibrasi lewat Firestore tanpa membangun ulang aplikasi.
 
 **Parameter engineering PB05-LA-01 (4 November 2026):** engine sinkron menggunakan default margin histeresis **5 m** dan jeda sampel maksimum **10 detik**, keduanya configurable dan **telah diterapkan, belum dikalibrasi di lapangan**. Jeda yang lebih besar membatalkan kontinuitas dwell; jeda tepat 10 detik diterima. Sampel invalid membatalkan kandidat dwell tetapi tidak membuktikan keluar dan tidak menghapus cooldown. Timestamp sama/mundur diabaikan. Saat engine dinonaktifkan, dwell/pengunci kunjungan dibersihkan tetapi cooldown dipertahankan. Setelah keluar dan masuk kembali selama cooldown, dwell dapat berjalan; trigger berikutnya hanya muncul pada sampel valid setelah dwell dan cooldown terpenuhi. Ini bukan perubahan radius produk, pengaturan interval GPS, atau evidence acceptance F02. Rincian ada pada [brief PB05-LA-01](../task-implementation/backend/PB05-LA-01-geofence-engine.md); integrasi sesi dan kalibrasi masih tertunda.
+
+**Uji developer (dihentikan 26 November 2026):** sakelar **Mode demo/trial** pada UI09 yang sebelumnya hanya tampil di build `AGAM_INTERNAL_DEMO=true` dihapus seiring penghentian build demo; seluruh build produk memakai cooldown normal 10 menit.
+
+**Parameter engineering lokasi dan sesi LA Sprint 1–2 (10 November 2026)** — **telah diterapkan, belum dikalibrasi**; tidak mengubah keputusan produk:
+
+| Parameter | Nilai | Keterangan |
+| --- | --- | --- |
+| Interval normal / lambat | 3 detik / 10 detik | Dari butir 1 dan 9 |
+| Jarak "jauh dari POI" | >200 m dari titik tengah POI terdekat | Dari butir 9 |
+| Zona dekat POI | radius POI + 30 m | Di zona ini interval **tidak** diperlambat, karena jeda sampel >10 detik membatalkan dwell |
+| Status diam | perpindahan <10 m selama ≥30 detik, dihitung dari satu titik jangkar di memori (bukan riwayat) | Pembacaan berakurasi >20 m diabaikan |
+| Filter jarak FLP | 0 m | Agar dwell tetap mendapat sampel saat pengguna diam di dalam radius |
+| Area kampus untuk sesi | hanya diperbarui dari pembacaan berakurasi ≤20 m | Pembacaan buruk tidak memulai hitungan auto-end 30 menit |
+
+Keterbatasan yang diketahui: geolocator (5.2.1) menghentikan foreground service saat langganan dibatalkan, sehingga pergantian interval adaptif hanya diterapkan **saat aplikasi tampil di layar**. Selama layar mati, interval terakhir dipertahankan. Penghematan baterai saat layar mati perlu diukur di perangkat fisik (PB18/PB19).
 
 ### 9.3 Area kampus
 
 - Area layanan: Kampus Ganesha + ±200 m (termasuk Jl. Ganesha, Tamansari, dan gerbang).
 - Di luar area: tampil pesan *"Anda berada di luar area Kampus Ganesha"*; trigger dan navigasi tidak aktif.
 - Batas poligon/bounding box ditetapkan saat PB04 dan dicatat di dokumen ini.
+
+**Coverage tile PB04-LB-01 (4 November 2026):** menggunakan envelope poligon
+[OSM way/177629384](https://www.openstreetmap.org/way/177629384), versi 19
+(timestamp objek `2026-07-24T05:11:05Z`), snapshot API diambil dan diperiksa pada
+4 November 2026. Seluruh 10 POI PRD berada di dalam poligon sumber. Envelope
+diperluas 200 m dengan pendekatan spherical dan pembulatan keluar; bounds tile
+`west=107.60635935`, `south=-6.89545535`, `east=107.61454265`,
+`north=-6.88552795`. Provenance, checksum snapshot, dan metode ada di
+`tools/tiles/campus-boundary.json` serta [brief pipeline](../task-implementation/backend/PB04-LB-01-tile-pipeline.md).
+Ini batas cakupan aset tile, bukan hasil survei batas resmi. Poligon area layanan
+pada `MapConfig` dan perilaku di luar area belum diimplementasikan oleh task ini.
+
+**Area demo internal (14 November 2026):** dalam mandat PM untuk menyesuaikan
+kebutuhan integrasi demo, `AgamMapConfig.internalDemo()` memakai empat sudut
+bounds engineering di atas sebagai area demo sementara. UI memberi label
+engineering OSM dan belum diverifikasi lapangan. Ini hanya dipakai oleh flag
+demo, bukan penetapan batas layanan produk. `pendingServiceArea()` tetap
+menolak semua titik selama batas produk TBD; tidak ada koordinat baru yang
+dikira sebagai hasil survei. Radius, dwell, cooldown, dan filter akurasi §9.2
+tidak berubah.
+
+**Batas layanan produk (24 November 2026):** atas keputusan tim, build produk
+memakai empat sudut bounds engineering yang sama sebagai batas layanan resmi
+(`AgamMapConfig.campus()`), sesuai rumusan "Kampus Ganesha + ±200 m" di atas.
+Batas ini berasal dari coverage OSM, belum diverifikasi lapangan, dan sedikit
+lebih longgar dari kampus pada sisi jalan sekitar. Trigger tetap hanya dalam
+radius POI §9.2, sehingga kelonggaran batas tidak memicu POI di luar kampus.
+Bila survei batas tersedia, poligon diganti dan dicatat ulang di sini.
+
 
 ## 10. Konten dan Media
 
@@ -167,12 +219,13 @@ Jarak antar-POI terdekat ±49 m (P08–P09) dan ±50 m (P01–P02), sehingga rad
 | Prompt trigger & pengumuman tiba per POI | File audio jadi | Dibundel di APK |
 | Video narasi GKUB & GKUT | Disiapkan tim konten; ditampilkan di kartu POI | Dibundel di APK |
 | Arahan navigasi belokan | TTS runtime (`flutter_tts`, mesin TTS Android, locale `id-ID`) | Tidak disimpan |
+| Pengumuman tiba di fasilitas | TTS runtime: *"Anda telah tiba di {nama fasilitas}"* **[CL: keputusan 24 November 2026]**; fasilitas tidak memiliki file audio tiba | Tidak disimpan |
 
 Aturan konten:
 
 - **Dilarang mengarang** teks, trivia, sejarah, foto, audio, alias resmi, atau koordinat. Jika konten belum tersedia, gunakan placeholder yang jelas berlabel `PLACEHOLDER` dan jangan tampilkan sebagai konten final.
 - Setiap konten wajib memiliki metadata A02 (sumber, tanggal verifikasi, penanggung jawab, atribusi aset) sebelum dinyatakan siap rilis.
-- Jika suara TTS Bahasa Indonesia tidak tersedia di perangkat, arahan navigasi tetap tampil visual dan pengguna diberi tahu cara memasang data suara.
+- **[CL — keputusan PM 28 November 2026]** Jika suara TTS Bahasa Indonesia **offline** (`id-ID`/`in-ID`) tidak tersedia di perangkat (diperiksa eksplisit via `getVoices()` dan dikunci dengan `setVoice`), aplikasi **tidak** membacakan teks Bahasa Indonesia memakai suara bahasa lain (mis. EN-US): arahan suara dan pengumuman tiba fasilitas tetap senyap, arahan visual tetap tampil, layar navigasi (UI06) dan kartu tiba fasilitas (UI07) menampilkan panduan inline cara memasang data suara Bahasa Indonesia di pengaturan TTS Android, dan ketersediaan suara diperiksa ulang saat aplikasi kembali ke foreground (`resumed`).
 - Seluruh konten berbahasa Indonesia.
 
 ## 11. Navigasi dan Routing
@@ -180,7 +233,13 @@ Aturan konten:
 - Routing dihitung **di perangkat**. Server routing (OSRM, GraphHopper, Google Directions, dsb.) **dilarang** karena titik awal rute adalah lokasi pengguna (A01, NG04).
 - Data rute: **graf jalur pejalan kaki kampus** (GeoJSON) yang diturunkan dari data OSM lalu dikoreksi dengan survei lapangan, dibundel di APK.
 - Algoritma: Dijkstra/A* pada graf tersebut. Pilihan detail adalah keputusan engineering.
-- Tujuan rute adalah **pintu masuk** gedung/fasilitas. Selama koordinat pintu masuk belum tersedia, titik tengah gedung dipakai dengan label sementara dan tidak boleh dianggap memenuhi F06.
+- Tujuan rute adalah **titik akses** gedung: tempat orang masuk dari jalur pejalan kaki, berupa pintu atau sisi lantai 1 yang terbuka. Sebagian besar gedung kampus tidak memiliki pintu masuk tunggal, sehingga istilah "pintu masuk" diganti **[CL: keputusan 24 November 2026]**. Gedung boleh memiliki beberapa titik akses; rute menuju yang terdekat.
+- Kandidat titik akses dihitung oleh `tools/routing/plan_access_points.py` dari data OSM yang juga digambar di peta: setiap ruas jaringan utama graf jalan kaki yang berjarak ≤4 m dari dinding poligon gedung (8 m bila tidak ada yang sedekat itu) memberi satu titik, yaitu titik pada ruas yang paling dekat ke dinding; titik yang berjarak <5 m digabung. Satu POI boleh terdiri atas beberapa poligon (Labtek X & XI). Ruas pada potongan graf yang terpisah, misalnya selasar antar-gedung, tidak dipakai karena tidak dapat dijangkau rute. Kandidat disimpan dengan `verified: false` dan baru diubah menjadi `true` setelah dicek di lapangan; menjalankan ulang script tidak menimpa titik yang sudah `verified: true`.
+- Koreksi dari peninjauan peta disimpan di `tools/routing/access_overrides.json` (titik yang ditambah dan kandidat yang dihapus per POI) dan selalu diterapkan script. Titik tambahan yang berjarak >25 m dari jalur rute disambungkan lewat lorong kandidat ke simpul jaringan terdekat.
+- **Lorong tembus gedung** **[CL: keputusan 24 November 2026]**: selasar antar-gedung yang terputus dari jaringan disambungkan lewat lorong lantai 1 bila selasar menunjuk lurus (≤20°, ≤60 m, seluruhnya di dalam gedung) ke jalur di dinding seberang. Lorong disimpan di `assets/routing/passages.geojson` sebagai ruas tambahan; satu ujungnya selalu simpul graf, ujung lainnya simpul graf atau titik akses POI yang ditambahkan routing sebagai simpul baru. Lorong bernilai `verified: false` sampai dicek di lapangan; graf OSM tidak diubah. Arahan rute yang melewati lorong kandidat menyebut bahwa lorong belum diverifikasi.
+- **Selasar OSM dan titik awal di dalam gedung** **[CL: keputusan pengguna/PM 26 November 2026]**: selasar lantai 1 yang dipetakan di OSM (`highway=corridor`, 35 way pada master `tools/tiles/ganesha.gpkg`) diekspor oleh `tools/routing/export_osm_corridors.py` ke `assets/routing/corridors.geojson` dan dipakai routing sebagai lorong kandidat (`verified: false`, arahan "belum diverifikasi"). Bila pengguna berada di area gedung POI, setiap titik akses gedung itu juga dicoba sebagai titik awal (`lib/logic/routing/route_planner.dart`). Saat memilih rute, garis lurus dari posisi pengguna ke jalur atau ke pintu (tidak dipetakan) berbobot 2× (`kOffNetworkWeight`, nilai engineering, dikalibrasi di field test PB11), sehingga rute yang mengikuti jalur/selasar didahulukan; jarak dan ETA yang ditampilkan tetap jarak sebenarnya. Di peta, garis lurus itu digambar sebagai titik-titik abu-abu terpisah dari garis rute. Contoh: dari tengah Labtek V ke Labtek VII, rute lama 253 m memutar lewat luar gedung; rute baru 161,6 m lewat selasar utara dan timur Labtek V.
+- **Navigasi dua tahap fasilitas dalam gedung** **[CL: keputusan PM 28 November 2026]**: fasilitas luar ruang mandiri (`buildingId == null`: F20, F21, F23, F25) diarahkan langsung ke koordinat fasilitas (tiba ≤15 m). Fasilitas yang berada di dalam gedung (`buildingId != null`, 22 item) diarahkan pada tahap luar ruang ke titik akses gedung induk (`building.entrances[]`) dengan tanda tujuan perkiraan, serta menampilkan petunjuk lokasi dalam gedung (`locationHint`, diekstrak dari deskripsi dataset `pois.json`, mis. *"Di dalam Labtek V"*) pada preview rute (UI06) dan kartu tiba (UI07 `ArrivalCard`) agar pengguna tetap dapat mencapai status tiba di pintu gedung lalu melanjutkan ke dalam gedung.
+- Navigasi ke kandidat yang belum diverifikasi diberi label sementara dan tidak boleh dianggap memenuhi F06. Bila sebuah gedung belum memiliki titik akses sama sekali, titik tengah gedung dipakai dengan label yang sama.
 - Rerouting bila pengguna menyimpang >25 m dari rute; deteksi tiba ≤15 m dari titik tujuan.
 - Output: garis rute, jarak, ETA, arahan belokan visual + suara.
 
@@ -189,9 +248,10 @@ Aturan konten:
 - Trail adalah mode yang memandu pengguna secara berantai ke 10 POI dengan urutan rekomendasi.
 - Trail memakai mesin navigasi F06 untuk menuju POI berikutnya.
 - POI yang dikunjungi **di luar urutan tetap dihitung** sebagai check-in.
-- Setelah kartu POI ditutup, POI berikutnya dalam urutan ditawarkan (sekaligus rekomendasi F07).
+- Setelah kartu POI ditutup, POI berikutnya dalam urutan ditawarkan oleh layar Trail. Kartu rekomendasi F07 ("Lanjut ke mana?") terpisah dan hanya muncul setelah tiba di tujuan.
 - Progres x/10 disimpan lokal dan dapat dilanjutkan di hari lain; lencana muncul saat 10/10 selesai.
-- **Urutan trail belum ditetapkan tim.** Usulan: rute jalan kaki paling efisien dari gerbang depan. Jangan menetapkan urutan final tanpa keputusan tim.
+- **Urutan trail ditetapkan 24 November 2026** **[CL]**: keliling terpendek yang menghubungkan 10 POI, dengan jarak antar-POI = jalan kaki terpendek di antara titik akses mana pun milik kedua gedung (`tools/routing/plan_access_points.py`): Labtek V → Labtek VIII → GKU Timur → Labtek VII → Labtek I → Oktagon → Labtek X & XI → TVST → Labtek VI → GKU Barat → kembali ke Labtek V. Nilai `trailOrder` 1–10 di dataset mengikuti urutan ini.
+- Karena urutan berbentuk keliling, trail **dimulai dari POI terdekat dengan posisi pengguna** saat trail pertama kali dimulai, lalu berlanjut searah putaran. Titik awal disimpan per akun bersama progres; menghapus progres memilih ulang titik awal.
 
 ## 13. Pencarian dan Rekomendasi
 
@@ -205,7 +265,22 @@ Aturan konten:
 - Pipeline pembuatan tile (unduh data OSM → konversi, mis. Planetiler/tilemaker → `.pmtiles`) wajib berupa script yang dapat dijalankan ulang.
 - Tampilan peta memakai file style (mis. turunan OSM Liberty/Protomaps) yang disesuaikan untuk AGAM; POI ditonjolkan.
 - Renderer Flutter (mis. `flutter_map` + `vector_map_tiles`) adalah pilihan engineering yang diverifikasi saat PB04.
-- **Atribusi OpenStreetMap (ODbL) wajib ditampilkan** di peta.
+- **Atribusi OpenStreetMap (ODbL) wajib ditampilkan** di peta. Profil OpenMapTiles yang dipakai pipeline PB04-LB-01 juga memerlukan kredit OpenMapTiles bertautan ke `https://openmaptiles.org/`; HTML atribusi lengkap dipertahankan dalam metadata arsip/manifest.
+- **[CL]** Atribusi boleh menciut (keputusan 26 November 2026). Saat peta tampil, kredit "© OpenStreetMap contributors (ODbL)" dan "© OpenMapTiles" terlihat penuh di kiri bawah peta. Setelah ±5 detik terlihat di layar, atau saat peta pertama kali disentuh (geser, zoom, atau ketuk), kredit menciut menjadi tombol ⓘ (area ketuk 48 px). Mengetuk ⓘ menampilkan kredit penuh lagi, lalu kredit menciut lagi dengan aturan yang sama. Kedua kredit tetap bertautan ke `https://www.openstreetmap.org/copyright` dan `https://openmaptiles.org/`.
+- Dasar aturan menciut: [OSMF Attribution Guidelines](https://osmfoundation.org/wiki/Licence/Attribution_Guidelines) (revisi 10 September 2026, oldid=14786), diperiksa PM 26 November 2026. Pedoman itu membolehkan atribusi memudar atau menciut segera lewat interaksi tutup, otomatis saat peta digeser, diklik, atau di-zoom, atau otomatis setelah lima detik. Setelah menciut, pengguna harus tetap dapat menemukan informasi lisensi, misalnya lewat tombol "(i)" di sudut peta. Atribusi tidak boleh menuntut pengguna berinteraksi dengan peta untuk melihatnya, jadi atribusi harus terlihat lebih dulu. Atribusi harus menyebut "OpenStreetMap" dan jelas berlisensi ODbL ("© OpenStreetMap contributors" boleh), mudah dibaca dari segi font, ukuran, kontras, posisi, dan lama tampil, serta berada di salah satu sudut peta.
+
+**Implementasi demo 14 November 2026:** `flutter_map 7.0.2` dan
+`vector_tile_renderer 5.2.0`, pembaca `pmtiles 1.3.0` serta `latlong2 0.9.1`.
+`url_launcher` ^6.3.2 (lockfile 6.3.3) hanya membuka tautan atribusi statis atas
+ketukan pengguna. Seluruh 13 tile vektor dibaca dari APK dan dirender ke PNG
+di memori sebelum dipakai peta; tidak ada fallback jaringan, cache tile ke disk,
+glyph/sprite remote, atau penyimpanan viewport/posisi. Native zoom 12–16,
+overzoom sampai 20. `VectorTileLayer` dari `vector_map_tiles` tidak dipakai
+karena source package tetap menulis cache filesystem saat TTL nol. Pipeline
+menjalankan clustering deterministik sebelum validasi/publikasi; format
+unclustered Planetiler tidak didukung pembaca Dart yang dipakai. Detail teknis
+dan perintah audit ada di `tools/tiles/README.md`. Bukti widget bukan acceptance
+Android/offline pada perangkat.
 
 ## 15. Data dan Penyimpanan
 
@@ -216,23 +291,34 @@ Aturan konten:
 | Database informasi POI & fasilitas (teks/terstruktur) | Firestore (sumber remote) + JSON bawaan di APK |
 | Media (foto, audio, video) | Dibundel di APK; **tidak** disimpan di Firestore/Firebase Storage |
 | Tile peta, graf jalur | Dibundel di APK |
-| Progres trail, POI dikunjungi, pengaturan | Penyimpanan lokal perangkat |
+| Progres trail, POI dikunjungi, pengaturan | Penyimpanan lokal perangkat, dipisahkan per akun (lihat di bawah); tidak disinkronkan ke server |
+| Akun (email, password) | Firebase Auth; password tidak pernah disimpan atau dicatat aplikasi |
+| Profil (role, tanggal daftar) | Firestore `users/{uid}`; hanya pemilik yang dapat membaca dan menulis |
+| Log aktivitas | Firestore `activity_logs`; pengguna hanya membuat log miliknya, tim membaca lewat Console ([§15.5](#155-log-aktivitas)) |
 | Posisi pengguna | Hanya di memori selama dibutuhkan; tidak pernah disimpan sebagai riwayat atau dikirim |
+
+**[CL] Progres lokal per akun.** Progres trail, POI dikunjungi, dan pengaturan disimpan di perangkat dengan kunci `uid`. Logout tidak menghapus data tersebut, hanya menyembunyikannya; login kembali dengan akun yang sama di perangkat yang sama memulihkannya. Akun lain di perangkat yang sama memiliki progres sendiri. Data ini tidak dikirim ke server, sehingga berganti perangkat berarti progres dimulai dari awal. Hapus akun ikut menghapus data lokal milik akun tersebut.
 
 ### 15.2 Alur sinkronisasi
 
-1. Saat pertama dibuka, aplikasi memakai JSON bawaan.
+1. Setelah login pertama, aplikasi memakai JSON bawaan; konten tidak memerlukan jaringan.
 2. Jika ada koneksi, aplikasi mengambil data dari Firestore dan menyimpannya ke cache lokal.
 3. Dokumen Firestore **divalidasi** di aplikasi (tipe, rentang koordinat, radius positif, field wajib). Dokumen tidak valid diabaikan dan nilai dari salinan lokal dipakai.
 4. Jika gagal (offline/error), aplikasi tetap memakai salinan terakhir.
+
+**[CL] Sumber konten (keputusan PM, 15 November 2026).** `assets/data/pois.json` di repository adalah satu-satunya sumber konten POI dan fasilitas; Firestore hanya salinannya. Perubahan konten dilakukan lewat PR ke `dev`. Setiap push ke `dev` yang mengubah file itu menjalankan workflow `seed-firestore.yml`: test dataset lebih dulu, lalu script `tools/firestore/` menulis satu dokumen per item dan menghapus dokumen yang tidak ada di JSON. Konten tidak diedit di Firebase Console. Firestore mengikuti `dev` sampai rilis v1.0, lalu mengikuti `main` mulai PB19. Media tetap memerlukan APK baru karena dibundel.
+
+Risiko yang diketahui: aplikasi memakai cache lebih dulu daripada JSON bawaan dan belum membandingkan versi. Jika `pois.json` diperbarui di APK tetapi Firestore tidak di-seed ulang, cache dari Firestore yang lebih lama menutupi konten baru. Karena itu seed setelah setiap perubahan bersifat wajib; pembanding versi dataset diusulkan untuk PB03.
 
 ### 15.3 Skema konseptual
 
 Nama field final ditetapkan pada PB03 (2 November 2026). Bentuk ini dipakai sama untuk dokumen Firestore dan JSON bawaan `assets/data/pois.json`; parser dan validatornya di `lib/logic/data/poi_codec.dart`.
 
-- `pois/{id}`: `id`, `name`, `aliases[]`, `category`, `lat`, `lng`, `radiusM`, `entrances[]` (`lat`, `lng`, `label`), `description`, `function`, `facilities[]`, `trivia`, `media` (`photos[]`, `narrationAudio`, `promptAudio`, `arrivalAudio`, `video` — path aset di APK), `trailOrder`, `metadata`.
+- `pois/{id}`: `id`, `name`, `aliases[]`, `category`, `lat`, `lng`, `radiusM`, `entrances[]` (`lat`, `lng`, `label`, `verified`), `description`, `function`, `facilities[]`, `trivia`, `media` (`photos[]`, `narrationAudio`, `promptAudio`, `arrivalAudio`, `video` — path aset di APK), `trailOrder`, `metadata`.
 - `facilities/{id}`: `id`, `name`, `category`, `lat`, `lng`, `buildingId` (opsional), `description`, `metadata`.
 - `metadata`: `sources[]`, `verifiedAt` (ISO 8601), `owner`, `assetAttribution[]`, `approved`, `isPlaceholder`.
+- `users/{uid}`: `role` (`mahasiswaItb` | `pengunjung`), `createdAt` (timestamp). Email tidak diduplikasi di Firestore karena sudah ada di Firebase Auth.
+- `activity_logs/{autoId}`: lihat [§15.5](#155-log-aktivitas).
 
 Nilai `category` ditulis persis seperti nama enum kontrak: POI `laboratoryAndLecture` atau `lecture`; fasilitas `toilet`, `musala`, `kantin`, `atm`, `perpustakaan`, `layananAkademik`.
 
@@ -244,7 +330,7 @@ Aturan validasi (PB03, menerapkan [§15.2](#152-alur-sinkronisasi) butir 3):
 | `lat`, `lng` | Angka dalam rentang WGS84 (−90..90, −180..180) | Dokumen diabaikan |
 | `category` | Harus salah satu nilai enum di atas | Dokumen diabaikan |
 | `radiusM` | Angka > 0; jika tidak ada, memakai default 15 m | Dokumen diabaikan |
-| `entrances[]` | Daftar objek dengan `lat`/`lng` valid; kosong selama survei belum dilakukan | Dokumen diabaikan |
+| `entrances[]` | Daftar titik akses dengan `lat`/`lng` valid; boleh kosong. `verified` hanya bernilai benar bila `true` eksplisit (titik sudah dicek di lapangan); selain itu titik dianggap kandidat | Dokumen diabaikan |
 | `trailOrder` | Boleh tidak ada; jika ada wajib bilangan bulat positif | Dokumen diabaikan |
 | `id` ganda dalam satu dataset | Hanya dokumen pertama dipakai | Duplikat diabaikan |
 | `metadata` tidak lengkap (tanpa `sources`, `owner`, atau `verifiedAt` yang valid) | Konten diperlakukan sebagai placeholder dan `approved` dipaksa `false` | Tidak siap rilis (A02) |
@@ -253,17 +339,42 @@ Dokumen yang diabaikan tidak menggagalkan dataset lain. Dataset yang tidak menyi
 
 ### 15.4 Firestore
 
-- Security rules: **baca publik, tulis hanya akun tim yang terautentikasi**.
-- Pengeditan konten dilakukan tim lewat Firebase Console.
-- Aplikasi tidak menulis apa pun ke Firestore.
-- Project Firebase **belum dibuat**.
+Security rules:
+
+- `pois/` dan `facilities/`: baca publik dan tidak dapat ditulis dari aplikasi. Isinya ditulis script seed dengan Admin SDK (tidak melewati security rules) sesuai [§15.2](#152-alur-sinkronisasi), bukan diedit di Console.
+- `users/{uid}`: hanya pengguna dengan `uid` yang sama yang dapat membaca, membuat, mengubah `role`, dan menghapus dokumennya.
+- `activity_logs/`: pengguna yang login hanya dapat **membuat** log dengan `uid` miliknya; rules menolak field di luar daftar §15.5 (`hasOnly`). Pengguna dapat membaca dan menghapus log miliknya untuk keperluan hapus akun; konsekuensinya, pengguna juga dapat menghapus log tanpa menghapus akun karena rules tidak dapat membedakan keduanya (diterima PM, 14 November 2026). Tim membaca log lewat Firebase Console.
+- Aplikasi tidak menulis ke koleksi lain.
+
+Project Firebase `agam-9e704` dibuat PM pada 15 November 2026: Firestore (Standard, `asia-southeast2`, production mode) dan Authentication metode Email/Password; Analytics, Crashlytics, dan Storage tidak diaktifkan. Aplikasi Android `site.agam` terdaftar lewat FlutterFire CLI. Rules ada di `firestore.rules`, diuji di emulator (`tools/firestore/rules.test.mjs`), dan di-deploy lewat Firebase CLI.
+
+### 15.5 Log aktivitas
+
+**[CL]** Daftar event tertutup. Event baru hanya boleh ditambahkan dengan keputusan PM dan pemeriksaan privasi yang sama.
+
+| `type` | Field tambahan | Catatan |
+| --- | --- | --- |
+| `signUp` | `role` | |
+| `login`, `logout` | — | |
+| `appOpen` | `appVersion`, `androidVersion`, `deviceModel` | Hanya saat aplikasi dibuka dari keadaan tertutup (cold start), bukan setiap kembali ke foreground. Membuka aplikasi dari notifikasi trigger tidak boleh meninggalkan jejak waktu trigger |
+| `modeStart`, `modeEnd` | `mode` (`explore` \| `navigation` \| `trail`); `modeEnd` ditambah `durationMin` (dibulatkan ke 5 menit) | Tanggal saja, tanpa jam, dan tanpa alasan berakhir. Jam selesai Trail sama dengan jam tiba di POI terakhir; alasan auto-end mengungkap bahwa pengguna keluar kampus |
+| `featureUsed` | `feature` (`search` \| `poiCard` \| `narration` \| `facilities`) | Tanpa ID POI, kata kunci pencarian, atau tujuan. Tidak dicatat untuk aksi yang berasal dari trigger POI atau dari kartu tiba (Lihat/Dengarkan, autoplay), karena waktunya bertepatan dengan kedatangan di POI (rules §5.1; keputusan 25 November 2026) |
+| `trailCompleted` | — | Tanggal saja, tanpa jam, karena waktu selesai trail sama dengan waktu tiba di POI terakhir |
+
+Field umum: `uid`, `type`, dan waktu. Waktu berupa `at` (timestamp perangkat) untuk `signUp`, `login`, `logout`, `appOpen`, dan `featureUsed`; berupa `date` (YYYY-MM-DD, tanpa jam) untuk `modeStart`, `modeEnd`, dan `trailCompleted`. Event yang waktunya dapat bertepatan dengan kedatangan di POI tertentu hanya boleh membawa tanggal.
+
+**Dilarang dicatat dalam bentuk apa pun:** koordinat atau posisi, ID atau nama POI, tujuan navigasi, titik awal rute, urutan kunjungan, kata kunci pencarian, dan alasan sesi berakhir. Statistik per POI, jika kelak dibutuhkan, hanya berupa penghitung agregat tanpa `uid` dan tanpa waktu, dan memerlukan keputusan PM.
+
+Log yang dibuat saat offline disimpan dalam antrean Firestore di perangkat dan terkirim saat online. Log dihapus tim paling lambat setelah penilaian akhir mata kuliah; tanggal pastinya tercatat di [§22](#22-hal-tertunda-tbd).
 
 ## 16. Privasi
 
-- Tidak ada login, akun, atau role pengguna di aplikasi.
-- Tidak ada analytics, crash reporting, atau logging yang membawa koordinat pengguna. Penambahan SDK pihak ketiga yang dapat mengirim lokasi memerlukan keputusan PM.
-- Request jaringan yang diperbolehkan hanya pengambilan data Firestore (tanpa parameter lokasi).
+- **[CL]** Login wajib dengan email dan password (Firebase Auth). Data akun hanya untuk keperluan internal tim ([§4](#4-tujuan-dan-non-tujuan)). Verifikasi email tidak diwajibkan; lupa password memakai email reset dari Firebase Auth.
+- Layar daftar wajib menampilkan pemberitahuan tentang data yang dicatat, tujuannya, dan pernyataan bahwa posisi tidak pernah dikirim. Pengguna harus menyetujuinya sebelum akun dibuat. Teks pemberitahuan disusun FE dan wajib disetujui PM sebelum rilis.
+- Log aktivitas mengikuti daftar tertutup [§15.5](#155-log-aktivitas). Tidak ada analytics pihak ketiga, crash reporting, atau logging yang membawa koordinat pengguna. Penambahan SDK pihak ketiga yang dapat mengirim lokasi atau data perangkat memerlukan keputusan PM.
+- Request jaringan yang diperbolehkan: Firebase Auth, pengambilan data Firestore (tanpa parameter lokasi), serta penulisan `users/{uid}` dan `activity_logs` sesuai [§15.4](#154-firestore) dan §15.5.
 - Pengguna dapat menghapus progres lokal.
+- Pengguna dapat menghapus akun dari Pengaturan. Hapus akun menghapus profil `users/{uid}`, seluruh log miliknya, data lokal milik akun tersebut, lalu akun Firebase Auth.
 
 ## 17. Arsitektur Teknis
 
@@ -275,14 +386,35 @@ Dokumen yang diabaikan tidak menggagalkan dataset lain. Dataset yang tidak menyi
 | Peta | Tile vektor OSM (PMTiles) dibundel + renderer Flutter | Lihat §14 |
 | Routing | Graf jalur kampus (GeoJSON) + Dijkstra/A* di perangkat | Lihat §11 |
 | Data | Firestore (`cloud_firestore`) + JSON bawaan + cache lokal | Lihat §15 |
-| Audio | Pemutar audio untuk file narasi/prompt; `flutter_tts` untuk arahan navigasi | Kontrol dari notifikasi |
-| Video | Pemutar video di kartu POI | GKUB, GKUT |
-| Penyimpanan lokal | Pilihan engineering (mis. shared_preferences/SQLite) | Hanya progres & pengaturan |
+| Akun | Firebase Auth (email + password) | Sesi login tersimpan di perangkat sehingga aplikasi tetap dapat dipakai offline setelah login pertama |
+| Log aktivitas | Firestore (`activity_logs`) | Bukan Firebase Analytics; lihat §15.5 |
+| Audio | `just_audio` + `audio_service` untuk file narasi/prompt/tiba; `flutter_tts` untuk arahan navigasi | Kontrol dari notifikasi dan lock screen |
+| Notifikasi trigger | `flutter_local_notifications` | Getar, prompt, tombol Dengarkan/Lihat/Lewati |
+| Video | `video_player` untuk pemutar video di kartu POI (aset APK) | GKUB, GKUT |
+| Penyimpanan lokal | `shared_preferences` (pengaturan); `path_provider` untuk direktori cache data POI | Hanya progres & pengaturan |
 | CI/CD | GitHub Actions → build APK → GitHub Releases | Repo `SebastianAben/AGAM` |
 | Tools | Figma, GitHub, Flutter DevTools, `flutter_test`, `integration_test`, Android Emulator, perangkat Android fisik | |
 | AI development tools | ChatGPT/Codex, Claude/Claude Code, Gemini | Output ditinjau, diuji, dan dicatat tim |
 
-Versi Flutter/Dart, application ID, dan SDK Android sudah ditetapkan saat PB01 (2 November 2026). Hal yang masih **wajib diverifikasi**, bukan diasumsikan: versi package yang ditambahkan, kompatibilitas renderer tile vektor, serta ukuran akhir APK.
+Versi Flutter/Dart, application ID, dan SDK Android sudah ditetapkan saat PB01 (2 November 2026).
+
+Package LA yang ditambahkan 10 November 2026 (versi diperiksa di pub.dev dan dikunci `pubspec.lock`): `geolocator` ^14.1.2, `flutter_local_notifications` ^22.3.3 (bukan 23.0.0 yang baru dirilis 6 November 2026), `just_audio` ^0.10.6, `audio_service` ^0.18.19, `shared_preferences` ^2.5.6, `path_provider` ^2.1.6; dev: `fake_async` ^1.3.3. Untuk PB12 ditambahkan `flutter_tts` ^4.2.5 (sudah tercantum di stack). `audio_service` membawa `flutter_cache_manager` (http, sqflite) secara transitif untuk gambar sampul; AGAM tidak memberi URL gambar sehingga tidak ada request jaringan dari jalur ini. Sampai 14 November 2026 manifest utama aplikasi tidak mendeklarasikan `INTERNET`; manifest juga secara eksplisit menghapus `ACCESS_BACKGROUND_LOCATION`. Manifest hasil merge build debug (10 November 2026) tidak memuat `ACCESS_BACKGROUND_LOCATION`; `INTERNET` di sana berasal dari manifest debug bawaan Flutter (alat pengembangan) dan `ACCESS_NETWORK_STATE` dari `androidx.media3` (backend `just_audio`). Manifest build rilis belum diperiksa. Sejak 15 November 2026 manifest utama mendeklarasikan `INTERNET` untuk Firebase (PB03). Hal yang masih **wajib diverifikasi**, bukan diasumsikan: versi package yang ditambahkan, kompatibilitas renderer tile vektor, serta ukuran akhir APK.
+
+Untuk Firestore (PB03, 15 November 2026) ditambahkan `firebase_core` ^5.1.0 dan `cloud_firestore` ^7.1.0 (diselesaikan `pub add`), dev: `fake_cloud_firestore` ^4.5.0; Gradle plugin `com.google.gms.google-services` 4.4.4 dipasang FlutterFire CLI dan kompatibilitasnya dengan AGP 9.1.0 telah diverifikasi lewat build APK debug demo 16 November 2026 (bukan rilis). Untuk akun dan log aktivitas (PB21–PB22) masih diperlukan `firebase_auth` dan `device_info_plus` (untuk `deviceModel` dan `androidVersion`). Versinya wajib diverifikasi sebelum ditambahkan (`rules.md` §4.2).
+
+**Interaksi UI (16 November 2026):** package resmi Flutter `animations` **3.0.0**
+(versi/API diperiksa di pub.dev dan source package) digunakan untuk transisi tab.
+Dependency baru murni Dart/UI: `material_ui` 1.11.0, `cupertino_ui` 1.1.6 dan
+`flutter_localizations` dari SDK, seluruhnya dikunci di lockfile tanpa upgrade
+package existing. SDK package memerlukan Flutter ≥3.47.0 dan kompatibel dengan
+3.47.9 proyek. Tidak menambah plugin lokasi, analytics, logging atau request
+jaringan runtime. Panel memakai DraggableScrollableSheet/Scrollbar native;
+pressed feedback 140 ms, tab 180 ms, panel/kamera 220 ms (exit 160 ms), dengan
+reduced motion. Aksi kartu dan notifikasi memakai TriggerResponder yang sama;
+auto-play kartu memakai SettingsStore aktif. AudioService kontrak tetap; kemampuan
+seek opsional ada pada implementasi LA. Media belum approved ditolak pada layanan
+audio, termasuk jalur prompt/narasi otomatis. Ini implementasi parsial, bukan
+acceptance F04 atau penyelesaian PBI.
 
 ## 18. Layar (Screen/State)
 
@@ -296,7 +428,8 @@ Versi Flutter/Dart, application ID, dan SDK Android sudah ditetapkan saat PB01 (
 | UI06 | Navigation | Rute, jarak, ETA, arahan visual & suara | F06, F04 |
 | UI07 | Arrival & Recommendation | Konfirmasi tiba, rekomendasi POI berikutnya, fasilitas terdekat | F06, F07 |
 | UI08 | Orientation Trail | Urutan 10 POI, progres, lencana | F08 |
-| UI09 | Fasilitas & Pengaturan | Daftar fasilitas per kategori, auto-play audio, akhiri sesi, hapus progres | A01, A03, F04, F07 |
+| UI09 | Fasilitas & Pengaturan | Daftar fasilitas per kategori, auto-play audio, akhiri sesi, hapus progres; **[CL]** info akun (email, role), logout, hapus akun | A01, A03, F04, F07 |
+| UI10 | **[CL]** Daftar & Login | Daftar (email, password, pilih role, persetujuan pemberitahuan privasi), login, lupa password, pesan offline "Butuh koneksi internet untuk login pertama kali" | A01 |
 
 ## 19. Kompatibilitas Android dan Perangkat Uji
 
@@ -316,7 +449,7 @@ Komposisi perangkat uji yang disarankan: satu Samsung/Pixel, satu Xiaomi/Oppo, s
 ## 20. Distribusi
 
 - APK dibangun oleh GitHub Actions dan dirilis melalui GitHub Releases. Link/QR Releases dipakai untuk deliverable *Final Working Product*.
-- Tidak ada server backend milik tim.
+- Tidak ada server backend milik tim. Akun dan log memakai layanan terkelola Firebase.
 
 ## 21. Bahasa dan Aksesibilitas
 
@@ -329,14 +462,17 @@ Item berikut **belum diputuskan atau belum tersedia**. Agent dilarang mengisinya
 
 | Item | Status | Pemilik |
 | --- | --- | --- |
-| Koordinat pintu masuk tiap gedung | Menunggu survei lapangan | Tim |
-| Dataset fasilitas (toilet, musala, kantin, ATM, perpustakaan, layanan akademik) | Akan dikumpulkan | Tim konten |
-| Urutan Orientation Trail | Belum ditetapkan | Tim |
-| Project Firebase | Belum dibuat | PM / Backend |
-| Konten teks, foto, audio, video P01–P10 | Belum tersedia di repository | Tim konten |
+| Titik akses tiap gedung | 41 kandidat titik akses untuk 10 gedung dan 4 kandidat lorong tembus (Labtek V, VII, VIII, Labtek X & XI) dari poligon gedung OSM dan graf jalan kaki draf (24 November 2026), dikoreksi lewat peninjauan peta oleh pengguna 25 November 2026 (8 titik ditambah, 6 dihapus; `tools/routing/access_overrides.json`); semuanya `verified: false`; daftar cek di `task-implementation/backend/PB11-access-point-field-check.md`. Verifikasi lapangan, penghapusan titik yang bukan jalan masuk, dan penambahan yang belum ada tertunda | Tim |
+| Dataset fasilitas (toilet, musala, kantin, ATM, perpustakaan, layanan akademik) | Versi pertama 26 item disetujui SebastianAben 24 November 2026: toilet/musala/kantin dari daftar fasilitas tiap POI (titik gedung), ATM/perpustakaan/layanan akademik dari informasi pengguna (titik ditandai di peta AGAM). Letak persis dan verifikasi lapangan tetap tertunda | Tim konten |
+| Urutan Orientation Trail | Ditetapkan 24 November 2026 (§12); jarak dihitung dari graf draf dan dapat berubah setelah graf dikoreksi | Tim |
+| Project Firebase (Firestore + Authentication Email/Password) | Dibuat 15 November 2026 (`agam-9e704`); seed pertama 15 November 2026; seed otomatis lewat GitHub Actions berjalan sukses sejak 24 November 2026 (push `pois.json` ke `dev`) | PM / Backend |
+| Konten teks, foto, audio, video P01–P10 | 10/10 POI disetujui pemilik konten dan ditandai approved di JSON (23 November 2026, rincian di implementationPhases PB09); video hanya P06 GKUB (opsional, §23). Pencatatan keputusan di Change Log PRD resmi, hak aset, durasi narasi, dan playback di perangkat tetap perlu audit/uji | Tim konten / PM |
 | Daftar perangkat uji | Belum ditetapkan | QA |
-| Margin histeresis dan kalibrasi radius per POI | Default engineering margin 5 m dan jeda sampel maksimum 10 detik diterapkan PB05-LA-01; kalibrasi lapangan tetap tertunda | Developer / QA |
-| Batas area kampus (poligon/bounding box) | Ditetapkan saat PB04 | Developer |
+| Margin histeresis, kalibrasi radius per POI, dan parameter interval adaptif | Default engineering margin 5 m dan jeda sampel maksimum 10 detik (PB05-LA-01) serta parameter interval adaptif [§9.2](#92-logika-trigger) diterapkan; kalibrasi lapangan tetap tertunda | Developer / QA |
+| Batas area kampus (poligon/bounding box) | Diputuskan 24 November 2026: batas produk = bounds engineering OSM + 200 m (§9.3). Verifikasi lapangan dan poligon presisi tetap tertunda | Developer |
+| Success metric | Belum ditetapkan. Log §15.5 disusun agar dapat dipakai metrik umum (pengguna aktif, pemakaian mode dan fitur, trail selesai); event yang tidak dipakai metrik mana pun dihapus setelah metrik ditetapkan | PM |
+| Tanggal penghapusan log aktivitas | Paling lambat setelah penilaian akhir mata kuliah; tanggal pasti belum ditetapkan | PM |
+| Teks pemberitahuan privasi layar daftar (UI10) | Diperbarui 28 November 2026 di `AuthScreen.consentText` agar selaras penuh dengan §15.5/§16 (email, peran, daftar tertutup log termasuk versi & model perangkat pada `appOpen`, dan tujuan evaluasi internal tim AGAM); menunggu konfirmasi redaksi akhir PM | FE / PM |
 
 ## 23. Perbedaan terhadap PRD Baseline W9
 
@@ -351,9 +487,33 @@ Perubahan berikut wajib dicatat PM pada Change Log PRD resmi.
 | Peta | OSM (tanpa rincian) | Tile vektor buatan sendiri, dibundel | Offline penuh (A03), tanpa request ke server tile, sesuai kebijakan tile OSM |
 | Routing | Tidak dirinci | Di perangkat dengan graf jalur kampus | Server routing menerima lokasi pengguna (A01, NG04) |
 | Media | Firestore + JSON lokal (tidak dirinci) | Media dibundel di APK; Firestore hanya data teks | Offline dan bebas ketergantungan penyimpanan cloud |
-| Sumber suara | `flutter_tts` untuk narasi, prompt, arahan | Narasi & prompt = file audio; TTS hanya arahan navigasi | Konsistensi suara dan kemandirian dari data TTS perangkat |
+| F03 / tabel POI — video GKUB & GKUT | Video narasi wajib untuk GKUB dan GKUT | Video opsional; konten GKUB/GKUT boleh disetujui tanpa video dan video ditampilkan bila tersedia | Keputusan PM 23 November 2026 (disampaikan pemilik konten) |
+| Sumber suara | `flutter_tts` untuk narasi, prompt, arahan | Narasi & prompt = file audio; TTS untuk arahan navigasi dan pengumuman tiba di fasilitas (24 November 2026) | Konsistensi suara dan kemandirian dari data TTS perangkat |
 | Mode aplikasi | Tidak dirinci | Empat mode (§6) dan auto-end 30 menit | Memperjelas kapan lokasi dibaca dan trigger aktif |
 | PB17 | Cache konten & tile peta saat offline | Tile sudah dibundel sejak S1; PB17 menjadi verifikasi offline konten | Keputusan tile |
+| Akun pengguna | Tidak disebut di requirement, backlog, maupun sprint plan | Login wajib (email + password), role Mahasiswa ITB/Pengunjung, hapus akun (§4, §16) | Pencatatan jumlah pengguna dan success metric oleh tim (keputusan PM 6 November 2026) |
+| Demo internal sementara | Tidak dirinci | Sempat memakai flag `AGAM_INTERNAL_DEMO=true` (14 November 2026) untuk integrasi awal; **dihapus 26 November 2026** sehingga seluruh build kini build produk utuh dengan login wajib dan Firebase | Keputusan pengguna/PM 26 November 2026 agar layar login dan akun menjadi bagian utuh alur aplikasi mobile |
+| Area kontak dan visual trigger | Tidak dirinci | Titik POI menjadi area kontak radius 5 m; radius pendekatan dataset tetap 15 m (efektif masuk 20 m, keluar >25 m). Explore/Trail menampilkan kartu terdekat + audio saat resumed, notifikasi + audio di latar belakang | Instruksi PM 16 November 2026 untuk memperluas kontak dan memperjelas respons di layar |
+| Uji developer trigger | Tidak dirinci | Sakelar Mode demo/trial di Pengaturan build internal mereset/melewati cooldown; pengunci saat tetap di POI dan validasi lokasi/dwell dipertahankan | Instruksi PM 16 November 2026 agar pengujian ulang tidak menunggu 10 menit; default mati, hanya memori |
+| Log aktivitas | Tidak disebut | Daftar event tertutup tanpa data lokasi (§15.5) | Success metric; tetap mematuhi NG04/A01 |
+| Batas area layanan produk | Kampus Ganesha + ±200 m, poligon ditetapkan saat PB04 | Bounds engineering OSM way/177629384 v19 + 200 m dipakai sebagai batas produk (§9.3); belum diverifikasi lapangan | Keputusan tim 24 November 2026 agar trigger dan navigasi aktif di build produk |
+| Backlog | PB01–PB20 | Ditambah PB21 (akun dan login wajib) dan PB22 (log aktivitas) pada Sprint 3; nomor PB01–PB20 tidak berubah | Fitur akun sebelum Feature Freeze |
+| Layar | UI01–UI09 | Ditambah UI10 Daftar & Login; UI09 memuat akun, logout, dan hapus akun | Akun |
+| Offline (A03) | Informasi tersedia tanpa jaringan | Tetap, tetapi login pertama memerlukan internet | Konsekuensi login wajib; A03 berprioritas Should |
+| Firestore | Sumber data konten | Ditambah profil pengguna dan log aktivitas | Akun |
+| Progres trail | Disimpan lokal | Tetap lokal, dipisahkan per akun di perangkat; tidak disinkronkan | Pergantian akun di perangkat yang sama |
+| F06 / §11 — tujuan rute | Pintu masuk gedung/fasilitas | Titik akses: pintu masuk atau sisi lantai 1 yang terbuka ke jalur; boleh lebih dari satu per gedung; kandidat dihitung dari graf lalu diverifikasi di lapangan (`verified`). Rute boleh melewati lorong lantai 1 yang menyambung selasar antar-gedung | Sebagian besar gedung kampus tidak memiliki pintu masuk tunggal (keputusan 24 November 2026) |
+| §10 — pengumuman tiba fasilitas | Tidak dirinci; TTS hanya untuk arahan navigasi | TTS runtime mengumumkan tiba di fasilitas; fallback visual bila suara `id-ID` tidak tersedia | Fasilitas tidak memiliki file audio tiba (keputusan 24 November 2026) |
+| F08 / §12 — urutan dan awal trail | Urutan belum ditetapkan; usulan dari gerbang depan | Keliling terpendek antar-titik akses; trail dimulai dari POI terdekat dengan pengguna lalu searah putaran | Trail dapat dimulai dari mana saja tanpa menyeberang kampus dulu (keputusan 24 November 2026) |
+| F07 — kapan rekomendasi muncul | Setelah kartu POI ditutup atau setelah tiba di tujuan | Hanya setelah tiba di tujuan (kartu tiba); menutup kartu POI di peta tidak memunculkan "Lanjut ke mana?" | Keputusan pengguna/PM 26 November 2026 |
+| §11 — titik awal dan selasar | Titik awal ditempel ke ruas jalur terdekat; hanya lorong kandidat hasil script | Pintu gedung tempat pengguna berada ikut dicoba sebagai titik awal; selasar OSM `highway=corridor` menjadi lorong kandidat; garis lurus luar jaringan berbobot 2× dan digambar abu-abu | Rute dari dalam gedung memutar (Labtek V → VII 253 m) atau menembus gedung; keputusan pengguna/PM 26 November 2026 |
+| F06/F07 — preview rute | Rute satu ketukan langsung memulai navigasi | Setiap tombol Rute (kartu POI, detail, rekomendasi, hasil Cari, Trail) membuka preview rute di peta tanpa memulai sesi; sesi navigasi dimulai saat Mulai rute ditekan, di layar yang sama, dan narasi yang sedang diputar dijeda | Keputusan pengguna/PM 26 November 2026 (preview gaya Google Maps) |
+| §14 — tampilan atribusi peta | Atribusi OSM (ODbL) wajib tampil di peta (tanpa rincian bentuk) | Tampil penuh saat peta muncul, menciut menjadi tombol ⓘ setelah ±5 detik atau sentuhan pertama pada peta; ⓘ membukanya lagi; tautan OSM dan OpenMapTiles tetap | Keputusan pengguna/PM 26 November 2026; sesuai OSMF Attribution Guidelines revisi 10 September 2026 (oldid=14786) yang diperiksa PM (§14) |
+| §9.2 / §12 — geofence titik akses & check-in tiba Trail | Trigger geofence hanya terhadap pusat POI (≤20 m masuk, >25 m keluar); check-in Trail hanya dari trigger geofence | Ditambah deteksi titik akses `entrances[]` (≤10 m masuk, >15 m keluar, tetap dwell ≥5 dtk & akurasi ≤20 m) serta auto check-in Trail saat `NavigationStatus.arrived` pada POI tujuan (Opsi 1B) | Keputusan PM 28 November 2026; 33/41 titik akses berjarak >20 m dari pusat gedung sehingga tiba di pintu gedung sebelumnya gagal mencatat check-in Trail; jarak terdekat antar-pintu POI berbeda 20,0 m sehingga radius 10 m tidak tumpang tindih |
+| §11 — navigasi fasilitas dalam gedung | Semua fasilitas diarahkan langsung ke titik koordinat fasilitas (`facility.position`) | Dua tahap: fasilitas luar ruang mandiri (`buildingId == null`) tetap ke koordinat langsung; fasilitas dalam gedung (`buildingId != null`, 22 item) diarahkan ke titik akses gedung induk (`building.entrances[]`) + petunjuk indoor `locationHint` di UI06 Preview dan UI07 `ArrivalCard` | Keputusan PM 28 November 2026; titik fasilitas dalam gedung berada di tengah gedung (>20–53 m dari jalur/pintu) sehingga navigasi tidak dapat mencapai status tiba ≤15 m dari luar |
+| §10 / §19 — penguncian suara TTS `id-ID` offline & notifikasi UI06 | `setLanguage('id-ID')` tanpa pemilihan suara eksplisit; hanya UI07 fasilitas yang menampilkan catatan suara hilang | Memilih & mengunci suara lokal/offline `id-ID`/`in-ID` lewat `getVoices()` + `setVoice(...)`; tanpa suara `id-ID` offline tetap senyap (dilarang fallback EN-US), menampilkan panduan inline yang dapat ditutup di UI06, dan cek ulang saat `resumed` | Keputusan PM 28 November 2026; mencegah arahan Bahasa Indonesia dibacakan dengan aksen Inggris (EN-US) saat paket suara Indonesia belum terpasang |
+| §16 — teks pemberitahuan privasi UI10 | Hanya menyebut lokasi diproses di perangkat dan persetujuan ringkas tanpa merinci data akun/log | `AuthScreen.consentText` diperluas merinci email, peran, log aktivitas terbatas §15.5 (termasuk versi & model perangkat pada `appOpen`), dan tujuan evaluasi internal tim AGAM (redaksi akhir menunggu konfirmasi PM) | Keputusan PM 28 November 2026 agar selaras penuh dengan kewajiban transparansi §15.5 dan §16 |
+| §11 / UI06 — kartu status navigasi aktif (`TripStatusCard`) | Menampilkan `Sisa X m · ~N menit`, tombol `Akhiri rute`, dan label `Tujuan perkiraan` saat navigasi aktif | Redesain gaya Google Maps: ETA menonjol (`N menit` / `< 1 menit`), baris sekunder `{jarak} · Tiba HH.mm` (tanpa kata `Sisa` dan tanpa `~`), nama destinasi akhir (+ petunjuk indoor fasilitas), tombol pill merah solid `Akhiri` (tooltip `Akhiri rute`); label `Tujuan perkiraan` hanya tampil di layar Preview rute (tidak diulang di kartu jalan aktif) | Keputusan PM 28 November 2026 agar kartu navigasi aktif lebih mudah dipindai sekilas sambil berjalan kaki |
 
 ## 24. Koreksi Minor terhadap Dokumen Resmi
 

@@ -1,0 +1,613 @@
+import 'dart:async';
+
+import 'package:agam/contracts/contracts.dart';
+import 'package:agam/contracts/fakes/fake_data.dart';
+import 'package:agam/contracts/fakes/fake_la_services.dart';
+import 'package:agam/ui/explore_map_screen.dart';
+import 'package:agam/ui/search_route_screen.dart';
+import 'package:agam/ui/walking_navigation_screen.dart';
+import 'package:agam/ui/widgets/offline_campus_map.dart';
+import 'package:agam/ui/widgets/recommendation_card.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+// SINTETIS: fake POIs/fasilitas, rekomendasi tetap, sesi dan lokasi palsu.
+
+class _StubRecommendations implements RecommendationService {
+  _StubRecommendations(this.result);
+
+  final Recommendation result;
+  final calls =
+      <({GeoPoint from, String? afterPoiId, String? afterFacilityId})>[];
+
+  @override
+  Future<Recommendation> recommend({
+    required GeoPoint from,
+    String? afterPoiId,
+    String? afterFacilityId,
+  }) async {
+    calls.add((
+      from: from,
+      afterPoiId: afterPoiId,
+      afterFacilityId: afterFacilityId,
+    ));
+    return result;
+  }
+}
+
+class _ManualNavigation implements NavigationController {
+  _ManualNavigation(this._current);
+
+  final _states = StreamController<NavigationState>.broadcast();
+  NavigationState _current;
+  final started = <NavigationTarget>[];
+
+  void emit(NavigationState state) {
+    _current = state;
+    _states.add(state);
+  }
+
+  @override
+  NavigationState get current => _current;
+
+  @override
+  Stream<NavigationState> get state => _states.stream;
+
+  @override
+  Future<void> start(NavigationTarget target) async {
+    started.add(target);
+    emit(
+      NavigationState(
+        status: NavigationStatus.onRoute,
+        target: target,
+        route: WalkingRoute(
+          path: [_here.position, target.point],
+          distanceM: 120,
+          eta: const Duration(minutes: 2),
+          steps: const [],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Future<void> stop() async => emit(const NavigationState.idle());
+}
+
+class _Session implements SessionController {
+  final _states = StreamController<SessionState>.broadcast();
+  final _triggers = StreamController<PoiTriggerEvent>.broadcast();
+  @override
+  SessionState current = const SessionState.idle();
+  @override
+  Stream<SessionState> get state => _states.stream;
+  @override
+  Stream<PoiTriggerEvent> get triggers => _triggers.stream;
+
+  void fire(String id) => _triggers.add(
+    PoiTriggerEvent(
+      poiId: id,
+      mode: current.mode,
+      response: TriggerResponse.full,
+      triggeredAt: DateTime.utc(2026),
+    ),
+  );
+
+  @override
+  Future<void> start(SessionMode mode) async {
+    current = SessionState(mode: mode, startedAt: DateTime(2026));
+    _states.add(current);
+  }
+
+  @override
+  Future<void> end() async {
+    current = const SessionState.idle();
+    _states.add(current);
+  }
+}
+
+class _StaticLocation implements LocationService {
+  _StaticLocation(this.lastFix);
+  @override
+  final LocationFix? lastFix;
+  @override
+  Stream<LocationFix> get positions => const Stream.empty();
+}
+
+final _here = fakePois.first;
+final _next = fakePois[1];
+final _later = fakePois[2];
+
+Recommendation _full() => Recommendation(
+  poiIds: [_next.id, _later.id],
+  nearbyFacilities: [
+    FacilityDistance(facility: fakeFacilities[0], distanceM: 42),
+    FacilityDistance(facility: fakeFacilities[1], distanceM: 1234),
+  ],
+);
+
+AppServices _services({
+  required RecommendationService recommendations,
+  NavigationController? navigation,
+  SessionController? session,
+  LocationService? location,
+}) {
+  final fake = AppServices.fake(tick: const Duration(hours: 1));
+  return AppServices(
+    permissions: fake.permissions,
+    location: location ?? fake.location,
+    pois: fake.pois,
+    session: session ?? _Session(),
+    audio: fake.audio,
+    voice: fake.voice,
+    settings: fake.settings,
+    auth: fake.auth,
+    activity: FakeActivityLogger(),
+    map: fake.map,
+    routing: fake.routing,
+    navigation: navigation ?? fake.navigation,
+    search: fake.search,
+    recommendations: recommendations,
+    trail: fake.trail,
+    facilities: fake.facilities,
+  );
+}
+
+List<FeatureUsedEvent> _featureUsed(AppServices services) =>
+    (services.activity as FakeActivityLogger).events
+        .whereType<FeatureUsedEvent>()
+        .toList();
+
+void _phone(WidgetTester tester, {double height = 900, double width = 430}) {
+  tester.view.physicalSize = Size(width, height);
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.reset);
+}
+
+/// The live map keeps animating, so pumpAndSettle would never return.
+Future<void> _frames(WidgetTester tester, [int count = 6]) async {
+  for (var i = 0; i < count; i++) {
+    await tester.pump(const Duration(milliseconds: 100));
+  }
+}
+
+Widget _app(Widget child, {bool reduceMotion = false}) => MaterialApp(
+  home: Builder(
+    builder: (context) => MediaQuery(
+      data: MediaQuery.of(context).copyWith(disableAnimations: reduceMotion),
+      child: child,
+    ),
+  ),
+);
+
+final _card = find.byKey(const ValueKey('recommendation-card'));
+
+Iterable<double> _opacities(WidgetTester tester) => tester
+    .widgetList<Opacity>(
+      find.ancestor(
+        of: find.text(RecommendationCard.title),
+        matching: find.byType(Opacity),
+      ),
+    )
+    .map((o) => o.opacity);
+
+LocationFix _fixAt(GeoPoint point) =>
+    LocationFix(position: point, accuracyM: 5, timestamp: DateTime.utc(2026));
+
+void main() {
+  group('setelah tiba (halaman pencarian)', () {
+    Future<(AppServices, _ManualNavigation)> arrive(
+      WidgetTester tester,
+      RecommendationService recommendations, {
+      bool reduceMotion = false,
+    }) async {
+      _phone(tester, height: 1400);
+      final target = NavigationTarget.poi(_here);
+      final navigation = _ManualNavigation(
+        NavigationState(status: NavigationStatus.onRoute, target: target),
+      );
+      final services = _services(
+        recommendations: recommendations,
+        navigation: navigation,
+        location: _StaticLocation(_fixAt(_here.position)),
+      );
+      await tester.pumpWidget(
+        _app(SearchRouteScreen(services: services), reduceMotion: reduceMotion),
+      );
+      await _frames(tester, 4);
+      expect(_card, findsNothing);
+      navigation.emit(
+        NavigationState(status: NavigationStatus.arrived, target: target),
+      );
+      await tester.pump();
+      await tester.pump();
+      return (services, navigation);
+    }
+
+    testWidgets('Rute membuka pratinjau; Mulai rute memulai navigasi', (
+      tester,
+    ) async {
+      _phone(tester, height: 1400);
+      final navigation = _ManualNavigation(const NavigationState.idle());
+      final services = _services(
+        recommendations: _StubRecommendations(_full()),
+        navigation: navigation,
+        location: _StaticLocation(_fixAt(_here.position)),
+      );
+      await tester.pumpWidget(
+        _app(SearchRouteScreen(services: services, initialDestination: _next)),
+      );
+      await _frames(tester, 4);
+      await tester.tap(find.widgetWithText(FilledButton, 'Rute').first);
+      await _frames(tester, 4);
+      // The preview shows the route; nothing has started yet.
+      expect(find.byType(WalkingNavigationScreen), findsOneWidget);
+      expect(navigation.started, isEmpty);
+      expect(services.session.current.mode, SessionMode.none);
+      await tester.tap(find.text(WalkingNavigationScreen.startLabel));
+      await _frames(tester, 4);
+      expect(navigation.started.single.id, _next.id);
+      expect(services.session.current.mode, SessionMode.navigation);
+      expect(find.byType(WalkingNavigationScreen), findsOneWidget);
+
+      List<GeoPoint> visiblePath() => tester
+          .widget<OfflineCampusMap>(
+            find.descendant(
+              of: find.byType(WalkingNavigationScreen),
+              matching: find.byType(OfflineCampusMap),
+            ),
+          )
+          .routePath;
+      final route = navigation.current.route!;
+      expect(visiblePath(), route.path);
+
+      final replacement = [_later.position, _next.navigationPoint];
+      const instruction =
+          'Belok kanan, lewat lorong dalam gedung (belum diverifikasi).';
+      navigation.emit(
+        NavigationState(
+          status: NavigationStatus.onRoute,
+          target: navigation.current.target,
+          route: WalkingRoute(
+            path: replacement,
+            distanceM: 60,
+            eta: const Duration(minutes: 1),
+            steps: [
+              RouteStep(
+                maneuver: Maneuver.turnRight,
+                position: replacement.first,
+                distanceM: 60,
+                instruction: instruction,
+              ),
+            ],
+          ),
+          currentStepIndex: 0,
+          remainingDistanceM: 43,
+          remainingEta: const Duration(seconds: 34),
+        ),
+      );
+      await _frames(tester);
+      expect(visiblePath(), replacement);
+      expect(find.byIcon(Icons.turn_right_rounded), findsOneWidget);
+      expect(find.text(instruction), findsOneWidget);
+      expect(find.text('< 1 menit'), findsOneWidget);
+      expect(find.textContaining('43 m · Tiba '), findsOneWidget);
+
+      final target = navigation.current.target;
+      navigation.emit(
+        NavigationState(status: NavigationStatus.error, target: target),
+      );
+      await _frames(tester);
+      expect(visiblePath(), isEmpty);
+
+      navigation.emit(
+        NavigationState(status: NavigationStatus.arrived, target: target),
+      );
+      await _frames(tester, 5);
+      // UI07 now takes the trip card's place on the same map.
+      expect(
+        find.descendant(
+          of: find.byType(WalkingNavigationScreen),
+          matching: find.text('Anda telah tiba di ${_next.name}'),
+        ),
+        findsOneWidget,
+      );
+      await tester.pumpWidget(const SizedBox.shrink());
+      await _frames(tester, 2);
+    });
+
+    testWidgets('UI07 menampilkan POI dan fasilitas; Rute memulai navigasi', (
+      tester,
+    ) async {
+      final recommendations = _StubRecommendations(_full());
+      final (services, navigation) = await arrive(tester, recommendations);
+      await _frames(tester, 4);
+
+      expect(find.text(RecommendationCard.title), findsOneWidget);
+      final call = recommendations.calls.single;
+      expect(call.afterPoiId, _here.id);
+      expect(call.from, _here.position);
+      // The search results below list every POI too; look inside the card.
+      Finder inCard(String text) =>
+          find.descendant(of: _card, matching: find.text(text));
+      expect(inCard(_next.name), findsOneWidget);
+      expect(inCard(_later.name), findsOneWidget);
+      expect(inCard(_here.name), findsNothing);
+      // The first is the nearest; distance is an approximate straight line.
+      expect(find.textContaining('Terdekat · ± '), findsOneWidget);
+      expect(find.textContaining('Belum dikunjungi · ± '), findsOneWidget);
+      expect(find.text('${fakeFacilities[0].name} · ± 40 m'), findsOneWidget);
+      expect(find.text('${fakeFacilities[1].name} · ± 1,2 km'), findsOneWidget);
+
+      final route = find.byKey(ValueKey('recommendation-route-${_next.id}'));
+      await tester.ensureVisible(route);
+      await tester.tap(route);
+      await _frames(tester, 4);
+      // Rute opens the preview of the recommended POI; Mulai starts it.
+      expect(find.byType(WalkingNavigationScreen), findsOneWidget);
+      expect(navigation.started, isEmpty);
+      await tester.tap(find.text(WalkingNavigationScreen.startLabel));
+      await _frames(tester, 4);
+      expect(navigation.started.single.id, _next.id);
+      expect(services.session.current.mode, SessionMode.navigation);
+      expect(find.byType(WalkingNavigationScreen), findsOneWidget);
+      expect(_card, findsNothing);
+      // Shown right after arrival: nothing logged (PRD §15.5, rules §5.1).
+      expect(_featureUsed(services), isEmpty);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+
+    testWidgets('tanpa rekomendasi: pesan tenang, tanpa item palsu', (
+      tester,
+    ) async {
+      final (services, _) = await arrive(
+        tester,
+        _StubRecommendations(
+          const Recommendation(poiIds: [], nearbyFacilities: []),
+        ),
+      );
+      await _frames(tester, 4);
+
+      expect(find.text(RecommendationCard.emptyMessage), findsOneWidget);
+      expect(
+        find.byWidgetPredicate(
+          (w) =>
+              w.key is ValueKey<String> &&
+              (w.key! as ValueKey<String>).value.startsWith(
+                'recommendation-route-',
+              ),
+        ),
+        findsNothing,
+      );
+      expect(_featureUsed(services), isEmpty);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+
+    testWidgets('masuk dengan fade dan naik singkat', (tester) async {
+      await arrive(tester, _StubRecommendations(_full()));
+      expect(_card, findsOneWidget);
+      expect(_opacities(tester).any((o) => o < 1), isTrue);
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(_opacities(tester).every((o) => o == 1), isTrue);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+
+    testWidgets('reduced motion: tampil tanpa animasi', (tester) async {
+      await arrive(tester, _StubRecommendations(_full()), reduceMotion: true);
+      expect(_card, findsOneWidget);
+      expect(_opacities(tester).every((o) => o == 1), isTrue);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+  });
+
+  group('panel POI ditutup di peta: tanpa UI07', () {
+    Future<(AppServices, _Session, List<Poi>)> openPanel(
+      WidgetTester tester,
+      _StubRecommendations recommendations, {
+      bool reduceMotion = false,
+      Size size = const Size(430, 900),
+      bool searchBar = false,
+    }) async {
+      _phone(tester, width: size.width, height: size.height);
+      final session = _Session();
+      final services = _services(
+        recommendations: recommendations,
+        session: session,
+        location: _StaticLocation(null),
+      );
+      final routed = <Poi>[];
+      await session.start(SessionMode.explore);
+      await tester.pumpWidget(
+        _app(
+          ExploreMapScreen(
+            services: services,
+            // The panel's Rute opens the destination card; closing the
+            // panel must never start a route by itself.
+            onRoute: (_) {},
+            onStartRoute: routed.add,
+            onOpenSearch: searchBar ? (_) {} : null,
+          ),
+          reduceMotion: reduceMotion,
+        ),
+      );
+      await _frames(tester);
+      session.fire(_here.id);
+      await _frames(tester);
+      expect(find.byTooltip('Tutup informasi'), findsOneWidget);
+      return (services, session, routed);
+    }
+
+    // PRD F07 (26 November 2026): "Lanjut ke mana?" appears only on the
+    // arrival card; closing a POI panel on the map just hides the panel.
+    testWidgets('menutup panel tidak memunculkan UI07', (tester) async {
+      final recommendations = _StubRecommendations(_full());
+      final (services, _, routed) = await openPanel(tester, recommendations);
+      expect(_card, findsNothing);
+
+      await tester.tap(find.byTooltip('Tutup informasi'));
+      await _frames(tester);
+      expect(find.byTooltip('Tutup informasi'), findsNothing);
+      expect(_card, findsNothing);
+      expect(find.text(RecommendationCard.title), findsNothing);
+      expect(recommendations.calls, isEmpty);
+      expect(routed, isEmpty);
+      expect(_featureUsed(services), isEmpty);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+
+    testWidgets('panel dibuka dan ditutup berulang tetap tanpa UI07', (
+      tester,
+    ) async {
+      final recommendations = _StubRecommendations(_full());
+      final (_, session, _) = await openPanel(tester, recommendations);
+      await tester.tap(find.byTooltip('Tutup informasi'));
+      await _frames(tester);
+      expect(_card, findsNothing);
+
+      session.fire(_next.id);
+      await _frames(tester);
+      expect(find.byTooltip('Tutup informasi'), findsOneWidget);
+      await tester.tap(find.byTooltip('Tutup informasi'));
+      await _frames(tester);
+      expect(_card, findsNothing);
+      expect(find.text(RecommendationCard.title), findsNothing);
+      expect(recommendations.calls, isEmpty);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+
+    testWidgets('ponsel kecil: menutup panel tanpa UI07 dan tanpa galat', (
+      tester,
+    ) async {
+      // 360×640 minus the shell's bottom bar, with the search bar shown as
+      // in the app.
+      final recommendations = _StubRecommendations(
+        Recommendation(
+          poiIds: [_next.id, _later.id, fakePois[3].id],
+          nearbyFacilities: _full().nearbyFacilities,
+        ),
+      );
+      await openPanel(
+        tester,
+        recommendations,
+        size: const Size(360, 560),
+        searchBar: true,
+      );
+      await tester.tap(find.byTooltip('Tutup informasi'));
+      await _frames(tester);
+      expect(_card, findsNothing);
+      expect(recommendations.calls, isEmpty);
+      expect(find.byTooltip('Sembunyikan penanda POI'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+
+    testWidgets('Lewati menolak POI, tanpa rekomendasi', (tester) async {
+      final recommendations = _StubRecommendations(_full());
+      await openPanel(tester, recommendations);
+      await tester.ensureVisible(find.text('Lewati'));
+      await tester.tap(find.text('Lewati'));
+      await _frames(tester);
+      expect(_card, findsNothing);
+      expect(recommendations.calls, isEmpty);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+
+    testWidgets('reduced motion: menutup panel tanpa UI07', (tester) async {
+      final recommendations = _StubRecommendations(_full());
+      await openPanel(tester, recommendations, reduceMotion: true);
+      await tester.tap(find.byTooltip('Tutup informasi'));
+      await tester.pump();
+      await tester.pump();
+      expect(_card, findsNothing);
+      expect(recommendations.calls, isEmpty);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+  });
+
+  testWidgets('pil Tutup adalah tombol untuk pembaca layar', (tester) async {
+    var dismissed = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: RecommendationCard(
+            view: const RecommendationView(pois: [], facilities: []),
+            onRoute: (_) {},
+            onDismiss: () => dismissed++,
+          ),
+        ),
+      ),
+    );
+    final semantics = tester.ensureSemantics();
+    expect(
+      tester.getSemantics(find.bySemanticsLabel('Tutup rekomendasi')),
+      isSemantics(
+        label: 'Tutup rekomendasi',
+        isButton: true,
+        hasTapAction: true,
+        hasEnabledState: true,
+        isEnabled: true,
+        isFocusable: true,
+      ),
+    );
+    semantics.dispose();
+    await tester.tap(find.byKey(const ValueKey('recommendation-dismiss')));
+    expect(dismissed, 1);
+  });
+
+  group('UI07 di peta rute', () {
+    testWidgets('tiba di fasilitas: fasilitas itu tidak direkomendasikan '
+        'ulang', (tester) async {
+      _phone(tester, height: 1400);
+      final facility = fakeFacilities.first;
+      final target = NavigationTarget.facility(facility);
+      final recommendations = _StubRecommendations(_full());
+      final services = _services(
+        recommendations: recommendations,
+        navigation: _ManualNavigation(
+          NavigationState(status: NavigationStatus.arrived, target: target),
+        ),
+        location: _StaticLocation(_fixAt(_here.position)),
+      );
+      await tester.pumpWidget(
+        _app(WalkingNavigationScreen(services: services, target: target)),
+      );
+      await _frames(tester, 4);
+      final call = recommendations.calls.single;
+      expect(call.afterFacilityId, facility.id);
+      expect(call.afterPoiId, isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await _frames(tester, 2);
+    });
+
+    testWidgets('tiba di POI: tanpa afterFacilityId', (tester) async {
+      _phone(tester, height: 1400);
+      final target = NavigationTarget.poi(_next);
+      final recommendations = _StubRecommendations(_full());
+      final services = _services(
+        recommendations: recommendations,
+        navigation: _ManualNavigation(
+          NavigationState(status: NavigationStatus.arrived, target: target),
+        ),
+        location: _StaticLocation(_fixAt(_here.position)),
+      );
+      await tester.pumpWidget(
+        _app(WalkingNavigationScreen(services: services, target: target)),
+      );
+      await _frames(tester, 4);
+      final call = recommendations.calls.single;
+      expect(call.afterPoiId, _next.id);
+      expect(call.afterFacilityId, isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await _frames(tester, 2);
+    });
+  });
+}

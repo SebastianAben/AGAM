@@ -15,7 +15,7 @@ Aturan inti (rincian di `.agent/rules.md`):
 
 - `.agent/` adalah sumber kebenaran. Jika ada konflik dengan dokumen lain atau asumsi Anda, `.agent/` yang berlaku.
 - Jangan mengarang konten POI, koordinat, versi package, atau data yang ditandai TBD. Gunakan placeholder berlabel dan laporkan.
-- Posisi pengguna tidak pernah boleh dikirim ke server mana pun atau disimpan sebagai riwayat.
-- Jangan mengubah keputusan yang sudah dikunci (stack, radius, mode, peta, routing, bahasa, tanpa login) tanpa persetujuan PM.
+- Posisi pengguna tidak pernah boleh dikirim ke server mana pun atau disimpan sebagai riwayat. Log aktivitas akun hanya boleh berisi event di `.agent/PRD.md` §15.5.
+- Jangan mengubah keputusan yang sudah dikunci (stack, radius, mode, peta, routing, bahasa, login wajib, daftar log aktivitas) tanpa persetujuan PM.
 - Jangan commit, push, atau merilis tanpa instruksi pengguna.
 - Di akhir sesi, perbarui `.agent/sessionHandoff.md` dan status PBI di `.agent/implementationPhases.md`.

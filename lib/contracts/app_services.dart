@@ -17,6 +17,8 @@ class AppServices {
     required this.audio,
     required this.voice,
     required this.settings,
+    required this.auth,
+    required this.activity,
     required this.map,
     required this.routing,
     required this.navigation,
@@ -34,6 +36,7 @@ class AppServices {
     final routing = FakeRoutingService();
     final trail = FakeTrailService(session: session);
     final facilities = FakeFacilityService();
+    final activity = FakeActivityLogger();
     return AppServices(
       permissions: FakePermissionService(),
       location: location,
@@ -42,6 +45,8 @@ class AppServices {
       audio: FakeAudioService(tick: tick),
       voice: FakeVoiceGuidance(),
       settings: FakeSettingsStore(),
+      auth: FakeAuthService(activity: activity),
+      activity: activity,
       map: FakeMapConfig(),
       routing: routing,
       navigation: FakeNavigationController(
@@ -66,6 +71,10 @@ class AppServices {
   final AudioService audio;
   final VoiceGuidance voice;
   final SettingsStore settings;
+
+  // Track LA — akun (kontrak v1.1)
+  final AuthService auth;
+  final ActivityLogger activity;
 
   // Track LB
   final MapConfig map;

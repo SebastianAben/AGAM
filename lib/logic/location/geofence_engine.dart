@@ -24,37 +24,52 @@ class GeofenceEntry {
 class GeofenceEngine {
   GeofenceEngine({
     required Iterable<Poi> pois,
+    this.entranceRadiusM = 10,
     this.hysteresisMarginM = 5,
     this.maxSampleGap = const Duration(seconds: 10),
     GeofenceDistanceCalculator? distanceCalculator,
   }) : _distance = distanceCalculator ?? _haversine {
+    if (!entranceRadiusM.isFinite || entranceRadiusM < 0) {
+      throw ArgumentError.value(entranceRadiusM, 'entranceRadiusM');
+    }
     if (!hysteresisMarginM.isFinite || hysteresisMarginM < 0) {
       throw ArgumentError.value(hysteresisMarginM, 'hysteresisMarginM');
     }
     if (maxSampleGap <= Duration.zero) {
       throw ArgumentError.value(maxSampleGap, 'maxSampleGap');
     }
-    final ids = <String>{};
-    _pois = List.unmodifiable(
-      pois.map((poi) {
-        if (poi.id.trim().isEmpty || !ids.add(poi.id)) {
-          throw ArgumentError('ID POI kosong atau duplikat');
-        }
-        if (!_validPosition(poi.position) ||
-            !poi.radiusM.isFinite ||
-            poi.radiusM <= 0) {
-          throw ArgumentError('Posisi atau radius POI tidak valid');
-        }
-        return _PoiState(poi.id, poi.position, poi.radiusM);
-      }),
-    );
+    _pois = _buildStates(pois);
   }
 
+  /// Area kontak di sekitar koordinat trigger; radius pendekatan POI tetap.
+  static const contactRadiusM = 5.0;
+
+  /// Radius zona pendekatan di sekitar setiap titik akses (`poi.entrances`).
+  final double entranceRadiusM;
   final double hysteresisMarginM;
   final Duration maxSampleGap;
   final GeofenceDistanceCalculator _distance;
-  late final List<_PoiState> _pois;
+  late List<_PoiState> _pois;
   DateTime? _lastTimestamp;
+  bool _trialMode = false;
+
+  /// Uji developer: reset cooldown saat diaktifkan dan lewati jedanya selama
+  /// aktif. Pengunci kunjungan tetap: harus keluar sebelum trigger berikutnya.
+  void setTrialMode(bool enabled) {
+    if (_trialMode == enabled) return;
+    _trialMode = enabled;
+    if (enabled) {
+      for (final poi in _pois) {
+        poi.lastTriggeredAt = null;
+      }
+    }
+  }
+
+  /// Snapshot ID kunjungan yang masih terkunci di dalam histeresis.
+  Set<String> get activePoiIds => {
+    for (final poi in _pois)
+      if (poi.triggeredInside) poi.id,
+  };
 
   /// Timestamp sama/mundur diabaikan. Input buruk membatalkan dwell,
   /// tetapi tidak membuktikan keluar dan tidak menghapus cooldown.
@@ -63,10 +78,7 @@ class GeofenceEngine {
   /// menghitung jarak, atau memperbarui timestamp global. Cooldown bertahan.
   List<GeofenceEntry> evaluate(LocationFix fix, {required bool enabled}) {
     if (!enabled) {
-      for (final poi in _pois) {
-        poi.clearCandidate();
-        poi.triggeredInside = false;
-      }
+      suspend();
       return const [];
     }
     final timestamp = fix.timestamp;
@@ -78,27 +90,45 @@ class GeofenceEngine {
         !fix.accuracyM.isFinite ||
         fix.accuracyM < 0 ||
         fix.accuracyM > kTriggerMaxAccuracyM) {
-      for (final poi in _pois) {
-        poi.clearCandidate();
-      }
+      interruptDwell();
       return const [];
     }
 
     final entries = <GeofenceEntry>[];
+    final entranceExitRadiusM = entranceRadiusM + hysteresisMarginM;
     for (final poi in _pois) {
-      final distance = _distance(fix.position, poi.position);
-      if (!distance.isFinite || distance < 0) {
+      final centerDistance = _distance(fix.position, poi.position);
+      if (!centerDistance.isFinite || centerDistance < 0) {
+        poi.clearCandidate();
+        continue;
+      }
+      var invalidEntranceDistance = false;
+      var insideAnyEntrance = false;
+      var outsideAllEntrancesHysteresis = true;
+      for (final entrance in poi.entrances) {
+        final d = _distance(fix.position, entrance);
+        if (!d.isFinite || d < 0) {
+          invalidEntranceDistance = true;
+          break;
+        }
+        if (d <= entranceRadiusM) insideAnyEntrance = true;
+        if (d <= entranceExitRadiusM) outsideAllEntrancesHysteresis = false;
+      }
+      if (invalidEntranceDistance) {
         poi.clearCandidate();
         continue;
       }
       if (poi.triggeredInside) {
-        if (distance > poi.radiusM + hysteresisMarginM) {
+        final outsideCenterHysteresis =
+            centerDistance > poi.radiusM + contactRadiusM + hysteresisMarginM;
+        if (outsideCenterHysteresis && outsideAllEntrancesHysteresis) {
           poi.triggeredInside = false;
           poi.clearCandidate();
         }
         continue;
       }
-      if (distance > poi.radiusM) {
+      final insideCenter = centerDistance <= poi.radiusM + contactRadiusM;
+      if (!insideCenter && !insideAnyEntrance) {
         poi.clearCandidate();
         continue;
       }
@@ -108,7 +138,8 @@ class GeofenceEngine {
       }
       poi.lastInsideSampleAt = timestamp;
       if (timestamp.difference(poi.enteredAt!) < kTriggerDwell) continue;
-      if (poi.lastTriggeredAt != null &&
+      if (!_trialMode &&
+          poi.lastTriggeredAt != null &&
           timestamp.difference(poi.lastTriggeredAt!) < kTriggerCooldown) {
         continue;
       }
@@ -118,6 +149,82 @@ class GeofenceEngine {
       poi.clearCandidate();
     }
     return entries;
+  }
+
+  /// Sama dengan [evaluate] dengan `enabled: false`, tanpa membutuhkan
+  /// pembacaan lokasi: dwell dan pengunci kunjungan dibersihkan, cooldown
+  /// dipertahankan. Dipakai saat sesi berakhir atau pengguna di luar area.
+  void suspend() {
+    for (final poi in _pois) {
+      poi.clearCandidate();
+      poi.triggeredInside = false;
+    }
+  }
+
+  /// Kehilangan GPS membatalkan kontinuitas dwell, tetapi bukan bukti keluar.
+  /// Pengunci kunjungan dan cooldown tetap bertahan tanpa posisi sintetis.
+  void interruptDwell() {
+    for (final poi in _pois) {
+      poi.clearCandidate();
+    }
+  }
+
+  /// Mengganti snapshot POI, mis. setelah data diperbarui dari Firestore.
+  ///
+  /// Cooldown dipertahankan per ID agar POI yang sama tidak terpicu ulang
+  /// karena dataset diperbarui. Dwell dan pengunci kunjungan hanya
+  /// dipertahankan bila posisi, radius, dan posisi titik akses POI tidak
+  /// berubah. POI yang dihapus ikut dilupakan. Validasi sama dengan
+  /// konstruktor; jika gagal, snapshot lama tetap dipakai.
+  void updatePois(Iterable<Poi> pois) {
+    final previous = {for (final poi in _pois) poi.id: poi};
+    final next = _buildStates(pois);
+    for (final poi in next) {
+      final old = previous[poi.id];
+      if (old == null) continue;
+      poi.lastTriggeredAt = old.lastTriggeredAt;
+      if (old.position == poi.position &&
+          old.radiusM == poi.radiusM &&
+          _sameEntrances(old.entrances, poi.entrances)) {
+        poi.enteredAt = old.enteredAt;
+        poi.lastInsideSampleAt = old.lastInsideSampleAt;
+        poi.triggeredInside = old.triggeredInside;
+      }
+    }
+    _pois = next;
+  }
+
+  static List<_PoiState> _buildStates(Iterable<Poi> pois) {
+    final ids = <String>{};
+    return List.unmodifiable(
+      pois.map((poi) {
+        if (poi.id.trim().isEmpty || !ids.add(poi.id)) {
+          throw ArgumentError('ID POI kosong atau duplikat');
+        }
+        if (!_validPosition(poi.position) ||
+            !poi.radiusM.isFinite ||
+            poi.radiusM <= 0) {
+          throw ArgumentError('Posisi atau radius POI tidak valid');
+        }
+        final entrances = List<GeoPoint>.unmodifiable(
+          poi.entrances.map((entrance) {
+            if (!_validPosition(entrance.position)) {
+              throw ArgumentError('Posisi titik akses POI tidak valid');
+            }
+            return entrance.position;
+          }),
+        );
+        return _PoiState(poi.id, poi.position, poi.radiusM, entrances);
+      }),
+    );
+  }
+
+  static bool _sameEntrances(List<GeoPoint> a, List<GeoPoint> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
   }
 
   static double _haversine(GeoPoint from, GeoPoint to) => from.distanceTo(to);
@@ -133,11 +240,12 @@ class GeofenceEngine {
 
 /// Hanya konfigurasi POI, waktu, dan flag; tidak menyimpan posisi pengguna.
 class _PoiState {
-  _PoiState(this.id, this.position, this.radiusM);
+  _PoiState(this.id, this.position, this.radiusM, this.entrances);
 
   final String id;
   final GeoPoint position;
   final double radiusM;
+  final List<GeoPoint> entrances;
   DateTime? enteredAt;
   DateTime? lastInsideSampleAt;
   bool triggeredInside = false;

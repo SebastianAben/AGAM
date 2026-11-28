@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "generatedBy": "PB03 — track LA",
-  "note": "Sumber id, nama, alias, kategori, koordinat, dan radius: .agent/PRD.md §9.1. Field teks dan media masih PLACEHOLDER karena konten P01-P10 belum tersedia (.agent/PRD.md §22). Jangan tampilkan field berlabel PLACEHOLDER sebagai konten final.",
+  "note": "Sumber id, nama, alias, kategori, koordinat, dan radius: .agent/PRD.md §9.1. Teks P01-P10 (deskripsi, fungsi, fasilitas, trivia) dari tim konten, diverifikasi 14 November 2026. Foto, narasi, prompt, dan audio tiba tersedia untuk 10 POI; video hanya GKUB (opsional, keputusan PM 23 November 2026). Seluruh POI disetujui pemilik konten 23 November 2026. Dataset fasilitas (26 item) disetujui SebastianAben 24 November 2026: toilet, musala, dan kantin diturunkan dari daftar fasilitas tiap POI dengan titik gedung; ATM, perpustakaan, dan layanan akademik dari informasi pengguna (titik peta ditandai, belum diverifikasi lapangan).",
   "pois": [
     {
       "id": "P01",
@@ -11,14 +11,48 @@
       "lat": -6.8905811,
       "lng": 107.6097754,
       "radiusM": 15,
-      "entrances": [],
-      "description": "PLACEHOLDER — menunggu tim konten",
-      "function": "PLACEHOLDER — menunggu tim konten",
-      "facilities": [],
-      "trivia": "PLACEHOLDER — menunggu tim konten",
-      "media": {},
-      "trailOrder": null,
-      "metadata": { "isPlaceholder": true, "approved": false }
+      "entrances": [
+        {"lat": -6.8904541, "lng": 107.6102388, "label": "Titik akses sisi timur 1", "verified": false},
+        {"lat": -6.8906313, "lng": 107.6102478, "label": "Titik akses sisi timur 2", "verified": false},
+        {"lat": -6.8907117, "lng": 107.6102482, "label": "Titik akses sisi timur 3", "verified": false},
+        {"lat": -6.8907403, "lng": 107.6096439, "label": "Titik akses sisi barat daya", "verified": false},
+        {"lat": -6.8906329, "lng": 107.6093209, "label": "Titik akses sisi barat 1", "verified": false},
+        {"lat": -6.890466, "lng": 107.6093201, "label": "Titik akses sisi barat 2", "verified": false},
+        {"lat": -6.8904645, "lng": 107.6096411, "label": "Titik akses sisi barat laut", "verified": false}
+      ],
+      "description": "Labtek V atau Gedung Benny Subianto, gedung ini menjadi salah satu pusat kegiatan akademik Teknik Informatika ITB, termasuk perkuliahan, praktikum, dan penelitian.",
+      "function": "Gedung Kuliah dan Laboratorium",
+      "facilities": ["Ruang Kelas", "Laboratorium", "Toilet", "Mushalla", "Kantin"],
+      "trivia": "Pada tahun 2008, Labtek V diberi nama Gedung Benny Subianto untuk menghormati alumnus Teknik Mesin ITB angkatan 1960 yang sukses di dunia bisnis.",
+      "media": {
+        "photos": [
+          "assets/media/P01/foto-1.jpg",
+          "assets/media/P01/foto-2.jpg"
+        ],
+        "narrationAudio": "assets/media/P01/narasi.m4a",
+        "promptAudio": "assets/media/P01/prompt.m4a",
+        "arrivalAudio": "assets/media/P01/tiba.m4a"
+      },
+      "trailOrder": 1,
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Institut Teknologi Bandung (itb.ac.id)",
+          "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
+          "Website resmi fakultas dan program studi ITB",
+          "Buku Saku Mahasiswa Pascasarjana ITB 2021"
+        ],
+        "owner": "Noeriza Aqila Wibawa",
+        "verifiedAt": "2026-11-14",
+        "assetAttribution": [
+          "assets/media/P01/foto-1.jpg — Foto: Noeriza Aqila Wibawa",
+          "assets/media/P01/foto-2.jpg — Foto: Noeriza Aqila Wibawa",
+          "assets/media/P01/narasi.m4a — Pengisi suara: Naura",
+          "assets/media/P01/prompt.m4a — Pengisi suara: Naura",
+          "assets/media/P01/tiba.m4a — Pengisi suara: Naura"
+        ],
+        "approved": true
+      }
     },
     {
       "id": "P02",
@@ -28,14 +62,47 @@
       "lat": -6.8901358,
       "lng": 107.6097167,
       "radiusM": 15,
-      "entrances": [],
-      "description": "PLACEHOLDER — menunggu tim konten",
-      "function": "PLACEHOLDER — menunggu tim konten",
-      "facilities": [],
-      "trivia": "PLACEHOLDER — menunggu tim konten",
-      "media": {},
-      "trailOrder": null,
-      "metadata": { "isPlaceholder": true, "approved": false }
+      "entrances": [
+        {"lat": -6.8900219, "lng": 107.6098787, "label": "Titik akses sisi timur laut", "verified": false},
+        {"lat": -6.8900353, "lng": 107.6101898, "label": "Titik akses sisi timur 1", "verified": false},
+        {"lat": -6.8902806, "lng": 107.6101858, "label": "Titik akses sisi timur 2", "verified": false},
+        {"lat": -6.8902856, "lng": 107.6095855, "label": "Titik akses sisi barat daya", "verified": false},
+        {"lat": -6.8902862, "lng": 107.6093147, "label": "Titik akses sisi barat 1", "verified": false},
+        {"lat": -6.890023, "lng": 107.6093731, "label": "Titik akses sisi barat 2", "verified": false}
+      ],
+      "description": "Labtek VI atau Gedung T.P. Rachmat, gedung ini digunakan untuk kegiatan pendidikan dan penelitian, khususnya Program Studi Teknik Fisika dan Teknik Kelautan ITB.",
+      "function": "Gedung Kuliah dan Laboratorium",
+      "facilities": ["Ruang Kelas", "Laboratorium", "Toilet"],
+      "trivia": "Nama Gedung T.P. Rachmat diambil dari nama Theodore Permadi Rachmat, alumnus Teknik Mesin ITB yang sukses sebagai pengusaha.",
+      "media": {
+        "photos": [
+          "assets/media/P02/foto-1.jpg",
+          "assets/media/P02/foto-2.jpg"
+        ],
+        "narrationAudio": "assets/media/P02/narasi.m4a",
+        "promptAudio": "assets/media/P02/prompt.m4a",
+        "arrivalAudio": "assets/media/P02/tiba.m4a"
+      },
+      "trailOrder": 9,
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Institut Teknologi Bandung (itb.ac.id)",
+          "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
+          "Website resmi fakultas dan program studi ITB",
+          "Buku Saku Mahasiswa Pascasarjana ITB 2021"
+        ],
+        "owner": "Noeriza Aqila Wibawa",
+        "verifiedAt": "2026-11-14",
+        "assetAttribution": [
+          "assets/media/P02/foto-1.jpg — Foto: Noeriza Aqila Wibawa",
+          "assets/media/P02/foto-2.jpg — Foto: Noeriza Aqila Wibawa",
+          "assets/media/P02/narasi.m4a — Pengisi suara: Naura",
+          "assets/media/P02/prompt.m4a — Pengisi suara: Naura",
+          "assets/media/P02/tiba.m4a — Pengisi suara: Naura"
+        ],
+        "approved": true
+      }
     },
     {
       "id": "P03",
@@ -45,14 +112,43 @@
       "lat": -6.8901169,
       "lng": 107.6105714,
       "radiusM": 15,
-      "entrances": [],
-      "description": "PLACEHOLDER — menunggu tim konten",
-      "function": "PLACEHOLDER — menunggu tim konten",
-      "facilities": [],
-      "trivia": "PLACEHOLDER — menunggu tim konten",
-      "media": {},
-      "trailOrder": null,
-      "metadata": { "isPlaceholder": true, "approved": false }
+      "entrances": [
+        {"lat": -6.8900025, "lng": 107.6110473, "label": "Titik akses sisi timur laut", "verified": false},
+        {"lat": -6.8901188, "lng": 107.611455, "label": "Titik akses sisi timur", "verified": false},
+        {"lat": -6.8902538, "lng": 107.6110458, "label": "Titik akses sisi tenggara", "verified": false},
+        {"lat": -6.8902589, "lng": 107.6105248, "label": "Titik akses sisi barat", "verified": false}
+      ],
+      "description": "Labtek VII atau Gedung Yusuf Panigoro, gedung ini digunakan untuk kegiatan akademik dan penelitian Sekolah Farmasi ITB, khususnya bidang Sains dan Teknologi Farmasi serta Farmasi Klinik dan Komunitas.",
+      "function": "Gedung Kuliah dan Laboratorium",
+      "facilities": ["Ruang Kelas", "Laboratorium", "Toilet", "Mushalla"],
+      "trivia": "Labtek VII atau Gedung Yusuf Panigoro dinamai berdasarkan nama ayah Arifin Panigoro, alumnus Teknik Elektro ITB yang dikenal atas kiprahnya di bidang energi.",
+      "media": {
+        "photos": [
+          "assets/media/P03/foto-1.jpg"
+        ],
+        "narrationAudio": "assets/media/P03/narasi.m4a",
+        "promptAudio": "assets/media/P03/prompt.m4a",
+        "arrivalAudio": "assets/media/P03/tiba.m4a"
+      },
+      "trailOrder": 4,
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Institut Teknologi Bandung (itb.ac.id)",
+          "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
+          "Website resmi fakultas dan program studi ITB",
+          "Buku Saku Mahasiswa Pascasarjana ITB 2021"
+        ],
+        "owner": "Noeriza Aqila Wibawa",
+        "verifiedAt": "2026-11-14",
+        "assetAttribution": [
+          "assets/media/P03/foto-1.jpg — Foto: Noeriza Aqila Wibawa",
+          "assets/media/P03/narasi.m4a — Pengisi suara: Naura",
+          "assets/media/P03/prompt.m4a — Pengisi suara: Naura",
+          "assets/media/P03/tiba.m4a — Pengisi suara: Naura"
+        ],
+        "approved": true
+      }
     },
     {
       "id": "P04",
@@ -62,14 +158,45 @@
       "lat": -6.8905954,
       "lng": 107.6105760,
       "radiusM": 15,
-      "entrances": [],
-      "description": "PLACEHOLDER — menunggu tim konten",
-      "function": "PLACEHOLDER — menunggu tim konten",
-      "facilities": [],
-      "trivia": "PLACEHOLDER — menunggu tim konten",
-      "media": {},
-      "trailOrder": null,
-      "metadata": { "isPlaceholder": true, "approved": false }
+      "entrances": [
+        {"lat": -6.8904501, "lng": 107.6110471, "label": "Titik akses sisi timur laut", "verified": false},
+        {"lat": -6.8905532, "lng": 107.6114021, "label": "Titik akses sisi timur", "verified": false},
+        {"lat": -6.8907099, "lng": 107.6111297, "label": "Titik akses sisi tenggara", "verified": false},
+        {"lat": -6.8907161, "lng": 107.6105091, "label": "Titik akses sisi barat 1", "verified": false},
+        {"lat": -6.8906368, "lng": 107.6105083, "label": "Titik akses sisi barat 2", "verified": false},
+        {"lat": -6.8904492, "lng": 107.6105068, "label": "Titik akses sisi barat 3", "verified": false}
+      ],
+      "description": "Labtek VIII atau Gedung Achmad Bakrie, gedung ini mendukung kegiatan akademik dan administrasi Sekolah Teknik Elektro dan Informatika (STEI) serta Fakultas Matematika dan Ilmu Pengetahuan Alam (FMIPA).",
+      "function": "Gedung Kuliah dan Laboratorium",
+      "facilities": ["Ruang Kelas", "Laboratorium", "Toilet", "Mushalla", "Apotek"],
+      "trivia": "Nama Gedung Achmad Bakrie diambil dari nama ayah Aburizal Bakrie, salah satu alumnus ITB yang dikenal di dunia bisnis.",
+      "media": {
+        "photos": [
+          "assets/media/P04/foto-1.jpg"
+        ],
+        "narrationAudio": "assets/media/P04/narasi.m4a",
+        "promptAudio": "assets/media/P04/prompt.m4a",
+        "arrivalAudio": "assets/media/P04/tiba.m4a"
+      },
+      "trailOrder": 2,
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Institut Teknologi Bandung (itb.ac.id)",
+          "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
+          "Website resmi fakultas dan program studi ITB",
+          "Buku Saku Mahasiswa Pascasarjana ITB 2021"
+        ],
+        "owner": "Noeriza Aqila Wibawa",
+        "verifiedAt": "2026-11-14",
+        "assetAttribution": [
+          "assets/media/P04/foto-1.jpg — Foto: Noeriza Aqila Wibawa",
+          "assets/media/P04/narasi.m4a — Pengisi suara: Naura",
+          "assets/media/P04/prompt.m4a — Pengisi suara: Naura",
+          "assets/media/P04/tiba.m4a — Pengisi suara: Naura"
+        ],
+        "approved": true
+      }
     },
     {
       "id": "P05",
@@ -79,14 +206,46 @@
       "lat": -6.8889940,
       "lng": 107.6095767,
       "radiusM": 15,
-      "entrances": [],
-      "description": "PLACEHOLDER — menunggu tim konten",
-      "function": "PLACEHOLDER — menunggu tim konten",
-      "facilities": [],
-      "trivia": "PLACEHOLDER — menunggu tim konten",
-      "media": {},
-      "trailOrder": null,
-      "metadata": { "isPlaceholder": true, "approved": false }
+      "entrances": [
+        {"lat": -6.8887142, "lng": 107.6096741, "label": "Titik akses sisi timur laut 1", "verified": false},
+        {"lat": -6.8889175, "lng": 107.6097767, "label": "Titik akses sisi timur laut 2", "verified": false},
+        {"lat": -6.8896134, "lng": 107.6097832, "label": "Titik akses sisi tenggara", "verified": false},
+        {"lat": -6.8897748, "lng": 107.6093745, "label": "Titik akses sisi selatan", "verified": false},
+        {"lat": -6.8887148, "lng": 107.6092416, "label": "Titik akses sisi barat laut", "verified": false},
+        {"lat": -6.889121, "lng": 107.6094236, "label": "Titik akses sisi utara 1", "verified": false},
+        {"lat": -6.8887136, "lng": 107.6093865, "label": "Titik akses sisi utara 2", "verified": false}
+      ],
+      "description": "Labtek Biru (Labir) merupakan kawasan gedung Labtek X dan Labtek XI di Kampus Ganesha ITB yang digunakan untuk kegiatan perkuliahan, praktikum, penelitian, dan aktivitas kemahasiswaan. Kawasan ini digunakan oleh program studi Teknik Kimia, Teknik Material, Biologi, Meteorologi, dan Oseanografi, serta menjadi tempat aktivitas sejumlah himpunan mahasiswa, seperti HIMATEK, MTM, HIMABIO Nymphaea, HMME, dan HMO.",
+      "function": "Gedung Kuliah dan Laboratorium",
+      "facilities": ["Ruang Kelas", "Laboratorium", "Toilet", "Kantin"],
+      "trivia": "Tangga utama Labtek XI dirancang melingkar menyerupai struktur heliks ganda DNA sebagai representasi ilmu hayati.",
+      "media": {
+        "photos": [
+          "assets/media/P05/foto-1.jpg"
+        ],
+        "narrationAudio": "assets/media/P05/narasi.m4a",
+        "promptAudio": "assets/media/P05/prompt.m4a",
+        "arrivalAudio": "assets/media/P05/tiba.m4a"
+      },
+      "trailOrder": 7,
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Institut Teknologi Bandung (itb.ac.id)",
+          "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
+          "Website resmi fakultas dan program studi ITB",
+          "Buku Saku Mahasiswa Pascasarjana ITB 2021"
+        ],
+        "owner": "Noeriza Aqila Wibawa",
+        "verifiedAt": "2026-11-14",
+        "assetAttribution": [
+          "assets/media/P05/foto-1.jpg — Foto: Institut Teknologi Bandung (itb.ac.id)",
+          "assets/media/P05/narasi.m4a — Pengisi suara: Naura",
+          "assets/media/P05/prompt.m4a — Pengisi suara: Naura",
+          "assets/media/P05/tiba.m4a — Pengisi suara: Naura"
+        ],
+        "approved": true
+      }
     },
     {
       "id": "P06",
@@ -96,14 +255,46 @@
       "lat": -6.89053,
       "lng": 107.60890,
       "radiusM": 15,
-      "entrances": [],
-      "description": "PLACEHOLDER — menunggu tim konten",
-      "function": "PLACEHOLDER — menunggu tim konten",
-      "facilities": [],
-      "trivia": "PLACEHOLDER — menunggu tim konten",
-      "media": {},
-      "trailOrder": null,
-      "metadata": { "isPlaceholder": true, "approved": false }
+      "entrances": [
+        {"lat": -6.8903994, "lng": 107.609086, "label": "Titik akses sisi timur", "verified": false},
+        {"lat": -6.8906619, "lng": 107.608862, "label": "Titik akses sisi selatan", "verified": false},
+        {"lat": -6.890139, "lng": 107.6087204, "label": "Titik akses sisi barat laut", "verified": false}
+      ],
+      "description": "Gedung perkuliahan umum di Kampus Ganesha ITB yang digunakan untuk berbagai kegiatan akademik, terutama perkuliahan bersama. Gedung ini juga dikenal sebagai Gedung Wardah Foundation.",
+      "function": "Gedung Kuliah",
+      "facilities": ["Ruang Kelas", "Toilet", "Mushalla", "Kantin"],
+      "trivia": "Bentuk bangunan yang tidak simetris, lorong berliku, dan penomoran ruangan yang melompat membuat GKUB dikenal sebagai salah satu gedung paling membingungkan di ITB.",
+      "media": {
+        "photos": [
+          "assets/media/P06/foto-1.jpg",
+          "assets/media/P06/foto-2.jpg"
+        ],
+        "narrationAudio": "assets/media/P06/narasi.m4a",
+        "promptAudio": "assets/media/P06/prompt.m4a",
+        "arrivalAudio": "assets/media/P06/tiba.m4a",
+        "video": "assets/media/P06/video.mp4"
+      },
+      "trailOrder": 10,
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Institut Teknologi Bandung (itb.ac.id)",
+          "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
+          "Website resmi fakultas dan program studi ITB",
+          "Buku Saku Mahasiswa Pascasarjana ITB 2021"
+        ],
+        "owner": "Noeriza Aqila Wibawa",
+        "verifiedAt": "2026-11-14",
+        "assetAttribution": [
+          "assets/media/P06/foto-1.jpg — Foto: Naura",
+          "assets/media/P06/foto-2.jpg — Foto: Naura",
+          "assets/media/P06/narasi.m4a — Pengisi suara: Naura",
+          "assets/media/P06/prompt.m4a — Pengisi suara: Naura",
+          "assets/media/P06/tiba.m4a — Pengisi suara: Naura",
+          "assets/media/P06/video.mp4 — Video: TikTok"
+        ],
+        "approved": true
+      }
     },
     {
       "id": "P07",
@@ -113,14 +304,41 @@
       "lat": -6.8903881,
       "lng": 107.6119990,
       "radiusM": 15,
-      "entrances": [],
-      "description": "PLACEHOLDER — menunggu tim konten",
-      "function": "PLACEHOLDER — menunggu tim konten",
-      "facilities": [],
-      "trivia": "PLACEHOLDER — menunggu tim konten",
-      "media": {},
-      "trailOrder": null,
-      "metadata": { "isPlaceholder": true, "approved": false }
+      "entrances": [
+        {"lat": -6.8904699, "lng": 107.612408, "label": "Titik akses sisi timur", "verified": false},
+        {"lat": -6.8905032, "lng": 107.6117897, "label": "Titik akses sisi barat daya", "verified": false}
+      ],
+      "description": "Gedung perkuliahan umum ITB yang digunakan untuk berbagai kegiatan akademik dan perkuliahan lintas program studi. Gedung ini juga dikenal sebagai Gedung Paragon Innovation.",
+      "function": "Gedung Kuliah",
+      "facilities": ["Ruang Kelas", "Toilet", "Kantin"],
+      "trivia": "Pada 26 September 2019, GKUT resmi diberi nama Gedung Kuliah Umum Timur Paragon Innovation sebagai bentuk apresiasi atas dukungan filantropi dalam pendidikan.",
+      "media": {
+        "photos": [
+          "assets/media/P07/foto-1.jpg"
+        ],
+        "narrationAudio": "assets/media/P07/narasi.m4a",
+        "promptAudio": "assets/media/P07/prompt.m4a",
+        "arrivalAudio": "assets/media/P07/tiba.m4a"
+      },
+      "trailOrder": 3,
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Institut Teknologi Bandung (itb.ac.id)",
+          "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
+          "Website resmi fakultas dan program studi ITB",
+          "Buku Saku Mahasiswa Pascasarjana ITB 2021"
+        ],
+        "owner": "Noeriza Aqila Wibawa",
+        "verifiedAt": "2026-11-14",
+        "assetAttribution": [
+          "assets/media/P07/foto-1.jpg — Foto: Google Maps (Street View)",
+          "assets/media/P07/narasi.m4a — Pengisi suara: Naura",
+          "assets/media/P07/prompt.m4a — Pengisi suara: Naura",
+          "assets/media/P07/tiba.m4a — Pengisi suara: Naura"
+        ],
+        "approved": true
+      }
     },
     {
       "id": "P08",
@@ -130,14 +348,41 @@
       "lat": -6.8890603,
       "lng": 107.6100470,
       "radiusM": 15,
-      "entrances": [],
-      "description": "PLACEHOLDER — menunggu tim konten",
-      "function": "PLACEHOLDER — menunggu tim konten",
-      "facilities": [],
-      "trivia": "PLACEHOLDER — menunggu tim konten",
-      "media": {},
-      "trailOrder": null,
-      "metadata": { "isPlaceholder": true, "approved": false }
+      "entrances": [
+        {"lat": -6.8890511, "lng": 107.6102704, "label": "Titik akses sisi timur", "verified": false},
+        {"lat": -6.8888957, "lng": 107.6099707, "label": "Titik akses sisi barat laut", "verified": false}
+      ],
+      "description": "Gedung perkuliahan umum ITB yang digunakan untuk kegiatan belajar mengajar berbagai mata kuliah. Gedung ini memiliki ruang kuliah berkapasitas beragam, termasuk ruang multimedia.",
+      "function": "Gedung Kuliah",
+      "facilities": ["Ruang Kelas", "Toilet"],
+      "trivia": "Nama Oktagon berasal dari bentuk arsitektur gedungnya yang menyerupai segi delapan.",
+      "media": {
+        "photos": [
+          "assets/media/P08/foto-1.jpg"
+        ],
+        "narrationAudio": "assets/media/P08/narasi.m4a",
+        "promptAudio": "assets/media/P08/prompt.m4a",
+        "arrivalAudio": "assets/media/P08/tiba.m4a"
+      },
+      "trailOrder": 6,
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Institut Teknologi Bandung (itb.ac.id)",
+          "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
+          "Website resmi fakultas dan program studi ITB",
+          "Buku Saku Mahasiswa Pascasarjana ITB 2021"
+        ],
+        "owner": "Noeriza Aqila Wibawa",
+        "verifiedAt": "2026-11-14",
+        "assetAttribution": [
+          "assets/media/P08/foto-1.jpg — Foto: Google Maps",
+          "assets/media/P08/narasi.m4a — Pengisi suara: Naura",
+          "assets/media/P08/prompt.m4a — Pengisi suara: Naura",
+          "assets/media/P08/tiba.m4a — Pengisi suara: Naura"
+        ],
+        "approved": true
+      }
     },
     {
       "id": "P09",
@@ -147,14 +392,41 @@
       "lat": -6.8895043,
       "lng": 107.6100594,
       "radiusM": 15,
-      "entrances": [],
-      "description": "PLACEHOLDER — menunggu tim konten",
-      "function": "PLACEHOLDER — menunggu tim konten",
-      "facilities": [],
-      "trivia": "PLACEHOLDER — menunggu tim konten",
-      "media": {},
-      "trailOrder": null,
-      "metadata": { "isPlaceholder": true, "approved": false }
+      "entrances": [
+        {"lat": -6.8895149, "lng": 107.6102835, "label": "Titik akses sisi timur", "verified": false},
+        {"lat": -6.8896356, "lng": 107.6099737, "label": "Titik akses sisi barat daya", "verified": false}
+      ],
+      "description": "Gedung perkuliahan umum ITB yang digunakan untuk kegiatan pembelajaran berbagai mata kuliah, dengan ruang kelas reguler dan ruang multimedia.",
+      "function": "Gedung Kuliah",
+      "facilities": ["Ruang Kelas", "Toilet"],
+      "trivia": "Lantai dua TVST menjadi lokasi studio Layanan Produksi Multimedia ITB yang didirikan pada Juli 2007.",
+      "media": {
+        "photos": [
+          "assets/media/P09/foto-1.jpg"
+        ],
+        "narrationAudio": "assets/media/P09/narasi.m4a",
+        "promptAudio": "assets/media/P09/prompt.m4a",
+        "arrivalAudio": "assets/media/P09/tiba.m4a"
+      },
+      "trailOrder": 8,
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Institut Teknologi Bandung (itb.ac.id)",
+          "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
+          "Website resmi fakultas dan program studi ITB",
+          "Buku Saku Mahasiswa Pascasarjana ITB 2021"
+        ],
+        "owner": "Noeriza Aqila Wibawa",
+        "verifiedAt": "2026-11-14",
+        "assetAttribution": [
+          "assets/media/P09/foto-1.jpg — Foto: Google Maps",
+          "assets/media/P09/narasi.m4a — Pengisi suara: Naura",
+          "assets/media/P09/prompt.m4a — Pengisi suara: Naura",
+          "assets/media/P09/tiba.m4a — Pengisi suara: Naura"
+        ],
+        "approved": true
+      }
     },
     {
       "id": "P10",
@@ -164,15 +436,613 @@
       "lat": -6.8892078,
       "lng": 107.6111876,
       "radiusM": 15,
-      "entrances": [],
-      "description": "PLACEHOLDER — menunggu tim konten",
-      "function": "PLACEHOLDER — menunggu tim konten",
-      "facilities": [],
-      "trivia": "PLACEHOLDER — menunggu tim konten",
-      "media": {},
-      "trailOrder": null,
-      "metadata": { "isPlaceholder": true, "approved": false }
+      "entrances": [
+        {"lat": -6.8895553, "lng": 107.6110389, "label": "Titik akses sisi selatan", "verified": false},
+        {"lat": -6.88927, "lng": 107.61103, "label": "Titik akses sisi barat", "verified": false}
+      ],
+      "description": "Labtek I, yang dikenal sebagai Gedung Mekanika Tanah (Mektan), merupakan gedung perkuliahan umum di Kampus Ganesha ITB. Gedung ini juga menjadi lokasi sekretariat HIMASTRON dan HIMATIKA.",
+      "function": "Gedung Kuliah",
+      "facilities": ["Ruang Kelas", "Toilet", "Mushalla"],
+      "trivia": "Awalnya merupakan laboratorium mekanika tanah, Labtek I dialihfungsikan pada tahun 2018 menjadi gedung perkuliahan dengan ruang kelas berkapasitas 40–120 mahasiswa.",
+      "media": {
+        "photos": [
+          "assets/media/P10/foto-1.jpg"
+        ],
+        "narrationAudio": "assets/media/P10/narasi.m4a",
+        "promptAudio": "assets/media/P10/prompt.m4a",
+        "arrivalAudio": "assets/media/P10/tiba.m4a"
+      },
+      "trailOrder": 5,
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Institut Teknologi Bandung (itb.ac.id)",
+          "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
+          "Website resmi fakultas dan program studi ITB",
+          "Buku Saku Mahasiswa Pascasarjana ITB 2021"
+        ],
+        "owner": "Noeriza Aqila Wibawa",
+        "verifiedAt": "2026-11-14",
+        "assetAttribution": [
+          "assets/media/P10/foto-1.jpg — Foto: Google Maps",
+          "assets/media/P10/narasi.m4a — Pengisi suara: Naura",
+          "assets/media/P10/prompt.m4a — Pengisi suara: Naura",
+          "assets/media/P10/tiba.m4a — Pengisi suara: Naura"
+        ],
+        "approved": true
+      }
     }
   ],
-  "facilities": []
+  "facilities": [
+    {
+      "id": "F01",
+      "name": "Toilet Labtek V",
+      "category": "toilet",
+      "lat": -6.8905811,
+      "lng": 107.6097754,
+      "buildingId": "P01",
+      "description": "Di dalam Labtek V. Titik peta memakai titik gedung; letak persis di dalam gedung belum disurvei.",
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Daftar fasilitas POI P01 (Labtek V) di assets/data/pois.json",
+          "Institut Teknologi Bandung (itb.ac.id)",
+          "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
+          "Website resmi fakultas dan program studi ITB",
+          "Buku Saku Mahasiswa Pascasarjana ITB 2021"
+        ],
+        "owner": "SebastianAben",
+        "verifiedAt": "2026-11-24",
+        "assetAttribution": [],
+        "approved": true
+      }
+    },
+    {
+      "id": "F02",
+      "name": "Toilet Labtek VI",
+      "category": "toilet",
+      "lat": -6.8901358,
+      "lng": 107.6097167,
+      "buildingId": "P02",
+      "description": "Di dalam Labtek VI. Titik peta memakai titik gedung; letak persis di dalam gedung belum disurvei.",
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Daftar fasilitas POI P02 (Labtek VI) di assets/data/pois.json",
+          "Institut Teknologi Bandung (itb.ac.id)",
+          "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
+          "Website resmi fakultas dan program studi ITB",
+          "Buku Saku Mahasiswa Pascasarjana ITB 2021"
+        ],
+        "owner": "SebastianAben",
+        "verifiedAt": "2026-11-24",
+        "assetAttribution": [],
+        "approved": true
+      }
+    },
+    {
+      "id": "F03",
+      "name": "Toilet Labtek VII",
+      "category": "toilet",
+      "lat": -6.8901169,
+      "lng": 107.6105714,
+      "buildingId": "P03",
+      "description": "Di dalam Labtek VII. Titik peta memakai titik gedung; letak persis di dalam gedung belum disurvei.",
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Daftar fasilitas POI P03 (Labtek VII) di assets/data/pois.json",
+          "Institut Teknologi Bandung (itb.ac.id)",
+          "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
+          "Website resmi fakultas dan program studi ITB",
+          "Buku Saku Mahasiswa Pascasarjana ITB 2021"
+        ],
+        "owner": "SebastianAben",
+        "verifiedAt": "2026-11-24",
+        "assetAttribution": [],
+        "approved": true
+      }
+    },
+    {
+      "id": "F04",
+      "name": "Toilet Labtek VIII",
+      "category": "toilet",
+      "lat": -6.8905954,
+      "lng": 107.610576,
+      "buildingId": "P04",
+      "description": "Di dalam Labtek VIII. Titik peta memakai titik gedung; letak persis di dalam gedung belum disurvei.",
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Daftar fasilitas POI P04 (Labtek VIII) di assets/data/pois.json",
+          "Institut Teknologi Bandung (itb.ac.id)",
+          "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
+          "Website resmi fakultas dan program studi ITB",
+          "Buku Saku Mahasiswa Pascasarjana ITB 2021"
+        ],
+        "owner": "SebastianAben",
+        "verifiedAt": "2026-11-24",
+        "assetAttribution": [],
+        "approved": true
+      }
+    },
+    {
+      "id": "F05",
+      "name": "Toilet Labtek X & XI",
+      "category": "toilet",
+      "lat": -6.888994,
+      "lng": 107.6095767,
+      "buildingId": "P05",
+      "description": "Di dalam Labtek X & XI. Titik peta memakai titik gedung; letak persis di dalam gedung belum disurvei.",
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Daftar fasilitas POI P05 (Labtek X & XI) di assets/data/pois.json",
+          "Institut Teknologi Bandung (itb.ac.id)",
+          "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
+          "Website resmi fakultas dan program studi ITB",
+          "Buku Saku Mahasiswa Pascasarjana ITB 2021"
+        ],
+        "owner": "SebastianAben",
+        "verifiedAt": "2026-11-24",
+        "assetAttribution": [],
+        "approved": true
+      }
+    },
+    {
+      "id": "F06",
+      "name": "Toilet Gedung Kuliah Umum Barat",
+      "category": "toilet",
+      "lat": -6.89053,
+      "lng": 107.6089,
+      "buildingId": "P06",
+      "description": "Di dalam Gedung Kuliah Umum Barat. Titik peta memakai titik gedung; letak persis di dalam gedung belum disurvei.",
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Daftar fasilitas POI P06 (Gedung Kuliah Umum Barat) di assets/data/pois.json",
+          "Institut Teknologi Bandung (itb.ac.id)",
+          "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
+          "Website resmi fakultas dan program studi ITB",
+          "Buku Saku Mahasiswa Pascasarjana ITB 2021"
+        ],
+        "owner": "SebastianAben",
+        "verifiedAt": "2026-11-24",
+        "assetAttribution": [],
+        "approved": true
+      }
+    },
+    {
+      "id": "F07",
+      "name": "Toilet Gedung Kuliah Umum Timur",
+      "category": "toilet",
+      "lat": -6.8903881,
+      "lng": 107.611999,
+      "buildingId": "P07",
+      "description": "Di dalam Gedung Kuliah Umum Timur. Titik peta memakai titik gedung; letak persis di dalam gedung belum disurvei.",
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Daftar fasilitas POI P07 (Gedung Kuliah Umum Timur) di assets/data/pois.json",
+          "Institut Teknologi Bandung (itb.ac.id)",
+          "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
+          "Website resmi fakultas dan program studi ITB",
+          "Buku Saku Mahasiswa Pascasarjana ITB 2021"
+        ],
+        "owner": "SebastianAben",
+        "verifiedAt": "2026-11-24",
+        "assetAttribution": [],
+        "approved": true
+      }
+    },
+    {
+      "id": "F08",
+      "name": "Toilet Oktagon",
+      "category": "toilet",
+      "lat": -6.8890603,
+      "lng": 107.610047,
+      "buildingId": "P08",
+      "description": "Di dalam Oktagon. Titik peta memakai titik gedung; letak persis di dalam gedung belum disurvei.",
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Daftar fasilitas POI P08 (Oktagon) di assets/data/pois.json",
+          "Institut Teknologi Bandung (itb.ac.id)",
+          "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
+          "Website resmi fakultas dan program studi ITB",
+          "Buku Saku Mahasiswa Pascasarjana ITB 2021"
+        ],
+        "owner": "SebastianAben",
+        "verifiedAt": "2026-11-24",
+        "assetAttribution": [],
+        "approved": true
+      }
+    },
+    {
+      "id": "F09",
+      "name": "Toilet TVST",
+      "category": "toilet",
+      "lat": -6.8895043,
+      "lng": 107.6100594,
+      "buildingId": "P09",
+      "description": "Di dalam TVST. Titik peta memakai titik gedung; letak persis di dalam gedung belum disurvei.",
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Daftar fasilitas POI P09 (TVST) di assets/data/pois.json",
+          "Institut Teknologi Bandung (itb.ac.id)",
+          "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
+          "Website resmi fakultas dan program studi ITB",
+          "Buku Saku Mahasiswa Pascasarjana ITB 2021"
+        ],
+        "owner": "SebastianAben",
+        "verifiedAt": "2026-11-24",
+        "assetAttribution": [],
+        "approved": true
+      }
+    },
+    {
+      "id": "F10",
+      "name": "Toilet Labtek I",
+      "category": "toilet",
+      "lat": -6.8892078,
+      "lng": 107.6111876,
+      "buildingId": "P10",
+      "description": "Di dalam Labtek I. Titik peta memakai titik gedung; letak persis di dalam gedung belum disurvei.",
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Daftar fasilitas POI P10 (Labtek I) di assets/data/pois.json",
+          "Institut Teknologi Bandung (itb.ac.id)",
+          "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
+          "Website resmi fakultas dan program studi ITB",
+          "Buku Saku Mahasiswa Pascasarjana ITB 2021"
+        ],
+        "owner": "SebastianAben",
+        "verifiedAt": "2026-11-24",
+        "assetAttribution": [],
+        "approved": true
+      }
+    },
+    {
+      "id": "F11",
+      "name": "Musala Labtek V",
+      "category": "musala",
+      "lat": -6.8905811,
+      "lng": 107.6097754,
+      "buildingId": "P01",
+      "description": "Di dalam Labtek V. Titik peta memakai titik gedung; letak persis di dalam gedung belum disurvei.",
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Daftar fasilitas POI P01 (Labtek V) di assets/data/pois.json",
+          "Institut Teknologi Bandung (itb.ac.id)",
+          "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
+          "Website resmi fakultas dan program studi ITB",
+          "Buku Saku Mahasiswa Pascasarjana ITB 2021"
+        ],
+        "owner": "SebastianAben",
+        "verifiedAt": "2026-11-24",
+        "assetAttribution": [],
+        "approved": true
+      }
+    },
+    {
+      "id": "F12",
+      "name": "Musala Labtek VII",
+      "category": "musala",
+      "lat": -6.8901169,
+      "lng": 107.6105714,
+      "buildingId": "P03",
+      "description": "Di dalam Labtek VII. Titik peta memakai titik gedung; letak persis di dalam gedung belum disurvei.",
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Daftar fasilitas POI P03 (Labtek VII) di assets/data/pois.json",
+          "Institut Teknologi Bandung (itb.ac.id)",
+          "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
+          "Website resmi fakultas dan program studi ITB",
+          "Buku Saku Mahasiswa Pascasarjana ITB 2021"
+        ],
+        "owner": "SebastianAben",
+        "verifiedAt": "2026-11-24",
+        "assetAttribution": [],
+        "approved": true
+      }
+    },
+    {
+      "id": "F13",
+      "name": "Musala Labtek VIII",
+      "category": "musala",
+      "lat": -6.8905954,
+      "lng": 107.610576,
+      "buildingId": "P04",
+      "description": "Di dalam Labtek VIII. Titik peta memakai titik gedung; letak persis di dalam gedung belum disurvei.",
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Daftar fasilitas POI P04 (Labtek VIII) di assets/data/pois.json",
+          "Institut Teknologi Bandung (itb.ac.id)",
+          "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
+          "Website resmi fakultas dan program studi ITB",
+          "Buku Saku Mahasiswa Pascasarjana ITB 2021"
+        ],
+        "owner": "SebastianAben",
+        "verifiedAt": "2026-11-24",
+        "assetAttribution": [],
+        "approved": true
+      }
+    },
+    {
+      "id": "F14",
+      "name": "Musala Gedung Kuliah Umum Barat",
+      "category": "musala",
+      "lat": -6.89053,
+      "lng": 107.6089,
+      "buildingId": "P06",
+      "description": "Di dalam Gedung Kuliah Umum Barat. Titik peta memakai titik gedung; letak persis di dalam gedung belum disurvei.",
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Daftar fasilitas POI P06 (Gedung Kuliah Umum Barat) di assets/data/pois.json",
+          "Institut Teknologi Bandung (itb.ac.id)",
+          "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
+          "Website resmi fakultas dan program studi ITB",
+          "Buku Saku Mahasiswa Pascasarjana ITB 2021"
+        ],
+        "owner": "SebastianAben",
+        "verifiedAt": "2026-11-24",
+        "assetAttribution": [],
+        "approved": true
+      }
+    },
+    {
+      "id": "F15",
+      "name": "Musala Labtek I",
+      "category": "musala",
+      "lat": -6.8892078,
+      "lng": 107.6111876,
+      "buildingId": "P10",
+      "description": "Di dalam Labtek I. Titik peta memakai titik gedung; letak persis di dalam gedung belum disurvei.",
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Daftar fasilitas POI P10 (Labtek I) di assets/data/pois.json",
+          "Institut Teknologi Bandung (itb.ac.id)",
+          "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
+          "Website resmi fakultas dan program studi ITB",
+          "Buku Saku Mahasiswa Pascasarjana ITB 2021"
+        ],
+        "owner": "SebastianAben",
+        "verifiedAt": "2026-11-24",
+        "assetAttribution": [],
+        "approved": true
+      }
+    },
+    {
+      "id": "F16",
+      "name": "Kantin Labtek V",
+      "category": "kantin",
+      "lat": -6.8905811,
+      "lng": 107.6097754,
+      "buildingId": "P01",
+      "description": "Di dalam Labtek V. Titik peta memakai titik gedung; letak persis di dalam gedung belum disurvei.",
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Daftar fasilitas POI P01 (Labtek V) di assets/data/pois.json",
+          "Institut Teknologi Bandung (itb.ac.id)",
+          "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
+          "Website resmi fakultas dan program studi ITB",
+          "Buku Saku Mahasiswa Pascasarjana ITB 2021"
+        ],
+        "owner": "SebastianAben",
+        "verifiedAt": "2026-11-24",
+        "assetAttribution": [],
+        "approved": true
+      }
+    },
+    {
+      "id": "F17",
+      "name": "Kantin Labtek X & XI",
+      "category": "kantin",
+      "lat": -6.888994,
+      "lng": 107.6095767,
+      "buildingId": "P05",
+      "description": "Di dalam Labtek X & XI. Titik peta memakai titik gedung; letak persis di dalam gedung belum disurvei.",
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Daftar fasilitas POI P05 (Labtek X & XI) di assets/data/pois.json",
+          "Institut Teknologi Bandung (itb.ac.id)",
+          "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
+          "Website resmi fakultas dan program studi ITB",
+          "Buku Saku Mahasiswa Pascasarjana ITB 2021"
+        ],
+        "owner": "SebastianAben",
+        "verifiedAt": "2026-11-24",
+        "assetAttribution": [],
+        "approved": true
+      }
+    },
+    {
+      "id": "F18",
+      "name": "Kantin Gedung Kuliah Umum Barat",
+      "category": "kantin",
+      "lat": -6.89053,
+      "lng": 107.6089,
+      "buildingId": "P06",
+      "description": "Di dalam Gedung Kuliah Umum Barat. Titik peta memakai titik gedung; letak persis di dalam gedung belum disurvei.",
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Daftar fasilitas POI P06 (Gedung Kuliah Umum Barat) di assets/data/pois.json",
+          "Institut Teknologi Bandung (itb.ac.id)",
+          "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
+          "Website resmi fakultas dan program studi ITB",
+          "Buku Saku Mahasiswa Pascasarjana ITB 2021"
+        ],
+        "owner": "SebastianAben",
+        "verifiedAt": "2026-11-24",
+        "assetAttribution": [],
+        "approved": true
+      }
+    },
+    {
+      "id": "F19",
+      "name": "Kantin Gedung Kuliah Umum Timur",
+      "category": "kantin",
+      "lat": -6.8903881,
+      "lng": 107.611999,
+      "buildingId": "P07",
+      "description": "Di dalam Gedung Kuliah Umum Timur. Titik peta memakai titik gedung; letak persis di dalam gedung belum disurvei.",
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Daftar fasilitas POI P07 (Gedung Kuliah Umum Timur) di assets/data/pois.json",
+          "Institut Teknologi Bandung (itb.ac.id)",
+          "Direktorat Sarana dan Prasarana ITB (ditsp.itb.ac.id)",
+          "Website resmi fakultas dan program studi ITB",
+          "Buku Saku Mahasiswa Pascasarjana ITB 2021"
+        ],
+        "owner": "SebastianAben",
+        "verifiedAt": "2026-11-24",
+        "assetAttribution": [],
+        "approved": true
+      }
+    },
+    {
+      "id": "F20",
+      "name": "ATM BCA",
+      "category": "atm",
+      "lat": -6.8906146,
+      "lng": 107.6092305,
+      "buildingId": null,
+      "description": "Di antara GKUB dan Labtek V. Titik ditandai pengguna pada peta AGAM, 24 November 2026; belum diverifikasi lapangan.",
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Informasi lokasi dari SebastianAben, 24 November 2026"
+        ],
+        "owner": "SebastianAben",
+        "verifiedAt": "2026-11-24",
+        "assetAttribution": [],
+        "approved": true
+      }
+    },
+    {
+      "id": "F21",
+      "name": "ATM Center",
+      "category": "atm",
+      "lat": -6.892245,
+      "lng": 107.6105443,
+      "buildingId": null,
+      "description": "Kawasan selatan kampus. Titik ditandai pengguna pada peta AGAM, 24 November 2026; belum diverifikasi lapangan.",
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Informasi lokasi dari SebastianAben, 24 November 2026"
+        ],
+        "owner": "SebastianAben",
+        "verifiedAt": "2026-11-24",
+        "assetAttribution": [],
+        "approved": true
+      }
+    },
+    {
+      "id": "F22",
+      "name": "ATM BNI",
+      "category": "atm",
+      "lat": -6.8903881,
+      "lng": 107.611999,
+      "buildingId": "P07",
+      "description": "Gedung Kuliah Umum Timur, lantai 1. Titik peta memakai titik gedung; letak persis di dalam gedung belum disurvei.",
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Informasi lokasi dari SebastianAben, 24 November 2026"
+        ],
+        "owner": "SebastianAben",
+        "verifiedAt": "2026-11-24",
+        "assetAttribution": [],
+        "approved": true
+      }
+    },
+    {
+      "id": "F23",
+      "name": "Perpustakaan Pusat ITB",
+      "category": "perpustakaan",
+      "lat": -6.8882337,
+      "lng": 107.610614,
+      "buildingId": null,
+      "description": "Kawasan utara kampus. Titik ditandai pengguna pada peta AGAM, 24 November 2026; belum diverifikasi lapangan.",
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Informasi lokasi dari SebastianAben, 24 November 2026"
+        ],
+        "owner": "SebastianAben",
+        "verifiedAt": "2026-11-24",
+        "assetAttribution": [],
+        "approved": true
+      }
+    },
+    {
+      "id": "F24",
+      "name": "Perpustakaan STEI",
+      "category": "perpustakaan",
+      "lat": -6.8905811,
+      "lng": 107.6097754,
+      "buildingId": "P01",
+      "description": "Labtek V, lantai 3. Titik peta memakai titik gedung; letak persis di dalam gedung belum disurvei.",
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Informasi lokasi dari SebastianAben, 24 November 2026"
+        ],
+        "owner": "SebastianAben",
+        "verifiedAt": "2026-11-24",
+        "assetAttribution": [],
+        "approved": true
+      }
+    },
+    {
+      "id": "F25",
+      "name": "Information Center",
+      "category": "layananAkademik",
+      "lat": -6.891392,
+      "lng": 107.6104209,
+      "buildingId": null,
+      "description": "Bagian tengah kampus. Titik ditandai pengguna pada peta AGAM, 24 November 2026; belum diverifikasi lapangan.",
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Informasi lokasi dari SebastianAben, 24 November 2026"
+        ],
+        "owner": "SebastianAben",
+        "verifiedAt": "2026-11-24",
+        "assetAttribution": [],
+        "approved": true
+      }
+    },
+    {
+      "id": "F26",
+      "name": "Tata Usaha STEI",
+      "category": "layananAkademik",
+      "lat": -6.8905811,
+      "lng": 107.6097754,
+      "buildingId": "P01",
+      "description": "Labtek V, lantai 2. Titik peta memakai titik gedung; letak persis di dalam gedung belum disurvei.",
+      "metadata": {
+        "isPlaceholder": false,
+        "sources": [
+          "Informasi lokasi dari SebastianAben, 24 November 2026"
+        ],
+        "owner": "SebastianAben",
+        "verifiedAt": "2026-11-24",
+        "assetAttribution": [],
+        "approved": true
+      }
+    }
+  ]
 }

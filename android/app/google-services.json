@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "748977574626",
+    "project_id": "agam-9e704",
+    "storage_bucket": "agam-9e704.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:748977574626:android:1cd75697e6d1923b9104bb",
+        "android_client_info": {
+          "package_name": "site.agam"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDAjdsN5ns8fe6EDQTIlbQJEKRsbrIoU3U"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
