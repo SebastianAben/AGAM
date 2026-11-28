@@ -35,5 +35,6 @@ class UnavailableRecommendationService implements RecommendationService {
   Future<Recommendation> recommend({
     required GeoPoint from,
     String? afterPoiId,
+    String? afterFacilityId,
   }) async => const Recommendation(poiIds: [], nearbyFacilities: []);
 }

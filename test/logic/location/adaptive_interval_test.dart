@@ -1,3 +1,4 @@
+import 'package:agam/contracts/contracts.dart';
 import 'package:agam/logic/location/adaptive_interval.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -72,6 +73,36 @@ void main() {
     expect(
       policy.isStationary(syntheticEpoch.add(const Duration(hours: 1))),
       isFalse,
+    );
+  });
+
+  test('diam dekat titik akses tetap memakai interval normal', () {
+    final poiWithFarEntrance = Poi(
+      id: 'synthetic-entrance',
+      name: 'SINTETIS',
+      aliases: const [],
+      category: PoiCategory.lecture,
+      position: const GeoPoint(0, 0),
+      radiusM: 15,
+      entrances: [
+        PoiEntrance(
+          position: GeoPoint(metersToLat(60), 0),
+          label: 'Pintu SINTETIS',
+        ),
+      ],
+      description: 'SINTETIS',
+      function: 'SINTETIS',
+      facilities: const [],
+      trivia: 'SINTETIS',
+      media: const PoiMedia(),
+      metadata: const ContentMetadata.placeholder(),
+    );
+    final policy = AdaptiveIntervalPolicy();
+    // 65 m dari pusat (>45 m zona pusat), tetapi 5 m dari titik akses (<=40 m).
+    policy.evaluate(syntheticFix(0, metersNorth: 65), [poiWithFarEntrance]);
+    expect(
+      policy.evaluate(syntheticFix(60, metersNorth: 65), [poiWithFarEntrance]),
+      normal,
     );
   });
 }

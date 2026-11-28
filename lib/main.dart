@@ -22,9 +22,15 @@ import 'logic/account/account_bootstrap.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  final (services, views, actions) = await _createProductionAppServices();
+  final (services, views, dismissed, actions) =
+      await _createProductionAppServices();
   runApp(
-    AgamApp(services: services, poiViewRequests: views, onPoiAction: actions),
+    AgamApp(
+      services: services,
+      poiViewRequests: views,
+      poiDismissed: dismissed,
+      onPoiAction: actions,
+    ),
   );
 }
 
@@ -48,7 +54,12 @@ Future<RoutingService> _loadCampusRouting() async =>
 /// Permintaan buka POI dan aksi dari notifikasi trigger diteruskan ke UI;
 /// tanpa ini notifikasi POI tidak membuka kartunya.
 Future<
-  (AppServices, Stream<String>, Future<void> Function(String, TriggerAction))
+  (
+    AppServices,
+    Stream<String>,
+    Stream<String>,
+    Future<void> Function(String, TriggerAction),
+  )
 >
 _createProductionAppServices() async {
   final map = AgamMapConfig.campus();
@@ -75,7 +86,9 @@ _createProductionAppServices() async {
   String? currentUid() => account.auth.current.account?.uid;
   la.session.triggers.listen((event) {
     final uid = currentUid();
-    if (uid != null && event.mode == SessionMode.explore) {
+    if (uid != null &&
+        (event.mode == SessionMode.explore ||
+            event.mode == SessionMode.navigation)) {
       unawaited(visits.record(uid, event.poiId).catchError((Object _) {}));
     }
   });
@@ -120,6 +133,7 @@ _createProductionAppServices() async {
   return (
     services,
     la.triggerResponder.viewRequests,
+    la.triggerResponder.dismissedPois,
     (String id, TriggerAction action) => la.triggerResponder.handleAction(
       TriggerActionEvent(poiId: id, action: action),
     ),

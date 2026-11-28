@@ -360,6 +360,7 @@ class FakeRecommendationService implements RecommendationService {
   Future<Recommendation> recommend({
     required GeoPoint from,
     String? afterPoiId,
+    String? afterFacilityId,
   }) async {
     final visited = _trail.current.visited;
     final candidates =
@@ -371,9 +372,19 @@ class FakeRecommendationService implements RecommendationService {
                 .distanceTo(a.position)
                 .compareTo(from.distanceTo(b.position)),
           );
+    final rawNearby = await _facilities.nearby(
+      from: from,
+      limit: afterFacilityId == null ? 2 : 3,
+    );
+    final nearbyFacilities = afterFacilityId == null
+        ? rawNearby
+        : rawNearby
+              .where((item) => item.facility.id != afterFacilityId)
+              .take(2)
+              .toList();
     return Recommendation(
       poiIds: candidates.take(3).map((p) => p.id).toList(),
-      nearbyFacilities: await _facilities.nearby(from: from, limit: 2),
+      nearbyFacilities: nearbyFacilities,
     );
   }
 }

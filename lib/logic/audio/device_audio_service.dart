@@ -133,7 +133,11 @@ class DeviceAudioService implements AudioService, AudioSeekControl {
       milliseconds: position.inMilliseconds.clamp(0, duration.inMilliseconds),
     );
     await _backend.seek(target);
-    if (generation != _generation || seekGeneration != _seekGeneration) return;
+    if (generation != _generation ||
+        _loadedGeneration != generation ||
+        seekGeneration != _seekGeneration) {
+      return;
+    }
     _emit(
       PlaybackState(
         status: _current.status == PlaybackStatus.completed
@@ -169,6 +173,9 @@ class DeviceAudioService implements AudioService, AudioSeekControl {
     final PlaybackStatus status;
     switch (snapshot.phase) {
       case BackendPhase.idle:
+        _wantsPlayback = false;
+        _loadedGeneration = -1;
+        _emit(const PlaybackState.idle());
         return;
       case BackendPhase.completed:
         status = PlaybackStatus.completed;

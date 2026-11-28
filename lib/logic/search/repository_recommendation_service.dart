@@ -19,11 +19,21 @@ class RepositoryRecommendationService implements RecommendationService {
   Future<Recommendation> recommend({
     required GeoPoint from,
     String? afterPoiId,
+    String? afterFacilityId,
   }) async {
     final uid = currentUid();
     final candidates = await pois.watchPois().first;
     final seen = uid == null ? const <String>{} : await visited(uid);
-    final nearby = await facilities.nearby(from: from, limit: 2);
+    final rawNearby = await facilities.nearby(
+      from: from,
+      limit: afterFacilityId == null ? 2 : 3,
+    );
+    final nearby = afterFacilityId == null
+        ? rawNearby
+        : rawNearby
+              .where((item) => item.facility.id != afterFacilityId)
+              .take(2)
+              .toList();
     if (uid != currentUid()) {
       return const Recommendation(poiIds: [], nearbyFacilities: []);
     }

@@ -16,6 +16,7 @@ class _FakeGateway implements AuthGateway {
   AuthUser? _current;
   int _next = 1;
   bool offline = false;
+  bool failDeleteUser = false;
   final calls = <String>[];
 
   void seed(String email, String password, {String? uid}) {
@@ -94,6 +95,7 @@ class _FakeGateway implements AuthGateway {
   @override
   Future<void> deleteCurrentUser() async {
     calls.add('deleteUser');
+    if (failDeleteUser) throw const AuthException(AuthErrorCode.network);
     _users.remove(_current?.email);
     _current = null;
   }
@@ -395,6 +397,78 @@ void main() {
       expect(hooks, isEmpty);
       expect(profiles.roles, isNotEmpty);
       expect(auth.current.isSignedIn, isTrue);
+    });
+
+    test('deleteCurrentUser gagal di tengah jalan: profil dipulihkan, data lokal bertahan, dan hapus akun bisa dicoba ulang', () async {
+      gateway.failDeleteUser = true;
+      await expectLater(
+        auth.deleteAccount(password: 'rahasia1'),
+        throwsA(
+          isA<AuthException>().having(
+            (e) => e.code,
+            'code',
+            AuthErrorCode.network,
+          ),
+        ),
+      );
+
+      // Profil dipulihkan (rollback), data lokal & role lokal tetap ada,
+      // dan pengguna masih masuk sehingga tidak terkunci permanen.
+      expect(profiles.roles['uid-a'], UserRole.pengunjung);
+      expect(
+        keyValue.values[LocalAccountStore.roleKeyFor('uid-a')],
+        UserRole.pengunjung.name,
+      );
+      expect(hooks, ['beforeDelete', 'deleteLogs:uid-a']);
+      expect(auth.current.isSignedIn, isTrue);
+
+      // Saat koneksi kembali, coba ulang hapus akun berhasil penuh.
+      gateway.failDeleteUser = false;
+      hooks.clear();
+      await auth.deleteAccount(password: 'rahasia1');
+      expect(hooks, ['beforeDelete', 'deleteLogs:uid-a', 'clearLocal:uid-a']);
+      expect(profiles.roles, isEmpty);
+      expect(keyValue.values, isEmpty);
+      expect(auth.current.isSignedIn, isFalse);
+    });
+
+    test('deleteCurrentUser dan rollback profil sama-sama gagal: role lokal mencegah akun terkunci saat restore atau login ulang', () async {
+      gateway.failDeleteUser = true;
+      profiles.failCreate = true;
+      await expectLater(
+        auth.deleteAccount(password: 'rahasia1'),
+        throwsA(
+          isA<AuthException>().having(
+            (e) => e.code,
+            'code',
+            AuthErrorCode.network,
+          ),
+        ),
+      );
+
+      // Profil Firestore hilang, tetapi salinan role lokal masih bertahan.
+      expect(profiles.roles, isEmpty);
+      expect(
+        keyValue.values[LocalAccountStore.roleKeyFor('uid-a')],
+        UserRole.pengunjung.name,
+      );
+
+      // Cold start (restore) tetap memulihkan akun dari salinan lokal.
+      final reopened = build();
+      await reopened.restore();
+      expect(reopened.current.account?.role, UserRole.pengunjung);
+
+      // Login ulang saat profil Firestore masih null juga pulih dari role
+      // lokal dan memperbaiki dokumen profil ketika koneksi kembali.
+      profiles.failCreate = false;
+      await gateway.signOut();
+      final relogin = build();
+      final account = await relogin.login(
+        email: 'a@contoh.test',
+        password: 'rahasia1',
+      );
+      expect(account.role, UserRole.pengunjung);
+      expect(profiles.roles['uid-a'], UserRole.pengunjung);
     });
   });
 

@@ -109,3 +109,72 @@ class _AgamPoiPanelState extends State<AgamPoiPanel> {
         ),
   );
 }
+
+/// Softens the bottom edge of the panel's scroll body while more content
+/// sits below it. At the mid snap the sheet often ends inside a row of
+/// facility chips; a short fade turns that half-cut row into an obvious
+/// "scroll for more" instead of a clipped edge. The fade leaves once the
+/// end is reached, so the last row is never dimmed.
+///
+/// Place it between the [Scrollbar] and the scroll view, so the thumb
+/// itself is not faded.
+class AgamScrollEdgeFade extends StatefulWidget {
+  const AgamScrollEdgeFade({super.key, required this.child, this.extent = 36});
+
+  final Widget child;
+
+  /// Height of the fade, in logical pixels.
+  final double extent;
+
+  @override
+  State<AgamScrollEdgeFade> createState() => _AgamScrollEdgeFadeState();
+}
+
+class _AgamScrollEdgeFadeState extends State<AgamScrollEdgeFade> {
+  bool _moreBelow = false;
+
+  bool _update(ScrollMetrics metrics, int depth) {
+    if (depth != 0 || metrics.axis != Axis.vertical) return false;
+    final moreBelow = metrics.extentAfter > .5;
+    if (moreBelow != _moreBelow && mounted) {
+      setState(() => _moreBelow = moreBelow);
+    }
+    return false;
+  }
+
+  @override
+  Widget build(BuildContext context) =>
+      NotificationListener<ScrollMetricsNotification>(
+        onNotification: (n) => _update(n.metrics, n.depth),
+        child: NotificationListener<ScrollNotification>(
+          onNotification: (n) => _update(n.metrics, n.depth),
+          child: TweenAnimationBuilder<double>(
+            tween: Tween(end: _moreBelow ? 1 : 0),
+            // Opacity only; with reduced motion it switches at once.
+            duration: AgamMotion.duration(context, 160),
+            curve: AgamMotion.easeOut,
+            // The mask stays in the tree at every strength, so the scroll
+            // view keeps its state when the fade comes and goes.
+            builder: (context, strength, child) => ShaderMask(
+              blendMode: BlendMode.dstIn,
+              shaderCallback: (bounds) {
+                final start = bounds.height <= 0
+                    ? 1.0
+                    : (1 - widget.extent / bounds.height).clamp(0.0, 1.0);
+                return LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  stops: [start, 1],
+                  colors: [
+                    const Color(0xFFFFFFFF),
+                    Color.fromRGBO(255, 255, 255, 1 - strength),
+                  ],
+                ).createShader(bounds);
+              },
+              child: child,
+            ),
+            child: widget.child,
+          ),
+        ),
+      );
+}

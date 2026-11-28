@@ -65,4 +65,26 @@ void main() {
     }
     expect(services.map.style.isPlaceholder, isTrue);
   });
+
+  test('rekomendasi palsu mengecualikan afterFacilityId dan tetap mengembalikan hingga 2 fasilitas terdekat', () async {
+    final services = AppServices.fake();
+    final facilities = await services.pois.watchFacilities().first;
+    final arrived = facilities.first;
+
+    final withoutExclusion = await services.recommendations.recommend(
+      from: arrived.position,
+    );
+    expect(withoutExclusion.nearbyFacilities, hasLength(2));
+    expect(withoutExclusion.nearbyFacilities.first.facility.id, arrived.id);
+
+    final withExclusion = await services.recommendations.recommend(
+      from: arrived.position,
+      afterFacilityId: arrived.id,
+    );
+    expect(withExclusion.nearbyFacilities, hasLength(2));
+    expect(
+      withExclusion.nearbyFacilities.map((f) => f.facility.id),
+      isNot(contains(arrived.id)),
+    );
+  });
 }

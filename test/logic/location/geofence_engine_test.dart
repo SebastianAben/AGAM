@@ -9,6 +9,7 @@ Poi _poi({
   String id = 'synthetic-a',
   double radius = 15,
   GeoPoint position = const GeoPoint(0, 0),
+  List<PoiEntrance> entrances = const [],
 }) => Poi(
   id: id,
   name: 'SINTETIS',
@@ -16,7 +17,7 @@ Poi _poi({
   category: PoiCategory.lecture,
   position: position,
   radiusM: radius,
-  entrances: const [],
+  entrances: entrances,
   description: 'SINTETIS',
   function: 'SINTETIS',
   facilities: const [],
@@ -492,5 +493,207 @@ void main() {
           .map((e) => e.poiId),
       ['synthetic-50'],
     );
+  });
+
+  group('titik akses (entrances)', () {
+    test('masuk <=10 m dari titik akses dengan dwell 5 detik memicu POI '
+        'meski jauh dari pusat', () {
+      const center = GeoPoint(0, 0);
+      const entrance = GeoPoint(0, 1);
+      var centerDistance = 45.0;
+      var entranceDistance = 10.001;
+      final engine = GeofenceEngine(
+        pois: [
+          _poi(
+            position: center,
+            entrances: const [
+              PoiEntrance(position: entrance, label: 'Pintu SINTETIS'),
+            ],
+          ),
+        ],
+        distanceCalculator: (_, to) =>
+            to == center ? centerDistance : entranceDistance,
+      );
+
+      // Di luar 10 m dari pintu dan di luar 20 m dari pusat -> tidak memicu.
+      expect(engine.evaluate(_fix(0), enabled: true), isEmpty);
+      expect(engine.evaluate(_fix(5000), enabled: true), isEmpty);
+
+      // Tepat 10 m dari pintu -> mulai dwell dan memicu setelah 5 detik.
+      entranceDistance = 10.0;
+      expect(engine.evaluate(_fix(6000), enabled: true), isEmpty);
+      expect(engine.evaluate(_fix(10999), enabled: true), isEmpty);
+      final entry = engine.evaluate(_fix(11000), enabled: true).single;
+      expect(entry.poiId, 'synthetic-a');
+      expect(engine.activePoiIds, {'synthetic-a'});
+    });
+
+    test('histeresis titik akses menahan kunci hingga >15 m dari semua pintu '
+        'dan >25 m dari pusat', () {
+      const center = GeoPoint(0, 0);
+      const entranceA = GeoPoint(0, 1);
+      const entranceB = GeoPoint(0, 2);
+      var dCenter = 45.0;
+      var dEntranceA = 8.0;
+      var dEntranceB = 30.0;
+      final engine = GeofenceEngine(
+        pois: [
+          _poi(
+            position: center,
+            entrances: const [
+              PoiEntrance(position: entranceA, label: 'Pintu A'),
+              PoiEntrance(position: entranceB, label: 'Pintu B'),
+            ],
+          ),
+        ],
+        distanceCalculator: (_, to) {
+          if (to == center) return dCenter;
+          if (to == entranceA) return dEntranceA;
+          return dEntranceB;
+        },
+      );
+
+      expect(engine.evaluate(_fix(0), enabled: true), isEmpty);
+      expect(engine.evaluate(_fix(5000), enabled: true), hasLength(1));
+
+      // Tepat di batas histeresis pintu (15 m) tetap terkunci.
+      dEntranceA = 15.0;
+      engine.evaluate(_fix(6000), enabled: true);
+      expect(engine.activePoiIds, {'synthetic-a'});
+
+      // Keluar dari pintu A (>15 m), tetapi masih di dalam histeresis pintu B.
+      dEntranceA = 20.0;
+      dEntranceB = 14.0;
+      engine.evaluate(_fix(7000), enabled: true);
+      expect(engine.activePoiIds, {'synthetic-a'});
+
+      // Keluar dari kedua pintu (>15 m), tetapi masih di dalam histeresis pusat.
+      dEntranceB = 16.0;
+      dCenter = 25.0;
+      engine.evaluate(_fix(8000), enabled: true);
+      expect(engine.activePoiIds, {'synthetic-a'});
+
+      // Keluar dari pusat (>25 m) dan semua pintu (>15 m) -> keluar.
+      dCenter = 25.001;
+      engine.evaluate(_fix(9000), enabled: true);
+      expect(engine.activePoiIds, isEmpty);
+    });
+
+    test(
+      'dua titik akses berjarak ~20 m tidak tumpang tindih dengan haversine',
+      () {
+        // SINTETIS — jarak haversine independen di khatulistiwa:
+        // 1e-4 deg lat = 6371000 * pi / 180 * 1e-4 = 11.11949 m.
+        // Pintu A di (0, 0), Pintu B di (0.00018, 0) => jarak = 20.0151 m.
+        const entranceA = GeoPoint(0, 0);
+        const entranceB = GeoPoint(0.00018, 0);
+        final engine = GeofenceEngine(
+          pois: [
+            _poi(
+              id: 'synthetic-a',
+              position: const GeoPoint(-0.0005, 0),
+              entrances: const [
+                PoiEntrance(position: entranceA, label: 'Pintu A'),
+              ],
+            ),
+            _poi(
+              id: 'synthetic-b',
+              position: const GeoPoint(0.0007, 0),
+              entrances: const [
+                PoiEntrance(position: entranceB, label: 'Pintu B'),
+              ],
+            ),
+          ],
+        );
+
+        // Titik tengah (~10.0075 m dari kedua pintu) -> tidak masuk keduanya.
+        const midpoint = GeoPoint(0.00009, 0);
+        expect(
+          engine.evaluate(_fix(0, position: midpoint), enabled: true),
+          isEmpty,
+        );
+        expect(
+          engine.evaluate(_fix(5000, position: midpoint), enabled: true),
+          isEmpty,
+        );
+
+        // ~5.0 m utara Pintu A (~15.01 m selatan Pintu B) -> hanya memicu A.
+        const nearA = GeoPoint(0.000045, 0);
+        expect(
+          engine.evaluate(_fix(6000, position: nearA), enabled: true),
+          isEmpty,
+        );
+        final entryA = engine.evaluate(
+          _fix(11000, position: nearA),
+          enabled: true,
+        );
+        expect(entryA.map((e) => e.poiId), ['synthetic-a']);
+
+        // ~5.0 m selatan Pintu B (~15.01 m utara Pintu A) -> keluar A dan memicu B.
+        const nearB = GeoPoint(0.000135, 0);
+        expect(
+          engine.evaluate(_fix(12000, position: nearB), enabled: true),
+          isEmpty,
+        );
+        expect(engine.activePoiIds, isEmpty);
+        final entryB = engine.evaluate(
+          _fix(17000, position: nearB),
+          enabled: true,
+        );
+        expect(entryB.map((e) => e.poiId), ['synthetic-b']);
+      },
+    );
+
+    test('validasi entranceRadiusM dan koordinat titik akses', () {
+      for (final radius in [-1.0, double.nan, double.infinity]) {
+        expect(
+          () => GeofenceEngine(pois: [], entranceRadiusM: radius),
+          throwsArgumentError,
+        );
+      }
+      expect(
+        () => GeofenceEngine(pois: [], entranceRadiusM: 0),
+        returnsNormally,
+      );
+      expect(
+        () => GeofenceEngine(
+          pois: [
+            _poi(
+              entrances: const [
+                PoiEntrance(position: GeoPoint(91, 0), label: 'Invalid'),
+              ],
+            ),
+          ],
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('jarak titik akses invalid membatalkan dwell tanpa melepas kunci', () {
+      const center = GeoPoint(0, 0);
+      const entrance = GeoPoint(0, 1);
+      var entranceDistance = 5.0;
+      final engine = GeofenceEngine(
+        pois: [
+          _poi(
+            position: center,
+            entrances: const [PoiEntrance(position: entrance, label: 'Pintu')],
+          ),
+        ],
+        distanceCalculator: (_, to) => to == center ? 50.0 : entranceDistance,
+      );
+
+      engine.evaluate(_fix(0), enabled: true);
+      entranceDistance = double.nan;
+      expect(engine.evaluate(_fix(4000), enabled: true), isEmpty);
+      entranceDistance = 5.0;
+      expect(engine.evaluate(_fix(5000), enabled: true), isEmpty);
+      expect(engine.evaluate(_fix(10000), enabled: true), hasLength(1));
+
+      // Setelah terkunci, jarak invalid tidak melepas pengunci.
+      entranceDistance = double.nan;
+      engine.evaluate(_fix(11000), enabled: true);
+      expect(engine.activePoiIds, {'synthetic-a'});
+    });
   });
 }

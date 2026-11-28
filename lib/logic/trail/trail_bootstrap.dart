@@ -19,6 +19,7 @@ DeviceTrailService createDeviceTrailService({
   required bool routingAvailable,
   AccountVisitStore? visits,
   Duration startFixTimeout = const Duration(seconds: 3),
+  DateTime Function()? clock,
 }) => DeviceTrailService(
   pois: pois,
   location: location,
@@ -30,5 +31,6 @@ DeviceTrailService createDeviceTrailService({
   map: map,
   routingAvailable: routingAvailable,
   startFixTimeout: startFixTimeout,
+  clock: clock,
   onComplete: () => activity.log(const ActivityEvent.trailCompleted()),
 );

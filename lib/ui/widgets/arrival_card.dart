@@ -18,6 +18,11 @@ import 'agam_theme.dart';
 /// §10). When no Indonesian voice is installed that announcement stays
 /// silent, so the card says once, inline, how to get one. Voice
 /// availability is asked once, when the card appears.
+///
+/// A facility inside a building is reached at the building's door, so the
+/// card ends the outdoor route with where to go inside ([locationHint], e.g.
+/// "Labtek V, lantai 3"). The last Orientation Trail stop can add a calm
+/// [completionNote]; the card stays until the user taps Selesai.
 class ArrivalCard extends StatefulWidget {
   const ArrivalCard({
     super.key,
@@ -27,6 +32,9 @@ class ArrivalCard extends StatefulWidget {
     required this.onFinish,
     this.onOpenDetail,
     this.map,
+    this.locationHint,
+    this.enterBuilding = false,
+    this.completionNote,
   });
 
   final String name;
@@ -41,6 +49,18 @@ class ArrivalCard extends StatefulWidget {
 
   /// The card's map, kept from the route summary for continuity.
   final Widget? map;
+
+  /// Where a facility is inside or around its building, as written in its
+  /// data. Shown for a facility only; never written by the app itself.
+  final String? locationHint;
+
+  /// The route ended at a building door, so the card adds [indoorNote].
+  final bool enterBuilding;
+
+  /// A short note shown above the actions, e.g. Trail completion.
+  final String? completionNote;
+
+  static const indoorNote = 'Masuk ke gedung, lalu menuju lokasi ini.';
 
   static const voiceNote =
       'Suara Bahasa Indonesia belum terpasang, jadi kedatangan tidak '
@@ -101,9 +121,17 @@ class _ArrivalCardState extends State<ArrivalCard>
     super.dispose();
   }
 
+  String? get _indoorHint {
+    final hint = widget.locationHint?.trim();
+    if (widget.kind != NavigationTargetKind.facility) return null;
+    return hint == null || hint.isEmpty ? null : hint;
+  }
+
   @override
   Widget build(BuildContext context) {
     final openDetail = widget.onOpenDetail;
+    final indoorHint = _indoorHint;
+    final completionNote = widget.completionNote;
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -149,6 +177,17 @@ class _ArrivalCardState extends State<ArrivalCard>
                       ),
                     ],
                   ),
+                  if (indoorHint != null) ...[
+                    const SizedBox(height: 14),
+                    _IndoorCue(
+                      hint: indoorHint,
+                      enterBuilding: widget.enterBuilding,
+                    ),
+                  ],
+                  if (completionNote != null) ...[
+                    const SizedBox(height: 14),
+                    _CompletionNote(text: completionNote),
+                  ],
                   if (_voiceMissing) ...[
                     const SizedBox(height: 14),
                     Row(
@@ -199,4 +238,90 @@ class _ArrivalCardState extends State<ArrivalCard>
       ),
     );
   }
+}
+
+/// The second stage of a facility route: the outdoor walk ends at the
+/// building door, and this says where to go once inside.
+class _IndoorCue extends StatelessWidget {
+  const _IndoorCue({required this.hint, required this.enterBuilding});
+
+  final String hint;
+  final bool enterBuilding;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    container: true,
+    label: enterBuilding ? '$hint. ${ArrivalCard.indoorNote}' : hint,
+    excludeSemantics: true,
+    child: Container(
+      padding: const EdgeInsets.fromLTRB(12, 12, 14, 12),
+      decoration: BoxDecoration(
+        color: AgamColors.tint,
+        borderRadius: BorderRadius.circular(AgamRadius.control),
+      ),
+      child: Row(
+        children: [
+          const AgamIconTile(
+            icon: Icons.meeting_room_rounded,
+            size: 36,
+            background: Colors.white,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  hint,
+                  style: AgamText.label.copyWith(color: AgamColors.ink),
+                ),
+                if (enterBuilding) ...[
+                  const SizedBox(height: 2),
+                  const Text(ArrivalCard.indoorNote, style: AgamText.caption),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+class _CompletionNote extends StatelessWidget {
+  const _CompletionNote({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.fromLTRB(12, 12, 14, 12),
+    decoration: BoxDecoration(
+      color: AgamColors.successTint,
+      borderRadius: BorderRadius.circular(AgamRadius.control),
+    ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.only(top: 1),
+          child: Icon(
+            Icons.workspace_premium_rounded,
+            size: 20,
+            color: AgamColors.success,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Semantics(
+            liveRegion: true,
+            child: Text(
+              text,
+              style: AgamText.bodySmall.copyWith(color: AgamColors.ink),
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
 }

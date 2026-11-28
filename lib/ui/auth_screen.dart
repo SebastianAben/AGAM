@@ -21,10 +21,15 @@ class AuthScreen extends StatefulWidget {
 
   final AuthService auth;
 
+  /// Pemberitahuan privasi pendaftaran (PRD §16). Isinya mengikuti daftar
+  /// tertutup log aktivitas di PRD §15.5; perbarui bersama daftar itu.
   static const consentText =
-      'Posisi diproses di perangkat dan tidak dikirim atau disimpan sebagai '
-      'riwayat. Saya menyetujui pengelolaan akun dan log aktivitas yang '
-      'disetujui.';
+      'Posisi diproses di perangkat dan tidak pernah dikirim atau disimpan '
+      'sebagai riwayat. Saya menyetujui penyimpanan email dan peran akun '
+      'serta log aktivitas terbatas (masuk/keluar, buka aplikasi beserta '
+      'versi dan model perangkat, tanggal dan durasi mode tanpa jam, fitur '
+      'umum yang dipakai, dan trail selesai) untuk evaluasi internal tim '
+      'AGAM.';
 
   @override
   State<AuthScreen> createState() => _AuthScreenState();

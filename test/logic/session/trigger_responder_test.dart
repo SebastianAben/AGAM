@@ -225,13 +225,79 @@ void main() {
     await sub.cancel();
   });
 
-  test('Lewati menutup notifikasi dan menghentikan prompt', () async {
+  test('Lewati menutup notifikasi, menghentikan prompt, dan memancarkan '
+      'dismissedPois', () async {
+    final dismissed = <String>[];
+    final sub = responder.dismissedPois.listen(dismissed.add);
     session.fire('synthetic-a', TriggerResponse.full);
     await pumpEventQueue();
     notifier.press('synthetic-a', TriggerAction.skip);
     await pumpEventQueue();
     expect(notifier.calls.last, 'dismiss:synthetic-a');
     expect(audio.current.status, PlaybackStatus.idle);
+    expect(dismissed, ['synthetic-a']);
+    await sub.cancel();
+  });
+
+  test('Dengarkan dan Lihat tidak memancarkan dismissedPois', () async {
+    final dismissed = <String>[];
+    final sub = responder.dismissedPois.listen(dismissed.add);
+    notifier.press('synthetic-a', TriggerAction.listen);
+    notifier.press('synthetic-a', TriggerAction.view);
+    await pumpEventQueue();
+    expect(dismissed, isEmpty);
+    await sub.cancel();
+  });
+
+  test('dismissNotification menutup banner notifikasi tanpa menghentikan '
+      'narasi atau prompt dan tanpa memancarkan dismissedPois', () async {
+    final dismissed = <String>[];
+    final sub = responder.dismissedPois.listen(dismissed.add);
+    session.fire('synthetic-a', TriggerResponse.full);
+    await pumpEventQueue();
+    await responder.handleAction(
+      const TriggerActionEvent(
+        poiId: 'synthetic-a',
+        action: TriggerAction.listen,
+      ),
+    );
+    notifier.calls.clear();
+
+    await responder.dismissNotification('synthetic-a');
+    expect(notifier.calls, ['dismiss:synthetic-a']);
+    expect(audio.current.clip?.kind, AudioClipKind.narration);
+    expect(audio.current.status, PlaybackStatus.playing);
+    expect(dismissed, isEmpty);
+    await sub.cancel();
+  });
+
+  test('dismissForegroundNotifications menutup semua notifikasi trigger '
+      'tanpa menghentikan narasi atau prompt', () async {
+    final dismissed = <String>[];
+    final sub = responder.dismissedPois.listen(dismissed.add);
+    session.fire('synthetic-a', TriggerResponse.full);
+    await pumpEventQueue();
+    notifier.calls.clear();
+
+    await responder.dismissForegroundNotifications();
+    expect(notifier.calls, ['dismissAll']);
+    expect(audio.current.clip?.kind, AudioClipKind.prompt);
+    expect(audio.current.status, PlaybackStatus.playing);
+    expect(dismissed, isEmpty);
+
+    await responder.handleAction(
+      const TriggerActionEvent(
+        poiId: 'synthetic-a',
+        action: TriggerAction.listen,
+      ),
+    );
+    notifier.calls.clear();
+    await responder.dismissForegroundNotifications();
+    expect(notifier.calls, ['dismissAll']);
+    expect(audio.current.clip?.kind, AudioClipKind.narration);
+    expect(audio.current.status, PlaybackStatus.playing);
+    expect(dismissed, isEmpty);
+    await sub.cancel();
   });
 
   test('Lewati tidak menghentikan narasi yang sedang diputar', () async {

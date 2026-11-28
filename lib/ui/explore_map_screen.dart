@@ -30,6 +30,7 @@ class ExploreMapScreen extends StatefulWidget {
     this.isActive = true,
     this.onTabSelected,
     this.poiViewRequests = const Stream.empty(),
+    this.poiDismissed = const Stream.empty(),
     this.poiMapRequests = const Stream.empty(),
     this.onPoiAction,
     this.onAutomaticPoi,
@@ -58,6 +59,10 @@ class ExploreMapScreen extends StatefulWidget {
   final bool isActive;
   final ValueChanged<int>? onTabSelected;
   final Stream<String> poiViewRequests;
+
+  /// POI ids skipped from the notification ("Lewati"). Their card is
+  /// removed and never comes back on resume (PRD §9.2).
+  final Stream<String> poiDismissed;
   final Stream<String> poiMapRequests;
   final Future<void> Function(String, TriggerAction)? onPoiAction;
 
@@ -75,13 +80,16 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
   List<Facility> _nearbyFacilities = const [];
   LocationFix? _fix;
   Poi? _selectedPoi;
-  bool _sessionActive = false;
+  SessionMode _sessionMode = SessionMode.none;
   bool _showDetail = false;
   String? _triggeredPoiId;
   // A POI the user opened from the map panel, not from a trigger.
   String? _panelViewId;
   bool _changingSession = false;
-  bool _openingDetail = false;
+  // The POI detail this screen pushed, so a new request replaces it instead
+  // of stacking on it or being dropped.
+  Route<void>? _detailRoute;
+  String? _detailPoiId;
   bool _appVisible = true;
   final _activeTriggerIds = <String>{};
   String? _locationMessage;
@@ -90,9 +98,7 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _appVisible =
-        WidgetsBinding.instance.lifecycleState == null ||
-        WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
+    _appVisible = _isVisible(WidgetsBinding.instance.lifecycleState);
     if (widget.services.location case DeviceLocationService device) {
       _subscriptions.add(
         device.issues.listen((issue) {
@@ -110,7 +116,7 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
         }),
       );
     }
-    _sessionActive = widget.services.session.current.isActive;
+    _sessionMode = widget.services.session.current.mode;
     if (widget.services.session case PoiTriggerLifecycle lifecycle) {
       _subscriptions.add(
         lifecycle.deactivatedPois.listen((id) {
@@ -125,6 +131,16 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
       );
     }
     _subscriptions.add(widget.poiViewRequests.listen(_openPoiById));
+    _subscriptions.add(
+      widget.poiDismissed.listen((id) {
+        _activeTriggerIds.remove(id);
+        if (!mounted || _triggeredPoiId != id) return;
+        setState(() {
+          _triggeredPoiId = null;
+          _showDetail = false;
+        });
+      }),
+    );
     _subscriptions.add(
       widget.poiMapRequests.listen((id) async {
         final poi = await widget.services.pois.poiById(id);
@@ -153,7 +169,7 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
       widget.services.session.state.listen((state) {
         if (!mounted) return;
         setState(() {
-          _sessionActive = state.isActive;
+          _sessionMode = state.mode;
           if (!state.isActive) {
             _activeTriggerIds.clear();
             if (_triggeredPoiId != null) _showDetail = false;
@@ -198,16 +214,29 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
     }
   }
 
+  /// `inactive` is still on screen (the notification shade, a system
+  /// dialog), so the map keeps its fix there, as [DeviceLocationService]
+  /// does; only `hidden`, `paused` and `detached` stop reading.
+  static bool _isVisible(AppLifecycleState? state) =>
+      state == null ||
+      state == AppLifecycleState.resumed ||
+      state == AppLifecycleState.inactive;
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    _appVisible = state == AppLifecycleState.resumed;
+    _appVisible = _isVisible(state);
     if (!_appVisible && mounted) setState(() => _fix = null);
     _syncLocationSubscription();
-    if (_appVisible) _showNearestTrigger();
+    if (state == AppLifecycleState.resumed) _showNearestTrigger();
   }
 
+  /// Triggers with a full card come from Explore and Trail only; Navigasi
+  /// sends brief notifications (PRD §9.2).
+  bool get _triggerSession =>
+      _sessionMode == SessionMode.explore || _sessionMode == SessionMode.trail;
+
   void _showNearestTrigger() {
-    if (!mounted || !_appVisible || !_sessionActive) return;
+    if (!mounted || !_appVisible || !_triggerSession) return;
     final candidates = _pois
         .where((poi) => _activeTriggerIds.contains(poi.id))
         .toList();
@@ -255,7 +284,16 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
     if (_changingSession) return;
     setState(() => _changingSession = true);
     try {
-      if (_sessionActive) {
+      if (_sessionMode == SessionMode.navigation) {
+        // Same order as the navigation screen: stop guidance, then the
+        // session, so neither is left running alone.
+        await widget.services.navigation.stop();
+        await widget.services.session.end();
+      } else if (_sessionMode == SessionMode.trail) {
+        // Same order as the Trail screen.
+        await widget.services.session.end();
+        await widget.services.trail.stop();
+      } else if (_sessionMode != SessionMode.none) {
         await widget.services.session.end();
       } else {
         final permission = await widget.services.permissions.requestLocation();
@@ -291,28 +329,47 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
 
   /// [fromTrigger] opens the detail without `featureUsed`: right after a
   /// trigger its time would match the arrival at the POI (PRD §15.5).
+  ///
+  /// One detail at a time: the same POI on top is left as it is (a double
+  /// tap), another POI replaces the open detail instead of stacking on it
+  /// or being dropped (a notification "Lihat" for B while A is open).
   Future<void> _openDetail(Poi poi, {bool fromTrigger = false}) async {
-    if (_openingDetail) return;
-    _openingDetail = true;
+    final navigator = Navigator.of(context);
+    final previous = _detailRoute;
+    if (previous != null && previous.isCurrent && _detailPoiId == poi.id) {
+      return;
+    }
     var routeRequested = false;
+    final route = AgamMotion.route<void>(
+      (_) => PoiDetailScreen(
+        poi: poi,
+        activity: fromTrigger ? null : widget.services.activity,
+        audio: widget.services.audio,
+        settings: widget.services.settings,
+        checkedIn: widget.services.trail.current.visited.contains(poi.id),
+        navigationAvailable: widget._startRoute != null,
+        onNavigate: () async {
+          routeRequested = true;
+        },
+      ),
+    );
+    _detailRoute = route;
+    _detailPoiId = poi.id;
     try {
-      await Navigator.of(context).push(
-        AgamMotion.route<void>(
-          (_) => PoiDetailScreen(
-            poi: poi,
-            activity: fromTrigger ? null : widget.services.activity,
-            audio: widget.services.audio,
-            settings: widget.services.settings,
-            checkedIn: false,
-            navigationAvailable: widget._startRoute != null,
-            onNavigate: () async {
-              routeRequested = true;
-            },
-          ),
-        ),
-      );
+      if (previous != null && previous.isCurrent) {
+        await navigator.pushReplacement<void, void>(route);
+      } else {
+        if (previous != null && previous.isActive) {
+          navigator.removeRoute(previous);
+        }
+        await navigator.push<void>(route);
+      }
     } finally {
-      _openingDetail = false;
+      // An older detail's call finishes late; it must not forget this one.
+      if (identical(_detailRoute, route)) {
+        _detailRoute = null;
+        _detailPoiId = null;
+      }
     }
     if (mounted && routeRequested) widget._startRoute?.call(poi);
   }
@@ -396,6 +453,17 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
     } catch (_) {
       if (mounted) _showNotice('Aksi belum dapat dijalankan. Coba lagi.');
     }
+  }
+
+  /// The card's action. During Trail it opens the Trail tab, where progress
+  /// and "Akhiri" live; without tabs it ends the trail session instead.
+  void _sessionAction() {
+    final openTrail = widget.onTabSelected;
+    if (_sessionMode == SessionMode.trail && openTrail != null) {
+      openTrail(1);
+      return;
+    }
+    unawaited(_toggleSession());
   }
 
   void _centerLocation() {
@@ -500,9 +568,10 @@ class _ExploreMapScreenState extends State<ExploreMapScreen>
                       },
                     ),
                     _SessionCard(
-                      active: _sessionActive,
+                      mode: _sessionMode,
+                      opensTrail: widget.onTabSelected != null,
                       busy: _changingSession,
-                      onPressed: _changingSession ? null : _toggleSession,
+                      onPressed: _changingSession ? null : _sessionAction,
                     ),
                   ],
                 ),
@@ -835,22 +904,44 @@ class _ControlButton extends StatelessWidget {
 
 /// The main action of the map. Idle it is a white card that invites the user
 /// to start Explore; active it turns navy, like the onboarding ground, and
-/// the action becomes "Akhiri". Colour and content morph in place.
+/// names the session that is really running (Explore, Trail or Navigasi).
+/// Colour and content morph in place.
 class _SessionCard extends StatelessWidget {
   const _SessionCard({
-    required this.active,
+    required this.mode,
+    required this.opensTrail,
     required this.busy,
     required this.onPressed,
   });
 
-  final bool active;
+  final SessionMode mode;
+
+  /// During Trail the action opens the Trail tab instead of ending it.
+  final bool opensTrail;
   final bool busy;
   final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
     final duration = AgamMotion.duration(context, 280);
-    final actionColor = active ? AgamColors.danger : Colors.white;
+    final active = mode != SessionMode.none;
+    final openTrail = mode == SessionMode.trail && opensTrail;
+    final title = switch (mode) {
+      SessionMode.none => 'Explore',
+      SessionMode.explore => 'Explore aktif',
+      SessionMode.trail => 'Trail aktif',
+      SessionMode.navigation => 'Navigasi aktif',
+    };
+    final (actionLabel, actionIcon, tooltip) = !active
+        ? ('Mulai', Icons.directions_walk_rounded, 'Mulai Explore')
+        : openTrail
+        ? ('Buka', Icons.flag_rounded, 'Buka Orientation Trail')
+        : ('Akhiri', Icons.stop_circle_outlined, 'Akhiri sesi');
+    final actionColor = !active
+        ? Colors.white
+        : openTrail
+        ? AgamColors.brand
+        : AgamColors.danger;
     return AnimatedContainer(
       duration: duration,
       curve: AgamMotion.easeOut,
@@ -920,12 +1011,12 @@ class _SessionCard extends StatelessWidget {
                 children: [...previous, ?current],
               ),
               child: Column(
-                key: ValueKey(active),
+                key: ValueKey(mode),
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    active ? 'Explore aktif' : 'Explore',
+                    title,
                     style: AgamText.label.copyWith(
                       fontSize: 16,
                       color: active ? Colors.white : AgamColors.ink,
@@ -937,7 +1028,7 @@ class _SessionCard extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           Tooltip(
-            message: active ? 'Akhiri sesi' : 'Mulai Explore',
+            message: tooltip,
             // While the session changes the button dims instead of spinning:
             // starting can wait on GPS, and an endless spinner reads as a hang.
             child: AnimatedOpacity(
@@ -957,16 +1048,10 @@ class _SessionCard extends StatelessWidget {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(
-                              active
-                                  ? Icons.stop_circle_outlined
-                                  : Icons.directions_walk_rounded,
-                              size: 18,
-                              color: actionColor,
-                            ),
+                            Icon(actionIcon, size: 18, color: actionColor),
                             const SizedBox(width: 6),
                             Text(
-                              active ? 'Akhiri' : 'Mulai',
+                              actionLabel,
                               style: TextStyle(
                                 color: actionColor,
                                 fontSize: 14,
@@ -1114,122 +1199,130 @@ class _PoiSheet extends StatelessWidget {
             child: Scrollbar(
               controller: scrollController,
               interactive: true,
-              child: SingleChildScrollView(
-                key: ValueKey(poi.id),
-                controller: scrollController,
-                physics: const ClampingScrollPhysics(),
-                clipBehavior: Clip.hardEdge,
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    if (triggered)
-                      _PromptCard(poi: poi)
-                    else
-                      AgamAnimatedSize(
-                        milliseconds: 240,
-                        curve: AgamMotion.easeOut,
-                        alignment: Alignment.topCenter,
-                        child: Text(
-                          description,
-                          maxLines: expanded ? null : 3,
-                          overflow: expanded
-                              ? TextOverflow.visible
-                              : TextOverflow.ellipsis,
-                          style: AgamText.body.copyWith(fontSize: 14),
+              // The mid snap often ends inside the facility chips; the edge
+              // fades while more sits below instead of cutting a row.
+              child: AgamScrollEdgeFade(
+                child: SingleChildScrollView(
+                  key: ValueKey(poi.id),
+                  controller: scrollController,
+                  physics: const ClampingScrollPhysics(),
+                  clipBehavior: Clip.hardEdge,
+                  // Room under the last row once scrolled to the end.
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (triggered)
+                        _PromptCard(poi: poi)
+                      else
+                        AgamAnimatedSize(
+                          milliseconds: 240,
+                          curve: AgamMotion.easeOut,
+                          alignment: Alignment.topCenter,
+                          child: Text(
+                            description,
+                            maxLines: expanded ? null : 3,
+                            overflow: expanded
+                                ? TextOverflow.visible
+                                : TextOverflow.ellipsis,
+                            style: AgamText.body.copyWith(fontSize: 14),
+                          ),
                         ),
+                      const SizedBox(height: 16),
+                      StreamBuilder<PlaybackState>(
+                        stream: audio.state,
+                        initialData: audio.current,
+                        builder: (context, snapshot) {
+                          final playing =
+                              snapshot.data?.clip?.poiId == poi.id &&
+                              snapshot.data?.clip?.kind ==
+                                  AudioClipKind.narration &&
+                              snapshot.data?.status == PlaybackStatus.playing;
+                          return AgamPrimaryButton(
+                            onPressed: narrationAvailable ? onListen : null,
+                            icon: playing
+                                ? Icons.pause_rounded
+                                : Icons.headphones_rounded,
+                            label: narrationAvailable
+                                ? (playing ? 'Jeda cerita' : 'Dengarkan Cerita')
+                                : 'Narasi belum tersedia',
+                          );
+                        },
                       ),
-                    const SizedBox(height: 16),
-                    StreamBuilder<PlaybackState>(
-                      stream: audio.state,
-                      initialData: audio.current,
-                      builder: (context, snapshot) {
-                        final playing =
-                            snapshot.data?.clip?.poiId == poi.id &&
-                            snapshot.data?.clip?.kind ==
-                                AudioClipKind.narration &&
-                            snapshot.data?.status == PlaybackStatus.playing;
-                        return AgamPrimaryButton(
-                          onPressed: narrationAvailable ? onListen : null,
-                          icon: playing
-                              ? Icons.pause_rounded
-                              : Icons.headphones_rounded,
-                          label: narrationAvailable
-                              ? (playing ? 'Jeda cerita' : 'Dengarkan Cerita')
-                              : 'Narasi belum tersedia',
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: AgamRouteButton(
-                            available: routeAvailable,
-                            onPressed: onRoute,
-                            padding: 8,
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: AgamRouteButton(
+                              available: routeAvailable,
+                              onPressed: onRoute,
+                              padding: 8,
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: AgamTonalButton(
-                            onPressed: onView,
-                            icon: Icons.info_outline_rounded,
-                            padding: 8,
-                            label: 'Lihat',
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: AgamTonalButton(
+                              onPressed: onView,
+                              icon: Icons.info_outline_rounded,
+                              padding: 8,
+                              label: 'Lihat',
+                            ),
                           ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: AgamTonalButton(
+                              onPressed: onSkip,
+                              icon: Icons.skip_next_rounded,
+                              foreground: AgamColors.muted,
+                              padding: 8,
+                              label: 'Lewati',
+                            ),
+                          ),
+                        ],
+                      ),
+                      // Empty sections are left out instead of labelled empty.
+                      if (facilities.isNotEmpty) ...[
+                        const SizedBox(height: 22),
+                        const Text('Fasilitas sekitar', style: AgamText.label),
+                        const SizedBox(height: 10),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            // The facility service only returns approved,
+                            // non-placeholder entries, so names show as-is.
+                            for (final facility in facilities)
+                              AgamPill(
+                                facility.name,
+                                icon: Icons.place_rounded,
+                              ),
+                          ],
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: AgamTonalButton(
-                            onPressed: onSkip,
-                            icon: Icons.skip_next_rounded,
-                            foreground: AgamColors.muted,
-                            padding: 8,
-                            label: 'Lewati',
+                      ],
+                      if (photo != null) ...[
+                        const SizedBox(height: 20),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(AgamRadius.tile),
+                          child: Image.asset(
+                            photo,
+                            height: 176,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                            cacheWidth: 900,
+                            semanticLabel: 'Foto ${poi.name}',
+                            errorBuilder: (_, _, _) => const SizedBox.shrink(),
                           ),
                         ),
                       ],
-                    ),
-                    // Empty sections are left out instead of labelled empty.
-                    if (facilities.isNotEmpty) ...[
-                      const SizedBox(height: 22),
-                      const Text('Fasilitas sekitar', style: AgamText.label),
-                      const SizedBox(height: 10),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          // The facility service only returns approved,
-                          // non-placeholder entries, so names show as-is.
-                          for (final facility in facilities)
-                            AgamPill(facility.name, icon: Icons.place_rounded),
-                        ],
-                      ),
-                    ],
-                    if (photo != null) ...[
-                      const SizedBox(height: 20),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(AgamRadius.tile),
-                        child: Image.asset(
-                          photo,
-                          height: 176,
-                          width: double.infinity,
-                          fit: BoxFit.cover,
-                          cacheWidth: 900,
-                          semanticLabel: 'Foto ${poi.name}',
-                          errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                      if (expanded && triggered) ...[
+                        const SizedBox(height: 20),
+                        Text(
+                          description,
+                          style: AgamText.body.copyWith(fontSize: 14),
                         ),
-                      ),
+                      ],
                     ],
-                    if (expanded && triggered) ...[
-                      const SizedBox(height: 20),
-                      Text(
-                        description,
-                        style: AgamText.body.copyWith(fontSize: 14),
-                      ),
-                    ],
-                  ],
+                  ),
                 ),
               ),
             ),

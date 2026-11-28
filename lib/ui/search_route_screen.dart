@@ -8,6 +8,7 @@ import '../contracts/models/content.dart';
 import '../contracts/models/discovery.dart';
 import '../contracts/models/geo.dart';
 import '../contracts/models/navigation.dart';
+import '../contracts/models/session.dart';
 import 'poi_detail_screen.dart';
 import 'walking_navigation_screen.dart';
 import 'widgets/agam_arrival.dart';
@@ -70,6 +71,9 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
   // the middle of the camera's flight, so the name lands with its marker.
   Duration _arriveAfter = Duration.zero;
   NavigationState _navigation = const NavigationState.idle();
+  // A route shown here but owned by another session (trail, explore) that
+  // the user closed; its card stays hidden until the target changes.
+  String? _dismissedTargetId;
   FacilityCategory? _facilityFilter;
   int _searchRequest = 0;
   bool _searching = false;
@@ -214,6 +218,17 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
     return null;
   }
 
+  /// The facility's own building, so an indoor facility routes to that
+  /// building's access points and carries its location hint.
+  Poi? _buildingFor(Facility facility) {
+    final buildingId = facility.buildingId;
+    if (buildingId == null) return null;
+    for (final poi in _pois) {
+      if (poi.id == buildingId) return poi;
+    }
+    return null;
+  }
+
   void _selectDestination(SearchResult result) {
     _travelTo(result);
     setState(() {
@@ -259,7 +274,7 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
           poi: poi,
           audio: widget.services.audio,
           settings: widget.services.settings,
-          checkedIn: false,
+          checkedIn: widget.services.trail.current.visited.contains(poi.id),
           onNavigate: () async {
             routeRequested = true;
           },
@@ -299,6 +314,9 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
       final result = await widget.services.recommendations.recommend(
         from: from,
         afterPoiId: target.kind == NavigationTargetKind.poi ? target.id : null,
+        afterFacilityId: target.kind == NavigationTargetKind.facility
+            ? target.id
+            : null,
       );
       final pois = await widget.services.pois.watchPois().first;
       if (!mounted || request != _recommendRequest) return;
@@ -341,7 +359,7 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
     final target = poi != null
         ? NavigationTarget.poi(poi)
         : facility != null
-        ? NavigationTarget.facility(facility)
+        ? NavigationTarget.facility(facility, building: _buildingFor(facility))
         : null;
     if (target == null) return;
     _focus.unfocus();
@@ -349,6 +367,7 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
       _routing = true;
       _error = null;
       _destination = result;
+      _dismissedTargetId = null;
       _clearRecommendation();
     });
     try {
@@ -362,13 +381,32 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
     }
   }
 
+  /// Closes the destination card. The route and its session end only when
+  /// this card shows the navigation session's own destination; an active
+  /// trail or explore session, or a route to somewhere else, keeps running.
   Future<void> _stopRoute() async {
-    if (_navigation.status == NavigationStatus.idle) {
-      setState(() => _destination = null);
+    final mode = widget.services.session.current.mode;
+    final shownId = _destination?.id ?? _navigation.target?.id;
+    final matchesTarget =
+        _navigation.status != NavigationStatus.idle &&
+        _navigation.target?.id == shownId;
+    final canStopNavigation =
+        matchesTarget &&
+        mode != SessionMode.trail &&
+        mode != SessionMode.explore;
+    if (!canStopNavigation) {
+      setState(() {
+        _destination = null;
+        // Hide the fallback card for a route this page does not own, so
+        // closing it is visible without ending that route.
+        _dismissedTargetId = _navigation.target?.id;
+      });
       return;
     }
     await widget.services.navigation.stop();
-    await widget.services.session.end();
+    if (mode == SessionMode.navigation) {
+      await widget.services.session.end();
+    }
     if (mounted) {
       setState(() {
         _destination = null;
@@ -389,7 +427,7 @@ class _SearchRouteScreenState extends State<SearchRouteScreen> {
     final currentTarget = _navigation.target;
     final selected =
         _destination ??
-        (currentTarget == null
+        (currentTarget == null || currentTarget.id == _dismissedTargetId
             ? null
             : SearchResult(
                 kind: currentTarget.kind == NavigationTargetKind.poi

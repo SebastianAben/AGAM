@@ -17,14 +17,20 @@ class _StubRecommendations implements RecommendationService {
   _StubRecommendations(this.result);
 
   final Recommendation result;
-  final calls = <({GeoPoint from, String? afterPoiId})>[];
+  final calls =
+      <({GeoPoint from, String? afterPoiId, String? afterFacilityId})>[];
 
   @override
   Future<Recommendation> recommend({
     required GeoPoint from,
     String? afterPoiId,
+    String? afterFacilityId,
   }) async {
-    calls.add((from: from, afterPoiId: afterPoiId));
+    calls.add((
+      from: from,
+      afterPoiId: afterPoiId,
+      afterFacilityId: afterFacilityId,
+    ));
     return result;
   }
 }
@@ -284,7 +290,8 @@ void main() {
       expect(visiblePath(), replacement);
       expect(find.byIcon(Icons.turn_right_rounded), findsOneWidget);
       expect(find.text(instruction), findsOneWidget);
-      expect(find.textContaining('Sisa 43 m'), findsOneWidget);
+      expect(find.text('< 1 menit'), findsOneWidget);
+      expect(find.textContaining('43 m · Tiba '), findsOneWidget);
 
       final target = navigation.current.target;
       navigation.emit(
@@ -554,5 +561,53 @@ void main() {
     semantics.dispose();
     await tester.tap(find.byKey(const ValueKey('recommendation-dismiss')));
     expect(dismissed, 1);
+  });
+
+  group('UI07 di peta rute', () {
+    testWidgets('tiba di fasilitas: fasilitas itu tidak direkomendasikan '
+        'ulang', (tester) async {
+      _phone(tester, height: 1400);
+      final facility = fakeFacilities.first;
+      final target = NavigationTarget.facility(facility);
+      final recommendations = _StubRecommendations(_full());
+      final services = _services(
+        recommendations: recommendations,
+        navigation: _ManualNavigation(
+          NavigationState(status: NavigationStatus.arrived, target: target),
+        ),
+        location: _StaticLocation(_fixAt(_here.position)),
+      );
+      await tester.pumpWidget(
+        _app(WalkingNavigationScreen(services: services, target: target)),
+      );
+      await _frames(tester, 4);
+      final call = recommendations.calls.single;
+      expect(call.afterFacilityId, facility.id);
+      expect(call.afterPoiId, isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await _frames(tester, 2);
+    });
+
+    testWidgets('tiba di POI: tanpa afterFacilityId', (tester) async {
+      _phone(tester, height: 1400);
+      final target = NavigationTarget.poi(_next);
+      final recommendations = _StubRecommendations(_full());
+      final services = _services(
+        recommendations: recommendations,
+        navigation: _ManualNavigation(
+          NavigationState(status: NavigationStatus.arrived, target: target),
+        ),
+        location: _StaticLocation(_fixAt(_here.position)),
+      );
+      await tester.pumpWidget(
+        _app(WalkingNavigationScreen(services: services, target: target)),
+      );
+      await _frames(tester, 4);
+      final call = recommendations.calls.single;
+      expect(call.afterPoiId, _next.id);
+      expect(call.afterFacilityId, isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await _frames(tester, 2);
+    });
   });
 }

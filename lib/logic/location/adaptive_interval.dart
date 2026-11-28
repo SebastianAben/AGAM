@@ -24,6 +24,7 @@ class AdaptiveIntervalPolicy {
     this.slow = const Duration(seconds: 10),
     this.farFromPoiM = 200,
     this.approachBufferM = 30,
+    this.entranceRadiusM = 10,
     this.stationaryRadiusM = 10,
     this.stationaryAfter = const Duration(seconds: 30),
   });
@@ -36,6 +37,9 @@ class AdaptiveIntervalPolicy {
 
   /// Zona di luar radius POI yang tetap memakai interval normal.
   final double approachBufferM;
+
+  /// Radius zona titik akses POI agar interval tetap normal di dekat pintu.
+  final double entranceRadiusM;
 
   /// Perpindahan kurang dari ini dianggap diam.
   final double stationaryRadiusM;
@@ -57,6 +61,15 @@ class AdaptiveIntervalPolicy {
       final d = fix.position.distanceTo(poi.position);
       if (nearestCenter == null || d < nearestCenter) nearestCenter = d;
       if (d <= poi.radiusM + approachBufferM) nearPoi = true;
+      if (!nearPoi) {
+        for (final entrance in poi.entrances) {
+          if (fix.position.distanceTo(entrance.position) <=
+              entranceRadiusM + approachBufferM) {
+            nearPoi = true;
+            break;
+          }
+        }
+      }
     }
     if (nearestCenter == null || nearPoi) return normal;
     if (nearestCenter > farFromPoiM) return slow;

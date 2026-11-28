@@ -28,6 +28,7 @@ class OfflineCampusMap extends StatefulWidget {
     this.routePath = const [],
     this.routeLeadIn = false,
     this.onMapReady,
+    this.onUserInteract,
     this.attributionPadding = const EdgeInsets.all(10),
   });
 
@@ -43,6 +44,12 @@ class OfflineCampusMap extends StatefulWidget {
   /// across a building.
   final bool routeLeadIn;
   final VoidCallback? onMapReady;
+
+  /// Called when the user starts moving the map by hand: a drag, a fling,
+  /// a pinch, a rotation or a double-tap zoom. Camera moves made in code
+  /// ([focusOn], [flyTo], [follow], [fitPoints]) never call it, so a screen
+  /// can stop following the user without its own moves turning that off.
+  final VoidCallback? onUserInteract;
 
   /// A non-POI place to point at, such as a facility chosen as a
   /// destination. Drawn like a selected POI, with its own icon and label.
@@ -80,11 +87,36 @@ class OfflineCampusMapState extends State<OfflineCampusMap>
     widget.onMapReady?.call();
   }
 
+  /// Sources that only a finger (or a mouse) produces. Code moves report
+  /// `mapController` or `fitCamera`, and a resize `nonRotatedSizeChange`;
+  /// a whitelist keeps those from ever reading as the user's own gesture.
+  static const _gestureSources = {
+    MapEventSource.dragStart,
+    MapEventSource.onDrag,
+    MapEventSource.multiFingerGestureStart,
+    MapEventSource.onMultiFinger,
+    MapEventSource.doubleTap,
+    MapEventSource.doubleTapHold,
+    MapEventSource.doubleTapZoomAnimationController,
+    MapEventSource.flingAnimationController,
+    MapEventSource.scrollWheel,
+    MapEventSource.cursorKeyboardRotation,
+  };
+
   void _onMapEvent(MapEvent event) {
     // flutter_map updates the viewport dimensions before emitting this
     // event, without applying the camera constraint to the new size.
     if (event is MapEventNonRotatedSizeChange && widget.lockToTileBounds) {
       _containViewport();
+    }
+    final gestureStart =
+        event is MapEventMoveStart ||
+        event is MapEventFlingAnimationStart ||
+        event is MapEventRotateStart ||
+        event is MapEventDoubleTapZoomStart ||
+        event is MapEventScrollWheelZoom;
+    if (gestureStart && _gestureSources.contains(event.source)) {
+      widget.onUserInteract?.call();
     }
   }
 
@@ -124,6 +156,25 @@ class OfflineCampusMapState extends State<OfflineCampusMap>
       lift: metres < 80 ? 0 : (metres / 500).clamp(0.0, .8),
     );
     return duration;
+  }
+
+  /// Keeps the camera on a walker: a short glide to [point] at the current
+  /// zoom and rotation, so the user's own zoom level is kept.
+  ///
+  /// A longer camera move still in flight (the start of the walk, a
+  /// recenter) is left to finish; the next fix catches up. Reduced motion
+  /// moves without a glide.
+  void follow(GeoPoint point) {
+    _pendingCenter = point;
+    if (!_ready || _motion.isAnimating) return;
+    final camera = _controller.camera;
+    _animateCamera(
+      _latLng(point),
+      camera.zoom,
+      camera.rotation,
+      duration: AgamMotion.duration(context, 280),
+      curve: AgamMotion.easeOut,
+    );
   }
 
   void resetNorth() {

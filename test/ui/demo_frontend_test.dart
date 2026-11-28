@@ -184,6 +184,7 @@ void main() {
   testWidgets('demo trail follows the trail service order and starts there', (
     tester,
   ) async {
+    addTearDown(rootBundle.clear);
     // Synthetic rotated order, as if the nearest POI were the fifth stop.
     final order = [
       for (var i = 0; i < 10; i++) unverifiedSyntheticPois[(4 + i) % 10].id,
@@ -192,6 +193,7 @@ void main() {
       pois: FakePoiRepository(pois: unverifiedSyntheticPois, facilities: []),
       trail: (session) => FakeTrailService(session: session, order: order),
       navigation: _RecordingNavigation(),
+      location: _HeldLocation(unverifiedSyntheticPois.first.position),
     );
     await tester.pumpWidget(
       MaterialApp(home: OrientationTrailScreen(services: services)),
@@ -204,7 +206,14 @@ void main() {
     final secondCard = tester.getTopLeft(find.text(names[order[1]]!).first).dy;
     expect(firstCard, lessThan(secondCard));
 
+    // Bottom "Mulai Trail" opens the route preview (UI06) without starting yet.
     await tester.tap(find.widgetWithText(FilledButton, 'Mulai Trail'));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    expect(services.session.current.mode, SessionMode.none);
+    expect(find.byType(WalkingNavigationScreen), findsOneWidget);
+
+    await tester.tap(find.text(WalkingNavigationScreen.startLabel));
     // A route in progress keeps an indicator moving; pump a bounded time.
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
@@ -213,6 +222,8 @@ void main() {
     expect(services.navigation.current.target?.id, order[0]);
     expect(find.text('Tujuan perkiraan'), findsOneWidget);
     expect(find.byType(SnackBar), findsNothing);
+    // This navigation never leaves "calculating"; let the start timeout finish.
+    await tester.pump(const Duration(seconds: 13));
     await tester.pumpWidget(const SizedBox.shrink());
     await services.navigation.stop();
     await services.session.end();

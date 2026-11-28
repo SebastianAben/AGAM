@@ -404,6 +404,353 @@ void main() {
     await location.controller.close();
     await session.controller.close();
   });
+
+  group('step progression regressions (B05)', () {
+    test(
+      'short depart leg <= 10 m is shown at start before advancing to the turn',
+      () async {
+        // SYNTHETIC: 8.0 m east to corner, then 111.2 m north.
+        const shortStart = GeoPoint(0, .000928);
+        final location = _Location();
+        final session = _Session();
+        final controller = DeviceNavigationController(
+          location: location,
+          routing: CampusRoutingService.fromGeoJson(
+            graph([
+              [start, corner, north],
+            ]),
+          ),
+          map: map,
+          session: session,
+        );
+        addTearDown(location.controller.close);
+        addTearDown(session.controller.close);
+        addTearDown(controller.stop);
+
+        await session.start(SessionMode.navigation);
+        location.add(shortStart);
+        await controller.start(target);
+        expect(controller.current.status, NavigationStatus.onRoute);
+        expect(controller.current.route!.steps[0].distanceM, closeTo(8.0, 0.2));
+        expect(controller.current.currentStepIndex, 0);
+        expect(controller.current.currentStep!.maneuver, Maneuver.depart);
+
+        // Move 2.2 m along the 8 m depart leg: still departing.
+        location.add(const GeoPoint(0, .000948));
+        await Future<void>.delayed(Duration.zero);
+        expect(controller.current.currentStepIndex, 0);
+        expect(controller.current.currentStep!.maneuver, Maneuver.depart);
+
+        // Move 5.0 m along the 8 m leg (3 m before corner): announces turnLeft.
+        location.add(const GeoPoint(0, .000973));
+        await Future<void>.delayed(Duration.zero);
+        expect(controller.current.currentStepIndex, 1);
+        expect(controller.current.currentStep!.maneuver, Maneuver.turnLeft);
+      },
+    );
+
+    test('after passing a turn on a long straight leg, instruction transitions to straight and announces next turn without flicker', () async {
+      // SYNTHETIC:
+      // p0=(0,0) -> p1=(0, .0005) [55.6 m]
+      //          -> p2=(.0008, .0005) [89.0 m, turnLeft at 55.6 m]
+      //          -> p3=(.0008, .0011) [66.7 m, turnRight at 144.6 m]
+      const p0 = GeoPoint(0, 0);
+      const p1 = GeoPoint(0, .0005);
+      const p2 = GeoPoint(.0008, .0005);
+      const p3 = GeoPoint(.0008, .0011);
+      const endTarget = NavigationTarget(
+        id: 'synthetic-3leg',
+        name: 'Tujuan 3 ruas sintetis',
+        kind: NavigationTargetKind.poi,
+        point: p3,
+        isPlaceholderPoint: false,
+      );
+      final location = _Location();
+      final session = _Session();
+      final controller = DeviceNavigationController(
+        location: location,
+        routing: CampusRoutingService.fromGeoJson(
+          graph([
+            [p0, p1, p2, p3],
+          ]),
+        ),
+        map: map,
+        session: session,
+      );
+      addTearDown(location.controller.close);
+      addTearDown(session.controller.close);
+      addTearDown(controller.stop);
+
+      await session.start(SessionMode.navigation);
+      location.add(p0);
+      await controller.start(endTarget);
+      expect(controller.current.currentStepIndex, 0);
+      expect(controller.current.currentStep!.maneuver, Maneuver.depart);
+
+      // 47.8 m along leg 0 (7.8 m before p1): announces turnLeft.
+      location.add(const GeoPoint(0, .00043));
+      await Future<void>.delayed(Duration.zero);
+      expect(controller.current.currentStepIndex, 1);
+      expect(controller.current.currentStep!.maneuver, Maneuver.turnLeft);
+
+      // 5.6 m past p1: still executing turnLeft.
+      location.add(const GeoPoint(.00005, .0005));
+      await Future<void>.delayed(Duration.zero);
+      expect(controller.current.currentStepIndex, 1);
+      expect(controller.current.currentStep!.maneuver, Maneuver.turnLeft);
+
+      // 16.7 m past p1 (72.3 m before p2): transitions to Lanjut lurus.
+      location.add(const GeoPoint(.00015, .0005));
+      await Future<void>.delayed(Duration.zero);
+      expect(controller.current.currentStepIndex, 1);
+      expect(controller.current.currentStep!.maneuver, Maneuver.straight);
+      expect(controller.current.currentStep!.instruction, 'Lanjut lurus.');
+
+      // 12.2 m before p2: stays Lanjut lurus. (no flicker back to turnLeft).
+      location.add(const GeoPoint(.00069, .0005));
+      await Future<void>.delayed(Duration.zero);
+      expect(controller.current.currentStepIndex, 1);
+      expect(controller.current.currentStep!.maneuver, Maneuver.straight);
+
+      // 8.9 m before p2: advances cleanly to turnRight.
+      location.add(const GeoPoint(.00072, .0005));
+      await Future<void>.delayed(Duration.zero);
+      expect(controller.current.currentStepIndex, 2);
+      expect(controller.current.currentStep!.maneuver, Maneuver.turnRight);
+    });
+  });
+
+  test('indoor facility routed via building entrances arrives within 15 m of entrance (B08)', () async {
+    // SYNTHETIC: building centre is 55.6 m north of start, doors A & B sit
+    // on the walking graph.
+    const buildingCenter = GeoPoint(.0005, .0005);
+    const entranceA = GeoPoint(0, .0005);
+    const entranceB = GeoPoint(.001, .0005);
+    const meta = ContentMetadata(
+      sources: ['SINTETIS'],
+      verifiedAt: null,
+      owner: 'SINTETIS',
+      assetAttribution: [],
+      approved: true,
+    );
+    const building = Poi(
+      id: 'P-SYN-BLD',
+      name: 'Gedung SINTETIS',
+      aliases: [],
+      category: PoiCategory.lecture,
+      position: buildingCenter,
+      radiusM: 15,
+      entrances: [
+        PoiEntrance(position: entranceA, label: 'Pintu selatan'),
+        PoiEntrance(position: entranceB, label: 'Pintu utara'),
+      ],
+      description: 'SINTETIS',
+      function: 'SINTETIS',
+      facilities: ['Toilet'],
+      trivia: 'SINTETIS',
+      media: PoiMedia(),
+      metadata: meta,
+    );
+    const indoorFacility = Facility(
+      id: 'F-SYN-TOILET',
+      name: 'Toilet Gedung SINTETIS',
+      category: FacilityCategory.toilet,
+      position: buildingCenter,
+      buildingId: 'P-SYN-BLD',
+      description: 'Gedung SINTETIS, lantai 2. Titik peta memakai titik gedung; letak persis di dalam gedung belum disurvei.',
+      metadata: meta,
+    );
+    final facilityTarget = NavigationTarget.facility(
+      indoorFacility,
+      building: building,
+    );
+    expect(facilityTarget.candidates, [entranceA, entranceB]);
+    expect(facilityTarget.locationHint, 'Gedung SINTETIS, lantai 2');
+
+    final location = _Location();
+    final session = _Session();
+    final controller = DeviceNavigationController(
+      location: location,
+      routing: CampusRoutingService.fromGeoJson(
+        graph([
+          [start, entranceA, corner, north, entranceB],
+        ]),
+      ),
+      map: map,
+      session: session,
+    );
+    addTearDown(location.controller.close);
+    addTearDown(session.controller.close);
+    addTearDown(controller.stop);
+
+    await session.start(SessionMode.navigation);
+    location.add(start);
+    await controller.start(facilityTarget);
+    expect(controller.current.status, NavigationStatus.onRoute);
+    expect(controller.current.route!.path.last, entranceA);
+
+    // 11.1 m from entranceA (>50 m from buildingCenter): arrives <= 15 m.
+    location.add(const GeoPoint(0, .0004));
+    await Future<void>.delayed(Duration.zero);
+    expect(controller.current.status, NavigationStatus.arrived);
+  });
+
+  group('reroute failure stability (B09)', () {
+    test('repeated fixes at the same off-network spot do not loop calculating/error and recover when returning to route', () async {
+      final location = _Location();
+      final session = _Session();
+      final routing = _CountingRouting(
+        CampusRoutingService.fromGeoJson(
+          graph([
+            [start, corner, north],
+          ]),
+        ),
+      );
+      final controller = DeviceNavigationController(
+        location: location,
+        routing: routing,
+        map: map,
+        session: session,
+      );
+      final seen = <NavigationStatus>[];
+      final listener = controller.state.listen((s) => seen.add(s.status));
+      addTearDown(listener.cancel);
+      addTearDown(location.controller.close);
+      addTearDown(session.controller.close);
+      addTearDown(controller.stop);
+
+      await session.start(SessionMode.navigation);
+      location.add(start);
+      await controller.start(target);
+      await Future<void>.delayed(Duration.zero);
+      expect(controller.current.status, NavigationStatus.onRoute);
+      expect(routing.calls, 1);
+
+      // Off-route AND off-network (44.5 m south of start-corner path).
+      const offNetwork = GeoPoint(-.0004, .0005);
+      seen.clear();
+      location.add(offNetwork);
+      await Future<void>.delayed(Duration.zero);
+      expect(routing.calls, 2);
+      expect(seen, [
+        NavigationStatus.offRoute,
+        NavigationStatus.rerouting,
+        NavigationStatus.error,
+      ]);
+      expect(controller.current.route, isNotNull);
+
+      // Repeated fixes at same spot and 4.4 m away (< 10 m): no spam, no reroute.
+      seen.clear();
+      location.add(offNetwork);
+      await Future<void>.delayed(Duration.zero);
+      location.add(const GeoPoint(-.0004, .00054));
+      await Future<void>.delayed(Duration.zero);
+      location.add(const GeoPoint(-.00042, .00052));
+      await Future<void>.delayed(Duration.zero);
+      expect(seen, isEmpty);
+      expect(routing.calls, 2);
+      expect(controller.current.status, NavigationStatus.error);
+
+      // Returning within <= 25 m of the preserved route resumes onRoute directly.
+      location.add(const GeoPoint(-.0001, .0005)); // 11.1 m from route.
+      await Future<void>.delayed(Duration.zero);
+      expect(controller.current.status, NavigationStatus.onRoute);
+      expect(routing.calls, 2);
+    });
+
+    test(
+      'reroute retries once the walker moves >= 10 m from a failed spot',
+      () async {
+        final location = _Location();
+        final session = _Session();
+        final routing = _CountingRouting(
+          CampusRoutingService.fromGeoJson(
+            graph([
+              [start, corner, north],
+              [const GeoPoint(-.0006, 0), const GeoPoint(-.0006, .001), corner],
+            ]),
+          ),
+        );
+        final controller = DeviceNavigationController(
+          location: location,
+          routing: routing,
+          map: map,
+          session: session,
+        );
+        final seen = <NavigationStatus>[];
+        final listener = controller.state.listen((s) => seen.add(s.status));
+        addTearDown(listener.cancel);
+        addTearDown(location.controller.close);
+        addTearDown(session.controller.close);
+        addTearDown(controller.stop);
+
+        await session.start(SessionMode.navigation);
+        location.add(start);
+        await controller.start(target);
+        expect(routing.calls, 1);
+
+        // Halfway between y=0 and y=-0.0006: 33.4 m from both paths (off-network).
+        location.add(const GeoPoint(-.0003, .0005));
+        await Future<void>.delayed(Duration.zero);
+        expect(controller.current.status, NavigationStatus.error);
+        expect(routing.calls, 2);
+
+        // Move 16.7 m south to y=-0.00045 (16.7 m from lower path): retries and succeeds.
+        seen.clear();
+        location.add(const GeoPoint(-.00045, .0005));
+        await Future<void>.delayed(Duration.zero);
+        expect(routing.calls, 3);
+        expect(seen, [NavigationStatus.rerouting, NavigationStatus.onRoute]);
+        expect(controller.current.status, NavigationStatus.onRoute);
+      },
+    );
+
+    test('initial route calculation failure does not spam calculating/error on repeated fixes', () async {
+      final location = _Location();
+      final session = _Session();
+      final routing = _CountingRouting(
+        CampusRoutingService.fromGeoJson(
+          graph([
+            [start, corner, north],
+          ]),
+        ),
+      );
+      final controller = DeviceNavigationController(
+        location: location,
+        routing: routing,
+        map: map,
+        session: session,
+      );
+      final seen = <NavigationStatus>[];
+      final listener = controller.state.listen((s) => seen.add(s.status));
+      addTearDown(listener.cancel);
+      addTearDown(location.controller.close);
+      addTearDown(session.controller.close);
+      addTearDown(controller.stop);
+
+      const offNetwork = GeoPoint(-.0004, .0005);
+      await session.start(SessionMode.navigation);
+      location.add(offNetwork);
+      await controller.start(target);
+      await Future<void>.delayed(Duration.zero);
+      expect(controller.current.status, NavigationStatus.error);
+      expect(routing.calls, 1);
+
+      seen.clear();
+      location.add(offNetwork);
+      await Future<void>.delayed(Duration.zero);
+      location.add(const GeoPoint(-.0004, .00053));
+      await Future<void>.delayed(Duration.zero);
+      expect(seen, isEmpty);
+      expect(routing.calls, 1);
+
+      // Move >= 10 m onto the network: retries and enters onRoute.
+      location.add(const GeoPoint(0, .0005));
+      await Future<void>.delayed(Duration.zero);
+      expect(controller.current.status, NavigationStatus.onRoute);
+      expect(routing.calls, 2);
+    });
+  });
 }
 
 class _PendingRouting implements RoutingService {

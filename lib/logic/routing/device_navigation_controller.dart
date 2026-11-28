@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import '../../contracts/contracts.dart';
 import 'campus_routing_service.dart';
@@ -14,6 +15,10 @@ class DeviceNavigationController implements NavigationController {
     this.arriveAtRouteEnd = false,
     this._pois,
   });
+
+  static const _preTurnLeadM = 10.0;
+  static const _turnPassedM = 10.0;
+  static const _rerouteRetryDistanceM = 10.0;
 
   final LocationService _location;
   final RoutingService _routing;
@@ -33,6 +38,7 @@ class DeviceNavigationController implements NavigationController {
   int _generation = 0;
   bool _calculating = false;
   double _progressM = 0;
+  GeoPoint? _lastFailedRouteFrom;
 
   @override
   NavigationState get current => _current;
@@ -76,9 +82,14 @@ class DeviceNavigationController implements NavigationController {
     }
     final point = fix.position;
     if (!_map.isInsideCampus(point)) {
+      _lastFailedRouteFrom = null;
       if (_current.status != NavigationStatus.error) {
         _publish(
-          NavigationState(status: NavigationStatus.error, target: target),
+          NavigationState(
+            status: NavigationStatus.error,
+            target: target,
+            route: _current.route,
+          ),
         );
       }
       return;
@@ -91,16 +102,30 @@ class DeviceNavigationController implements NavigationController {
     if (route != null) {
       final (offset, traveled) = _project(point, route);
       if (offset <= kRerouteDistanceM) {
+        _lastFailedRouteFrom = null;
         _updateRoute(target, route, traveled);
         return;
       }
-      _publish(
-        NavigationState(
-          status: NavigationStatus.offRoute,
-          target: target,
-          route: route,
-        ),
-      );
+      final failedFrom = _lastFailedRouteFrom;
+      if (failedFrom != null &&
+          point.distanceTo(failedFrom) < _rerouteRetryDistanceM) {
+        return;
+      }
+      if (_current.status != NavigationStatus.error) {
+        _publish(
+          NavigationState(
+            status: NavigationStatus.offRoute,
+            target: target,
+            route: route,
+          ),
+        );
+      }
+    } else {
+      final failedFrom = _lastFailedRouteFrom;
+      if (failedFrom != null &&
+          point.distanceTo(failedFrom) < _rerouteRetryDistanceM) {
+        return;
+      }
     }
     _calculating = true;
     _publish(
@@ -115,6 +140,7 @@ class DeviceNavigationController implements NavigationController {
     try {
       final next = await _nearestRoute(point, target);
       if (generation != _generation) return;
+      _lastFailedRouteFrom = null;
       _progressM = 0;
       if (_isAtDestination(point, target, next)) {
         _arrive(target, next);
@@ -123,8 +149,13 @@ class DeviceNavigationController implements NavigationController {
       }
     } on RouteUnavailableException {
       if (generation == _generation) {
+        _lastFailedRouteFrom = point;
         _publish(
-          NavigationState(status: NavigationStatus.error, target: target),
+          NavigationState(
+            status: NavigationStatus.error,
+            target: target,
+            route: route,
+          ),
         );
       }
     } finally {
@@ -188,13 +219,41 @@ class DeviceNavigationController implements NavigationController {
       0.0,
       route.distanceM,
     );
+    final steps = route.steps;
+    final stepStarts = List<double>.filled(steps.length, 0);
+    for (var i = 1; i < steps.length; i++) {
+      stepStarts[i] = stepStarts[i - 1] + steps[i - 1].distanceM;
+    }
     var index = 0;
-    var nextTurnM = 0.0;
-    for (var i = 1; i < route.steps.length - 1; i++) {
-      nextTurnM += route.steps[i - 1].distanceM;
-      // Announce shortly before the corner rather than after passing it.
-      if (_progressM + 10 < nextTurnM) break;
+    for (var i = 1; i < steps.length - 1; i++) {
+      final legM = steps[i - 1].distanceM;
+      final leadM = math.min(_preTurnLeadM, legM / 2);
+      // Announce shortly before the corner rather than after passing it,
+      // without skipping a short preceding leg before the walker moves.
+      if (_progressM + leadM < stepStarts[i]) break;
       index = i;
+    }
+    RouteStep? activeStep;
+    if (index < steps.length - 1) {
+      final step = steps[index];
+      final alreadyOnStep =
+          _current.status == NavigationStatus.onRoute &&
+          identical(_current.route, route) &&
+          _current.currentStepIndex == index;
+      if (alreadyOnStep &&
+          _isTurnManeuver(step.maneuver) &&
+          !step.instruction.contains('lorong') &&
+          _progressM > stepStarts[index] + _turnPassedM) {
+        activeStep = RouteStep(
+          maneuver: Maneuver.straight,
+          instruction: outdoorInstruction(Maneuver.straight),
+          distanceM: (stepStarts[index + 1] - _progressM).clamp(
+            0.0,
+            route.distanceM,
+          ),
+          position: step.position,
+        );
+      }
     }
     _publish(
       NavigationState(
@@ -204,9 +263,18 @@ class DeviceNavigationController implements NavigationController {
         currentStepIndex: index,
         remainingDistanceM: remaining,
         remainingEta: CampusRoutingService.walkingTime(remaining),
+        activeStep: activeStep,
       ),
     );
   }
+
+  static bool _isTurnManeuver(Maneuver maneuver) => switch (maneuver) {
+    Maneuver.turnLeft ||
+    Maneuver.turnRight ||
+    Maneuver.slightLeft ||
+    Maneuver.slightRight => true,
+    Maneuver.depart || Maneuver.straight || Maneuver.arrive => false,
+  };
 
   (double, double) _project(GeoPoint point, WalkingRoute route) {
     var along = 0.0;
@@ -241,6 +309,7 @@ class DeviceNavigationController implements NavigationController {
     _positions = null;
     _sessions = null;
     _calculating = false;
+    _lastFailedRouteFrom = null;
   }
 
   void _publish(NavigationState value) {

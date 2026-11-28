@@ -1,7 +1,9 @@
 import 'package:agam/contracts/contracts.dart';
 import 'package:agam/logic/data/data.dart';
 import 'package:agam/logic/search/repository_facility_service.dart';
+import 'package:agam/ui/widgets/agam_poi_panel.dart';
 import 'package:agam/ui/widgets/facility_labels.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 // SINTETIS — not campus data.
@@ -66,4 +68,62 @@ void main() {
     expect(picked.map((f) => f.category).toSet(), hasLength(4));
     expect(picked.first.name, 'Toilet TVST');
   });
+
+  testWidgets(
+    'the panel edge fades only while more sits below, keeping the scroll',
+    (tester) async {
+      final scroll = ScrollController();
+      addTearDown(scroll.dispose);
+      Widget body(int rows) => MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            height: 300,
+            child: AgamScrollEdgeFade(
+              child: SingleChildScrollView(
+                controller: scroll,
+                child: Column(
+                  children: [
+                    // SINTETIS rows standing in for facility chips.
+                    for (var i = 0; i < rows; i++)
+                      SizedBox(height: 40, child: Text('SINTETIS $i')),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      double strength() => tester
+          .widget<TweenAnimationBuilder<double>>(
+            find.descendant(
+              of: find.byType(AgamScrollEdgeFade),
+              matching: find.byType(TweenAnimationBuilder<double>),
+            ),
+          )
+          .tween
+          .end!;
+
+      await tester.pumpWidget(body(20));
+      await tester.pumpAndSettle();
+      expect(
+        find.descendant(
+          of: find.byType(AgamScrollEdgeFade),
+          matching: find.byType(ShaderMask),
+        ),
+        findsOneWidget,
+      );
+      expect(strength(), 1); // Rows continue below the edge.
+
+      scroll.jumpTo(scroll.position.maxScrollExtent);
+      await tester.pumpAndSettle();
+      expect(strength(), 0); // The last row is never dimmed.
+      // The mask stays in the tree, so the scroll view keeps its offset.
+      expect(scroll.offset, scroll.position.maxScrollExtent);
+
+      await tester.pumpWidget(body(3)); // Everything fits: no fade.
+      await tester.pumpAndSettle();
+      expect(strength(), 0);
+      expect(tester.takeException(), isNull);
+    },
+  );
 }

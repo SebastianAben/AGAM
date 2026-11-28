@@ -65,9 +65,12 @@ abstract interface class SearchService {
 abstract interface class RecommendationService {
   /// Rekomendasi setelah kartu POI ditutup atau setelah tiba (F07).
   /// [afterPoiId] adalah POI yang baru dikunjungi, jika ada.
+  /// [afterFacilityId] adalah fasilitas tempat pengguna baru tiba, jika ada,
+  /// sehingga tidak direkomendasikan ulang pada `nearbyFacilities`.
   Future<Recommendation> recommend({
     required GeoPoint from,
     String? afterPoiId,
+    String? afterFacilityId,
   });
 }
 

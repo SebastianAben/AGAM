@@ -283,4 +283,89 @@ void main() {
 
     await _tearDown(tester);
   });
+
+  group('petunjuk di dalam gedung dan catatan selesai', () {
+    // SINTETIS: petunjuk lokasi uji, bukan konten kampus.
+    const hint = 'Gedung uji, lantai 3';
+
+    Future<void> card(
+      WidgetTester tester, {
+      required NavigationTargetKind kind,
+      String? locationHint,
+      bool enterBuilding = true,
+      String? completionNote,
+    }) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: ArrivalCard(
+                name: 'Tujuan uji',
+                kind: kind,
+                voice: FakeVoiceGuidance(),
+                onFinish: () {},
+                locationHint: locationHint,
+                enterBuilding: enterBuilding,
+                completionNote: completionNote,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 300));
+    }
+
+    testWidgets('fasilitas: petunjuk lantai dan ajakan masuk gedung', (
+      tester,
+    ) async {
+      await card(
+        tester,
+        kind: NavigationTargetKind.facility,
+        locationHint: hint,
+      );
+      expect(find.text(hint), findsOneWidget);
+      expect(find.text(ArrivalCard.indoorNote), findsOneWidget);
+      expect(find.byIcon(Icons.meeting_room_rounded), findsOneWidget);
+      expect(find.text('Selesai'), findsOneWidget);
+    });
+
+    testWidgets('fasilitas di luar gedung: petunjuk tanpa ajakan masuk', (
+      tester,
+    ) async {
+      await card(
+        tester,
+        kind: NavigationTargetKind.facility,
+        locationHint: hint,
+        enterBuilding: false,
+      );
+      expect(find.text(hint), findsOneWidget);
+      expect(find.text(ArrivalCard.indoorNote), findsNothing);
+    });
+
+    testWidgets('POI atau petunjuk kosong: tanpa petunjuk', (tester) async {
+      await card(tester, kind: NavigationTargetKind.poi, locationHint: hint);
+      expect(find.text(hint), findsNothing);
+      expect(find.text(ArrivalCard.indoorNote), findsNothing);
+
+      await card(
+        tester,
+        kind: NavigationTargetKind.facility,
+        locationHint: '   ',
+      );
+      expect(find.text(ArrivalCard.indoorNote), findsNothing);
+    });
+
+    testWidgets('catatan selesai tampil di atas tombol', (tester) async {
+      const note = 'Catatan selesai uji.';
+      await card(tester, kind: NavigationTargetKind.poi, completionNote: note);
+      expect(find.text(note), findsOneWidget);
+      expect(
+        tester.getTopLeft(find.text(note)).dy,
+        lessThan(tester.getTopLeft(find.text('Selesai')).dy),
+      );
+    });
+  });
 }

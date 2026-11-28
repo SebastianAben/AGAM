@@ -384,16 +384,21 @@ class _PoiDetailScreenState extends State<PoiDetailScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  audioAvailable
-                      ? _formatDuration(
-                          _currentNarration
-                              ? _playback.position
-                              : Duration.zero,
-                        )
-                      : 'Audio belum tersedia',
-                  style: _timeStyle,
+                Flexible(
+                  child: Text(
+                    audioAvailable
+                        ? _formatDuration(
+                            _currentNarration
+                                ? _playback.position
+                                : Duration.zero,
+                          )
+                        : 'Audio belum tersedia',
+                    style: _timeStyle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
+                const SizedBox(width: 12),
                 Text(
                   audioAvailable &&
                           duration != null &&
@@ -401,46 +406,13 @@ class _PoiDetailScreenState extends State<PoiDetailScreen> {
                       ? _formatDuration(duration)
                       : '--:--',
                   style: _timeStyle,
+                  maxLines: 1,
                 ),
               ],
             ),
           ),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              _control(
-                Icons.replay_rounded,
-                tooltip: 'Ulangi narasi',
-                enabled: audioAvailable,
-                onPressed: () => _currentNarration
-                    ? widget.audio.replay()
-                    : _toggleNarration(),
-              ),
-              const Spacer(),
-              _control(
-                Icons.replay_10_rounded,
-                tooltip: 'Mundur 10 detik',
-                enabled: _canSeek,
-                onPressed: () => _seekBy(-10),
-              ),
-              const SizedBox(width: 14),
-              _playButton(enabled: audioAvailable, playing: playing),
-              const SizedBox(width: 14),
-              _control(
-                Icons.forward_10_rounded,
-                tooltip: 'Maju 10 detik',
-                enabled: _canSeek,
-                onPressed: () => _seekBy(10),
-              ),
-              const Spacer(),
-              _control(
-                Icons.stop_rounded,
-                tooltip: 'Hentikan narasi',
-                enabled: _currentNarration,
-                onPressed: widget.audio.stop,
-              ),
-            ],
-          ),
+          _transport(audioAvailable: audioAvailable, playing: playing),
           const SizedBox(height: 14),
           Container(
             padding: const EdgeInsets.fromLTRB(14, 4, 8, 4),
@@ -543,7 +515,86 @@ class _PoiDetailScreenState extends State<PoiDetailScreen> {
     fontFeatures: const [FontFeature.tabularFigures()],
   );
 
-  Widget _playButton({required bool enabled, required bool playing}) => Tooltip(
+  /// Replay, back 10 s, play, forward 10 s and stop. The roomy layout needs
+  /// [_roomyTransportWidth]; narrower cards (320 dp phones, large text) drop
+  /// the spacers and shrink the play button, keeping every target at 44 dp.
+  /// Only below the compact row's own width does it scale down as a whole.
+  static const _roomyTransportWidth = 288.0;
+  static const _compactTransportWidth = 4 * 44.0 + 56;
+
+  Widget _transport({required bool audioAvailable, required bool playing}) {
+    final replay = _control(
+      Icons.replay_rounded,
+      tooltip: 'Ulangi narasi',
+      enabled: audioAvailable,
+      onPressed: () =>
+          _currentNarration ? widget.audio.replay() : _toggleNarration(),
+    );
+    final back = _control(
+      Icons.replay_10_rounded,
+      tooltip: 'Mundur 10 detik',
+      enabled: _canSeek,
+      onPressed: () => _seekBy(-10),
+    );
+    final forward = _control(
+      Icons.forward_10_rounded,
+      tooltip: 'Maju 10 detik',
+      enabled: _canSeek,
+      onPressed: () => _seekBy(10),
+    );
+    final stop = _control(
+      Icons.stop_rounded,
+      tooltip: 'Hentikan narasi',
+      enabled: _currentNarration,
+      onPressed: widget.audio.stop,
+    );
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth >= _roomyTransportWidth) {
+          return Row(
+            children: [
+              replay,
+              const Spacer(),
+              back,
+              const SizedBox(width: 14),
+              _playButton(enabled: audioAvailable, playing: playing),
+              const SizedBox(width: 14),
+              forward,
+              const Spacer(),
+              stop,
+            ],
+          );
+        }
+        final compact = SizedBox(
+          width: constraints.maxWidth < _compactTransportWidth
+              ? _compactTransportWidth
+              : constraints.maxWidth,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              replay,
+              back,
+              _playButton(
+                enabled: audioAvailable,
+                playing: playing,
+                dimension: 56,
+              ),
+              forward,
+              stop,
+            ],
+          ),
+        );
+        if (constraints.maxWidth >= _compactTransportWidth) return compact;
+        return FittedBox(fit: BoxFit.scaleDown, child: compact);
+      },
+    );
+  }
+
+  Widget _playButton({
+    required bool enabled,
+    required bool playing,
+    double dimension = 64,
+  }) => Tooltip(
     message: playing ? 'Jeda narasi' : 'Putar narasi',
     child: AgamPressFeedback(
       child: Material(
@@ -553,14 +604,14 @@ class _PoiDetailScreenState extends State<PoiDetailScreen> {
           onTap: enabled ? _toggleNarration : null,
           customBorder: const CircleBorder(),
           child: SizedBox.square(
-            dimension: 64,
+            dimension: dimension,
             child: AnimatedSwitcher(
               duration: AgamMotion.duration(context, 160),
               transitionBuilder: AgamMotion.iconSwap,
               child: Icon(
                 playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
                 key: ValueKey(playing),
-                size: 32,
+                size: dimension / 2,
                 color: enabled ? AgamColors.brandDeep : Colors.white54,
               ),
             ),

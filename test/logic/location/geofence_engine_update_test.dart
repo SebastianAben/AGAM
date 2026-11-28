@@ -99,4 +99,74 @@ void main() {
     );
     expect(run(a, 4, 9).length, run(b, 4, 9).length);
   });
+
+  Poi poiWithEntrances(List<PoiEntrance> entrances) => Poi(
+    id: 'synthetic-a',
+    name: 'SINTETIS',
+    aliases: const [],
+    category: PoiCategory.lecture,
+    position: const GeoPoint(0, 0),
+    radiusM: 15,
+    entrances: entrances,
+    description: 'SINTETIS',
+    function: 'SINTETIS',
+    facilities: const [],
+    trivia: 'SINTETIS',
+    media: const PoiMedia(),
+    metadata: const ContentMetadata.placeholder(),
+  );
+
+  test('updatePois mempertahankan dwell dan kunci bila titik akses sama', () {
+    final entrance = PoiEntrance(
+      position: GeoPoint(metersToLat(40), 0),
+      label: 'Pintu SINTETIS',
+    );
+    final engine = GeofenceEngine(
+      pois: [
+        poiWithEntrances([entrance]),
+      ],
+    );
+    expect(run(engine, 0, 3, metersNorth: 45), isEmpty);
+    engine.updatePois([
+      poiWithEntrances([entrance]),
+    ]);
+    expect(run(engine, 4, 5, metersNorth: 45), hasLength(1));
+    expect(engine.activePoiIds, {'synthetic-a'});
+
+    engine.updatePois([
+      poiWithEntrances([entrance]),
+    ]);
+    expect(engine.activePoiIds, {'synthetic-a'});
+  });
+
+  test('updatePois mereset dwell dan kunci bila posisi titik akses berubah', () {
+    final entranceA = PoiEntrance(
+      position: GeoPoint(metersToLat(40), 0),
+      label: 'Pintu A',
+    );
+    final entranceB = PoiEntrance(
+      position: GeoPoint(metersToLat(42), 0),
+      label: 'Pintu B',
+    );
+    final engine = GeofenceEngine(
+      pois: [
+        poiWithEntrances([entranceA]),
+      ],
+    );
+    expect(run(engine, 0, 3, metersNorth: 45), isEmpty);
+    engine.updatePois([
+      poiWithEntrances([entranceB]),
+    ]);
+    // Dwell dimulai ulang dari detik 4 -> baru memicu di detik 9.
+    expect(run(engine, 4, 8, metersNorth: 45), isEmpty);
+    expect(run(engine, 9, 9, metersNorth: 45), hasLength(1));
+    expect(engine.activePoiIds, {'synthetic-a'});
+
+    // Mengubah titik akses melepas pengunci kunjungan, namun cooldown bertahan.
+    engine.updatePois([
+      poiWithEntrances([entranceA]),
+    ]);
+    expect(engine.activePoiIds, isEmpty);
+    expect(run(engine, 10, 30, metersNorth: 45), isEmpty);
+  });
 }

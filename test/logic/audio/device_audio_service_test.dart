@@ -292,6 +292,68 @@ void main() {
     expect(audio.current.status, PlaybackStatus.paused);
   });
 
+  test(
+    'stop dari notifikasi/lock screen mengembalikan state ke idle',
+    () async {
+      await audio.play(narration);
+      expect(audio.current.status, PlaybackStatus.playing);
+
+      backend.emit(const BackendSnapshot.idle());
+      await pumpEventQueue();
+      expect(audio.current.status, PlaybackStatus.idle);
+      expect(audio.current.clip, isNull);
+
+      // Snapshot basi setelah stop eksternal tidak menghidupkan lagi klip lama.
+      backend.emit(
+        const BackendSnapshot(
+          phase: BackendPhase.ready,
+          playing: true,
+          position: Duration(seconds: 5),
+        ),
+      );
+      await pumpEventQueue();
+      expect(audio.current.status, PlaybackStatus.idle);
+
+      // Pause/resume/replay tidak menyentuh backend setelah idle eksternal.
+      final before = List<String>.of(backend.calls);
+      await audio.pause();
+      await audio.resume();
+      await audio.replay();
+      expect(backend.calls, before);
+    },
+  );
+
+  test(
+    'stop dari notifikasi saat dijeda juga mengembalikan state ke idle',
+    () async {
+      await audio.play(narration);
+      await audio.pause();
+      expect(audio.current.status, PlaybackStatus.paused);
+
+      backend.emit(const BackendSnapshot.idle());
+      await pumpEventQueue();
+      expect(audio.current.status, PlaybackStatus.idle);
+      expect(audio.current.clip, isNull);
+    },
+  );
+
+  test('snapshot idle saat load belum selesai tetap diabaikan', () async {
+    final gate = backend.loadGate = Completer<void>();
+    final loading = audio.play(narration);
+    await pumpEventQueue();
+
+    backend.emit(const BackendSnapshot.idle());
+    await pumpEventQueue();
+    expect(audio.current.status, PlaybackStatus.playing);
+    expect(audio.current.clip, narration);
+
+    gate.complete();
+    await loading;
+    expect(audio.current.status, PlaybackStatus.playing);
+    expect(audio.current.clip, narration);
+    expect(backend.calls, ['load:assets/media/synthetic/narasi.mp3', 'play']);
+  });
+
   test('replay memutar dari awal', () async {
     await audio.play(narration);
     await audio.replay();

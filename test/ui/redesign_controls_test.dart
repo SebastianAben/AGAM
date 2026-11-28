@@ -10,6 +10,7 @@ import 'package:agam/ui/walking_navigation_screen.dart';
 import 'package:agam/ui/widgets/agam_components.dart';
 import 'package:agam/ui/widgets/agam_motion.dart';
 import 'package:agam/ui/widgets/offline_campus_map.dart';
+import 'package:agam/ui/widgets/trip_status_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -171,10 +172,12 @@ void main() {
       tester.widget<OfflineCampusMap>(map).routePath,
       services.navigation.current.route!.path,
     );
-    // Fake POIs have no verified access point.
-    expect(find.text('Tujuan perkiraan'), findsOneWidget);
+    // The walking card stays short: the preview already said the access
+    // point is approximate.
+    expect(find.byType(TripStatusCard), findsOneWidget);
+    expect(find.text('Tujuan perkiraan'), findsNothing);
     expect(find.textContaining('Rute menuju titik akses'), findsNothing);
-    await tester.tap(find.text('Akhiri rute'));
+    await tester.tap(find.byTooltip(TripStatusCard.endTooltip));
     // Stopping settles outside the fake clock, like the tile decoding above.
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 50)),
@@ -265,6 +268,159 @@ void main() {
       tester.getRect(thumb).center.dx,
       closeTo(tester.getCenter(find.text('Selesai')).dx, 1),
     );
+  });
+
+  group('TripStatusCard', () {
+    // SINTETIS: a fixed clock so the arrival time is deterministic.
+    DateTime clock() => DateTime(2026, 11, 28, 9, 22, 10);
+
+    Future<void> pumpCard(
+      WidgetTester tester, {
+      String destination = 'Gedung uji (SINTETIS)',
+      double? distance,
+      Duration? eta,
+      String? hint,
+      bool isApproximate = false,
+      VoidCallback? onEnd,
+      Size size = const Size(430, 900),
+      double textScale = 1,
+    }) async {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MediaQuery(
+            data: MediaQueryData(
+              size: size,
+              textScaler: TextScaler.linear(textScale),
+            ),
+            child: Scaffold(
+              body: Align(
+                alignment: Alignment.bottomCenter,
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: TripStatusCard(
+                    destination: destination,
+                    remainingDistanceM: distance,
+                    remainingEta: eta,
+                    isApproximate: isApproximate,
+                    locationHint: hint,
+                    onEnd: onEnd ?? () {},
+                    clock: clock,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+    }
+
+    testWidgets('minutes as the hero, distance and arrival clock below', (
+      tester,
+    ) async {
+      var ended = 0;
+      await pumpCard(
+        tester,
+        distance: 126,
+        eta: const Duration(seconds: 120),
+        onEnd: () => ended++,
+      );
+      expect(find.text('2 menit'), findsOneWidget);
+      // 09.22.10 + 2 minutes, in the Indonesian 24-hour dot format.
+      expect(find.text('126 m · Tiba 09.24'), findsOneWidget);
+      expect(find.text('Gedung uji (SINTETIS)'), findsOneWidget);
+      expect(find.byIcon(Icons.place_rounded), findsOneWidget);
+      expect(find.textContaining('Sisa'), findsNothing);
+      expect(find.textContaining('~'), findsNothing);
+      expect(find.bySemanticsLabel('Perkiraan 2 menit lagi'), findsOneWidget);
+
+      expect(find.text(TripStatusCard.endLabel), findsOneWidget);
+      final pill = tester.getSize(find.byType(FilledButton));
+      expect(pill.height, greaterThanOrEqualTo(48));
+      await tester.tap(find.byTooltip(TripStatusCard.endTooltip));
+      expect(ended, 1);
+    });
+
+    testWidgets('under a minute, kilometres with a decimal comma', (
+      tester,
+    ) async {
+      await pumpCard(tester, distance: 1240, eta: const Duration(seconds: 34));
+      expect(find.text('< 1 menit'), findsOneWidget);
+      expect(find.bySemanticsLabel('Kurang dari 1 menit lagi'), findsOneWidget);
+      expect(find.text('1,2 km · Tiba 09.22'), findsOneWidget);
+    });
+
+    testWidgets('no made-up numbers before the route has them', (tester) async {
+      await pumpCard(tester);
+      expect(find.text(TripStatusCard.calculatingLabel), findsOneWidget);
+      expect(find.text(TripStatusCard.waitingLabel), findsOneWidget);
+      expect(find.textContaining('menit'), findsNothing);
+
+      await pumpCard(tester, distance: 80);
+      expect(find.text(TripStatusCard.calculatingLabel), findsOneWidget);
+      expect(find.text('80 m'), findsOneWidget);
+    });
+
+    testWidgets('never shows "Tujuan perkiraan" while walking', (tester) async {
+      await pumpCard(
+        tester,
+        distance: 126,
+        eta: const Duration(minutes: 2),
+        isApproximate: true,
+      );
+      expect(find.text('Tujuan perkiraan'), findsNothing);
+    });
+
+    testWidgets('an indoor facility keeps its hint under the destination', (
+      tester,
+    ) async {
+      // SINTETIS: test data, not campus content.
+      const hint = 'Di dalam gedung uji, lantai 3';
+      await pumpCard(
+        tester,
+        distance: 126,
+        eta: const Duration(minutes: 2),
+        hint: hint,
+      );
+      expect(find.text(hint), findsOneWidget);
+      expect(find.byIcon(Icons.meeting_room_rounded), findsOneWidget);
+      expect(
+        tester.getTopLeft(find.text(hint)).dy,
+        greaterThan(tester.getTopLeft(find.text('Gedung uji (SINTETIS)')).dy),
+      );
+    });
+
+    testWidgets('long names fit at 320 dp and 1.4x text', (tester) async {
+      // SINTETIS: a deliberately long name to test wrapping.
+      const longName =
+          'Gedung uji dengan nama yang sangat panjang sekali untuk menguji '
+          'dua baris tanpa luapan teks di layar sempit (SINTETIS)';
+      await pumpCard(
+        tester,
+        destination: longName,
+        distance: 1240,
+        eta: const Duration(minutes: 125),
+        hint:
+            'Di dalam gedung uji dengan petunjuk panjang, lantai 3 (SINTETIS)',
+        size: const Size(320, 640),
+        textScale: 1.4,
+      );
+      expect(tester.takeException(), isNull);
+      expect(find.text('125 menit'), findsOneWidget);
+      final name = tester.widget<Text>(find.text(longName));
+      expect(name.maxLines, 2);
+      expect(name.overflow, TextOverflow.ellipsis);
+      final card = tester.getRect(find.byType(TripStatusCard));
+      expect(card.width, lessThanOrEqualTo(320));
+      expect(
+        tester.getRect(find.byType(FilledButton)).right,
+        lessThanOrEqualTo(card.right),
+      );
+      expect(find.text('Akhiri'), findsOneWidget);
+    });
   });
 }
 

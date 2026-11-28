@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:agam/contracts/contracts.dart';
 import 'package:agam/logic/location/device_location_service.dart';
 import 'package:agam/logic/location/position_source.dart';
+import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../support/synthetic.dart';
@@ -12,12 +13,16 @@ void main() {
   late RecordingPositionSource source;
   late DeviceLocationService service;
 
-  DeviceLocationService create({bool visible = true, Stream<bool>? status}) =>
-      DeviceLocationService(
-        source: source,
-        appVisible: visible,
-        serviceStatus: status,
-      );
+  DeviceLocationService create({
+    bool visible = true,
+    Stream<bool>? status,
+    Duration Function(int attempt)? retryDelay,
+  }) => DeviceLocationService(
+    source: source,
+    appVisible: visible,
+    serviceStatus: status,
+    retryDelay: retryDelay,
+  );
 
   setUp(() => source = RecordingPositionSource());
   tearDown(() => service.dispose());
@@ -208,6 +213,146 @@ void main() {
 
       await service.setAppVisible(true);
       expect(service.activeRequest!.interval, const Duration(seconds: 10));
+    });
+
+    test('interval lambat dikembalikan ke normal saat masuk latar belakang '
+        'agar dwell sesi tidak gagal', () async {
+      service = create()..setPois([syntheticPoi()]);
+      await service.beginSession();
+
+      // Di latar depan dan jauh dari POI -> beralih ke slow (10 detik).
+      source.emit(syntheticFix(0, metersNorth: 250));
+      await pumpEventQueue();
+      expect(service.activeRequest!.interval, const Duration(seconds: 10));
+
+      // Beralih ke latar belakang: dikembalikan ke normal (3 detik) sebelum
+      // pergantian latar belakang dibekukan.
+      await service.setAppVisible(false);
+      expect(service.activeRequest!.interval, const Duration(seconds: 3));
+      expect(source.activeSubscriptions, 1);
+
+      // Fix berikutnya di latar belakang tidak boleh memperlambat kembali ke 10s.
+      final before = source.requests.length;
+      source.emit(syntheticFix(3, metersNorth: 250));
+      await pumpEventQueue();
+      expect(source.requests, hasLength(before));
+      expect(service.activeRequest!.interval, const Duration(seconds: 3));
+
+      // Kembali ke latar depan -> interval adaptif kembali diterapkan.
+      await service.setAppVisible(true);
+      expect(service.activeRequest!.interval, const Duration(seconds: 10));
+    });
+  });
+
+  group('pemulihan otomatis error transien', () {
+    test('error LocationIssue.other memulihkan stream otomatis dengan backoff '
+        'dan mereset hitungan setelah fix berhasil', () {
+      fakeAsync((async) {
+        final attempts = <int>[];
+        service = create(
+          retryDelay: (attempt) {
+            attempts.add(attempt);
+            return Duration(seconds: attempt * 2);
+          },
+        );
+        service.beginSession();
+        async.flushMicrotasks();
+        expect(source.activeSubscriptions, 1);
+
+        // Error transien pertama + stream selesai -> jadwal retry ke-1 (2s).
+        source.fail(LocationIssue.other);
+        source.finish();
+        async.flushMicrotasks();
+        expect(service.activeRequest, isNull);
+        expect(source.activeSubscriptions, 0);
+        expect(attempts, [1]);
+
+        async.elapse(const Duration(seconds: 1));
+        expect(source.activeSubscriptions, 0);
+        async.elapse(const Duration(seconds: 1));
+        expect(source.activeSubscriptions, 1);
+        expect(service.activeRequest!.sessionService, isTrue);
+
+        // Error transien kedua berturut-turut -> backoff retry ke-2 (4s).
+        source.fail(LocationIssue.other);
+        source.finish();
+        async.flushMicrotasks();
+        expect(attempts, [1, 2]);
+        async.elapse(const Duration(seconds: 3));
+        expect(source.activeSubscriptions, 0);
+        async.elapse(const Duration(seconds: 1));
+        expect(source.activeSubscriptions, 1);
+
+        // Fix berhasil mereset hitungan backoff kembali ke 1.
+        source.emit(syntheticFix(10));
+        async.flushMicrotasks();
+        expect(service.lastFix, isNotNull);
+
+        source.fail(LocationIssue.other);
+        source.finish();
+        async.flushMicrotasks();
+        expect(attempts, [1, 2, 1]);
+        async.elapse(const Duration(seconds: 2));
+        expect(source.activeSubscriptions, 1);
+      });
+      service = create();
+    });
+
+    test('stream berakhir mendadak tanpa error juga pulih otomatis', () {
+      fakeAsync((async) {
+        service = create(retryDelay: (_) => const Duration(seconds: 2));
+        service.beginSession();
+        async.flushMicrotasks();
+
+        source.finish();
+        async.flushMicrotasks();
+        expect(source.activeSubscriptions, 0);
+
+        async.elapse(const Duration(seconds: 2));
+        expect(source.activeSubscriptions, 1);
+      });
+      service = create();
+    });
+
+    test('error permissionDenied dan serviceDisabled tidak retry otomatis', () {
+      fakeAsync((async) {
+        for (final issue in [
+          LocationIssue.permissionDenied,
+          LocationIssue.serviceDisabled,
+        ]) {
+          source = RecordingPositionSource();
+          service = create(retryDelay: (_) => const Duration(seconds: 1));
+          service.beginSession();
+          async.flushMicrotasks();
+          source.fail(issue);
+          source.finish();
+          async.flushMicrotasks();
+          async.elapse(const Duration(minutes: 1));
+          expect(source.activeSubscriptions, 0);
+          expect(source.requests, hasLength(1));
+        }
+      });
+      service = create();
+    });
+
+    test('endSession dan dispose membatalkan timer retry yang tertunda', () {
+      fakeAsync((async) {
+        service = create(retryDelay: (_) => const Duration(seconds: 5));
+        service.beginSession();
+        async.flushMicrotasks();
+
+        source.fail(LocationIssue.other);
+        source.finish();
+        async.flushMicrotasks();
+        expect(source.requests, hasLength(1));
+
+        service.endSession();
+        async.flushMicrotasks();
+        async.elapse(const Duration(seconds: 10));
+        expect(source.requests, hasLength(1));
+        expect(source.activeSubscriptions, 0);
+      });
+      service = create();
     });
   });
 

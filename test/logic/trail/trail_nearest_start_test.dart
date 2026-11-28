@@ -104,14 +104,20 @@ void main() {
     expect(trail.current.active, isTrue);
     expect(trail.current.order, loopFrom(7));
     expect(trail.current.order.sublist(2, 4), ['synthetic-9', 'synthetic-0']);
-    expect(trail.current.nextPoiId, 'synthetic-7');
+    // Standing next to the start triggers arrival check-in right away (B01),
+    // advancing nextPoiId without overwriting the ArrivalCard state (B12).
+    expect(trail.current.visitedCount, 1);
+    expect(trail.current.nextPoiId, 'synthetic-8');
     expect(h.navigation.current.target?.id, 'synthetic-7');
-    // The user stands next to the start, so the route ends right away.
     expect(h.navigation.current.status, NavigationStatus.arrived);
 
+    // A subsequent geofence trigger for the same POI is deduplicated and keeps
+    // the ArrivalCard intact.
     h.session.trigger(7);
     await pumpEventQueue(times: 50);
-    expect(h.navigation.current.target?.id, 'synthetic-8');
+    expect(trail.current.visitedCount, 1);
+    expect(h.navigation.current.target?.id, 'synthetic-7');
+    expect(h.navigation.current.status, NavigationStatus.arrived);
     await h.session.end();
     await pumpEventQueue();
 

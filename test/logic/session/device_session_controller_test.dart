@@ -197,6 +197,70 @@ void main() {
       expect(triggers.single.response, TriggerResponse.brief);
     });
 
+    test(
+      'Navigasi: POI tujuan aktif dilewati, POI bukan tujuan tetap brief',
+      () async {
+        await triggerSub.cancel();
+        await session.dispose();
+        String? targetId = 'synthetic-a';
+        session = DeviceSessionController(
+          location: location,
+          pois: FakePoiRepository(
+            pois: [
+              syntheticPoi(id: 'synthetic-a'),
+              syntheticPoi(
+                id: 'synthetic-b',
+                position: GeoPoint(metersToLat(100), 0),
+              ),
+            ],
+          ),
+          isInsideCampus: _insideSyntheticCampus,
+          clock: () => syntheticEpoch,
+          activeNavigationTargetId: () => targetId,
+        );
+        triggers = [];
+        triggerSub = session.triggers.listen(triggers.add);
+
+        await session.start(SessionMode.navigation);
+        // Masuk POI tujuan aktif -> tidak memancarkan TriggerResponse.brief.
+        await dwell(0, 5);
+        expect(triggers, isEmpty);
+
+        // Masuk POI bukan tujuan -> memancarkan TriggerResponse.brief.
+        for (var t = 10.0; t <= 15.0; t++) {
+          source.emit(syntheticFix(t, metersNorth: 100));
+        }
+        await pumpEventQueue();
+        expect(triggers, hasLength(1));
+        expect(triggers.single.poiId, 'synthetic-b');
+        expect(triggers.single.response, TriggerResponse.brief);
+
+        // Pada mode Trail/Explore, callback tujuan navigasi tidak menekan trigger.
+        await session.start(SessionMode.trail);
+        for (var t = 20.0; t <= 25.0; t++) {
+          source.emit(syntheticFix(t, metersNorth: 5));
+        }
+        await pumpEventQueue();
+        // Keluar dulu dari synthetic-a sudah terjadi di t=10 (100 m),
+        // tetapi cooldown 10 menit dari dwell sebelumnya masih berlaku;
+        // setelah 10 menit berlalu, Trail tetap memicu synthetic-a (full).
+        await dwell(610, 5);
+        expect(triggers, hasLength(2));
+        expect(triggers.last.poiId, 'synthetic-a');
+        expect(triggers.last.response, TriggerResponse.full);
+
+        // Saat targetId null di Navigasi, POI tetap memicu brief.
+        targetId = null;
+        await session.start(SessionMode.navigation);
+        source.emit(syntheticFix(620, metersNorth: 200));
+        await pumpEventQueue();
+        await dwell(1220, 5);
+        expect(triggers, hasLength(3));
+        expect(triggers.last.poiId, 'synthetic-a');
+        expect(triggers.last.response, TriggerResponse.brief);
+      },
+    );
+
     test('exit clears active trigger, rejects jitter, and respects re-entry cooldown', () async {
       final exits = <String>[];
       final sub = session.deactivatedPois.listen(exits.add);

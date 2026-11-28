@@ -32,6 +32,64 @@ class _UnavailableNavigation implements NavigationController {
   }
 }
 
+/// A route owned by another session (here: an active Trail) that is already
+/// running when Search opens. Records whether anything stopped it.
+class _RunningNavigation implements NavigationController {
+  _RunningNavigation(NavigationTarget target)
+    : _current = NavigationState(
+        status: NavigationStatus.onRoute,
+        target: target,
+      );
+
+  final _states = StreamController<NavigationState>.broadcast();
+  NavigationState _current;
+  int stops = 0;
+
+  @override
+  NavigationState get current => _current;
+
+  @override
+  Stream<NavigationState> get state => _states.stream;
+
+  @override
+  Future<void> start(NavigationTarget target) async {
+    _current = NavigationState(
+      status: NavigationStatus.onRoute,
+      target: target,
+    );
+    _states.add(_current);
+  }
+
+  @override
+  Future<void> stop() async {
+    stops++;
+    _current = const NavigationState.idle();
+    _states.add(_current);
+  }
+}
+
+AppServices _withNavigation(
+  AppServices fake,
+  NavigationController navigation,
+) => AppServices(
+  permissions: fake.permissions,
+  location: fake.location,
+  pois: fake.pois,
+  session: fake.session,
+  audio: fake.audio,
+  voice: fake.voice,
+  settings: fake.settings,
+  auth: fake.auth,
+  activity: fake.activity,
+  map: fake.map,
+  routing: fake.routing,
+  navigation: navigation,
+  search: fake.search,
+  recommendations: fake.recommendations,
+  trail: fake.trail,
+  facilities: fake.facilities,
+);
+
 void main() {
   testWidgets('an unavailable route says so instead of announcing a preview', (
     tester,
@@ -99,6 +157,47 @@ void main() {
     // Cancel without awaiting: the returned future resolves outside the
     // fake clock and would block the test.
     unawaited(positions.cancel());
+    await tester.pump(const Duration(seconds: 1));
+  });
+
+  testWidgets('closing a destination in Search keeps an active Trail running', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final fake = AppServices.fake(tick: const Duration(milliseconds: 10));
+    // SINTETIS: the trail's route points at the same building the card shows,
+    // the case most likely to be mistaken for this page's own route.
+    final navigation = _RunningNavigation(NavigationTarget.poi(fakePois.first));
+    final services = _withNavigation(fake, navigation);
+    await services.session.start(SessionMode.trail);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: SearchRouteScreen(
+          services: services,
+          initialDestination: fakePois.first,
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 400));
+
+    final closeText = find.text('Tutup pilihan');
+    final close = closeText.evaluate().isNotEmpty
+        ? closeText.first
+        : find.byTooltip('Tutup pilihan').first;
+    await tester.ensureVisible(close);
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.tap(close);
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(navigation.stops, 0);
+    expect(services.session.current.mode, SessionMode.trail);
+    expect(navigation.current.status, NavigationStatus.onRoute);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    unawaited(services.session.end());
     await tester.pump(const Duration(seconds: 1));
   });
 }

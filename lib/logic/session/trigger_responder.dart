@@ -43,6 +43,7 @@ class TriggerResponder {
   bool _disposed = false;
   final _poiRevisions = <String, int>{};
   final _viewRequests = StreamController<String>.broadcast();
+  final _dismissedPois = StreamController<String>.broadcast();
   StreamSubscription<PoiTriggerEvent>? _triggerSubscription;
   StreamSubscription<TriggerActionEvent>? _actionSubscription;
   StreamSubscription<SessionState>? _stateSubscription;
@@ -50,6 +51,10 @@ class TriggerResponder {
 
   /// ID POI yang kartunya diminta dibuka pengguna lewat tombol "Lihat".
   Stream<String> get viewRequests => _viewRequests.stream;
+
+  /// ID POI yang dilewati pengguna lewat aksi "Lewati" pada notifikasi atau
+  /// kartu sehingga layar peta dapat menghapusnya dari daftar trigger aktif.
+  Stream<String> get dismissedPois => _dismissedPois.stream;
 
   void start() {
     _triggerSubscription ??= _session.triggers.listen(_onTrigger);
@@ -62,6 +67,20 @@ class TriggerResponder {
     }
   }
 
+  /// Menghapus notifikasi trigger untuk [poiId] saat kartu POI sudah tampil di
+  /// aplikasi, tanpa menghentikan audio (narasi maupun prompt).
+  Future<void> dismissNotification(String poiId) async {
+    if (_disposed) return;
+    await _notifier.dismiss(poiId);
+  }
+
+  /// Menghapus seluruh notifikasi trigger yang tertinggal saat aplikasi
+  /// kembali ke latar depan, tanpa menghentikan audio yang sedang diputar.
+  Future<void> dismissForegroundNotifications() async {
+    if (_disposed) return;
+    await _notifier.dismissAll();
+  }
+
   Future<void> dispose() async {
     _disposed = true;
     _generation++;
@@ -70,6 +89,7 @@ class TriggerResponder {
     await _stateSubscription?.cancel();
     await _deactivatedSubscription?.cancel();
     await _viewRequests.close();
+    await _dismissedPois.close();
   }
 
   Future<void> _onTrigger(PoiTriggerEvent event) async {
@@ -133,6 +153,7 @@ class TriggerResponder {
       case TriggerAction.skip:
         await _notifier.dismiss(event.poiId);
         if (!valid()) return;
+        _dismissedPois.add(event.poiId);
         final clip = _audio.current.clip;
         if (clip != null &&
             clip.poiId == event.poiId &&

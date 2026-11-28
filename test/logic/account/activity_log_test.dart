@@ -29,6 +29,60 @@ const _allowedFields = {
   'trailCompleted': {'uid', 'type', 'date'},
 };
 
+class _RecordingFirestore extends Fake implements FirebaseFirestore {
+  _RecordingFirestore({required this.onGet});
+
+  final Future<QuerySnapshot<Map<String, dynamic>>> Function(
+    GetOptions? options,
+  )
+  onGet;
+
+  @override
+  CollectionReference<Map<String, dynamic>> collection(String collectionPath) =>
+      _RecordingCollection(onGet);
+}
+
+// ignore: subtype_of_sealed_class
+class _RecordingCollection extends Fake
+    implements CollectionReference<Map<String, dynamic>> {
+  _RecordingCollection(this.onGet);
+
+  final Future<QuerySnapshot<Map<String, dynamic>>> Function(
+    GetOptions? options,
+  )
+  onGet;
+
+  @override
+  Query<Map<String, dynamic>> where(
+    Object field, {
+    Object? isEqualTo,
+    Object? isNotEqualTo,
+    Object? isLessThan,
+    Object? isLessThanOrEqualTo,
+    Object? isGreaterThan,
+    Object? isGreaterThanOrEqualTo,
+    Object? arrayContains,
+    Iterable<Object?>? arrayContainsAny,
+    Iterable<Object?>? whereIn,
+    Iterable<Object?>? whereNotIn,
+    bool? isNull,
+  }) => _RecordingQuery(onGet);
+}
+
+// ignore: subtype_of_sealed_class
+class _RecordingQuery extends Fake implements Query<Map<String, dynamic>> {
+  _RecordingQuery(this.onGet);
+
+  final Future<QuerySnapshot<Map<String, dynamic>>> Function(
+    GetOptions? options,
+  )
+  onGet;
+
+  @override
+  Future<QuerySnapshot<Map<String, dynamic>>> get([GetOptions? options]) =>
+      onGet(options);
+}
+
 class _ManualSession implements SessionController {
   final _state = StreamController<SessionState>.broadcast();
   SessionState _current = const SessionState.idle();
@@ -150,6 +204,63 @@ void main() {
       await logger.deleteAllFor('uid-a');
       final remaining = await logs();
       expect(remaining.map((d) => d['uid']), ['uid-b']);
+    });
+
+    test('deleteAllFor membaca dari Source.server dan memetakan FirebaseException jaringan ke AuthErrorCode.network', () async {
+      GetOptions? capturedOptions;
+      final failingFirestore = _RecordingFirestore(
+        onGet: (options) {
+          capturedOptions = options;
+          throw FirebaseException(
+            plugin: 'cloud_firestore',
+            code: 'unavailable',
+          );
+        },
+      );
+      final networkLogger = FirestoreActivityLogger(
+        currentUid: () => 'uid-a',
+        firestore: failingFirestore,
+        clock: () => now,
+      );
+
+      await expectLater(
+        networkLogger.deleteAllFor('uid-a'),
+        throwsA(
+          isA<AuthException>().having(
+            (e) => e.code,
+            'code',
+            AuthErrorCode.network,
+          ),
+        ),
+      );
+      expect(capturedOptions?.source, Source.server);
+    });
+
+    test('deleteAllFor memetakan FirebaseException non-jaringan ke AuthErrorCode.unknown', () async {
+      final failingFirestore = _RecordingFirestore(
+        onGet: (_) {
+          throw FirebaseException(
+            plugin: 'cloud_firestore',
+            code: 'permission-denied',
+          );
+        },
+      );
+      final permissionLogger = FirestoreActivityLogger(
+        currentUid: () => 'uid-a',
+        firestore: failingFirestore,
+        clock: () => now,
+      );
+
+      await expectLater(
+        permissionLogger.deleteAllFor('uid-a'),
+        throwsA(
+          isA<AuthException>().having(
+            (e) => e.code,
+            'code',
+            AuthErrorCode.unknown,
+          ),
+        ),
+      );
     });
   });
 

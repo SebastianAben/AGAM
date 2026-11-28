@@ -10,8 +10,10 @@ import 'package:agam/ui/search_route_screen.dart';
 import 'package:agam/ui/walking_navigation_screen.dart';
 import 'package:agam/ui/widgets/agam_motion.dart';
 import 'package:agam/ui/widgets/agam_theme.dart';
+import 'package:agam/ui/widgets/arrival_card.dart';
 import 'package:agam/ui/widgets/offline_campus_map.dart';
 import 'package:animations/animations.dart';
+import 'package:agam/ui/widgets/trip_status_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -38,24 +40,65 @@ class _Location implements LocationService {
 
 class _Session implements SessionController {
   final _states = StreamController<SessionState>.broadcast();
+  final _triggers = StreamController<PoiTriggerEvent>.broadcast();
+  final started = <SessionMode>[];
+  int ends = 0;
   @override
   SessionState current = const SessionState.idle();
   @override
   Stream<SessionState> get state => _states.stream;
   @override
-  Stream<PoiTriggerEvent> get triggers => const Stream.empty();
+  Stream<PoiTriggerEvent> get triggers => _triggers.stream;
+
+  void fire(String poiId, TriggerResponse response) => _triggers.add(
+    PoiTriggerEvent(
+      poiId: poiId,
+      mode: current.mode,
+      response: response,
+      triggeredAt: DateTime.utc(2026),
+    ),
+  );
 
   @override
   Future<void> start(SessionMode mode) async {
+    started.add(mode);
     current = SessionState(mode: mode, startedAt: DateTime(2026));
     _states.add(current);
   }
 
   @override
   Future<void> end() async {
+    ends++;
     current = const SessionState.idle();
     _states.add(current);
   }
+}
+
+/// SINTETIS. A Trail whose every stop is already checked in (10/10 as
+/// `DeviceTrailService` reports it once the last stop is reached).
+class _CompleteTrail implements TrailService {
+  _CompleteTrail(List<String> order)
+    : current = TrailProgress(
+        order: order,
+        visited: order.toSet(),
+        active: true,
+        completedAt: DateTime.utc(2026),
+      );
+
+  @override
+  final TrailProgress current;
+
+  @override
+  Stream<TrailProgress> get progress => const Stream.empty();
+
+  @override
+  Future<void> start() async {}
+
+  @override
+  Future<void> stop() async {}
+
+  @override
+  Future<void> reset() async {}
 }
 
 class _ThrowingRouting implements RoutingService {
@@ -131,6 +174,8 @@ AppServices _services({
   RoutingService? routing,
   AudioService? audio,
   SessionController? session,
+  VoiceGuidance? voice,
+  TrailService? trail,
 }) {
   final fake = AppServices.fake(tick: const Duration(hours: 1));
   final routes = routing ?? fake.routing;
@@ -140,7 +185,7 @@ AppServices _services({
     pois: fake.pois,
     session: session ?? _Session(),
     audio: audio ?? fake.audio,
-    voice: fake.voice,
+    voice: voice ?? fake.voice,
     settings: fake.settings,
     auth: fake.auth,
     activity: FakeActivityLogger(),
@@ -149,7 +194,7 @@ AppServices _services({
     navigation: FakeNavigationController(location: location, routing: routes),
     search: fake.search,
     recommendations: fake.recommendations,
-    trail: fake.trail,
+    trail: trail ?? fake.trail,
     facilities: fake.facilities,
   );
 }
@@ -183,8 +228,11 @@ Future<void> _openPreview(
   AppServices services, {
   NavigationTarget? target,
   bool reduceMotion = false,
+  bool trail = false,
+  Future<void> Function()? start,
+  double width = 390,
 }) async {
-  _phone(tester);
+  _phone(tester, width: width);
   await tester.pumpWidget(
     MaterialApp(
       // Above the navigator, so pushed pages see it too.
@@ -200,6 +248,8 @@ Future<void> _openPreview(
                 context,
                 services: services,
                 target: target ?? NavigationTarget.poi(_there),
+                trail: trail,
+                start: start,
               ),
               child: const Text('Buka rute'),
             ),
@@ -248,7 +298,7 @@ void main() {
     // Fake POIs have no surveyed access point.
     expect(find.text('Tujuan perkiraan'), findsOneWidget);
     expect(find.text(WalkingNavigationScreen.startLabel), findsOneWidget);
-    expect(find.text('Akhiri rute'), findsNothing);
+    expect(find.byTooltip(TripStatusCard.endTooltip), findsNothing);
 
     // Back from the preview leaves nothing running.
     await tester.tap(find.byTooltip('Kembali'));
@@ -283,10 +333,12 @@ void main() {
     expect(find.byType(OfflineCampusMap), findsOneWidget);
     expect(_visiblePath(tester), services.navigation.current.route!.path);
     expect(find.textContaining('Berjalan lurus'), findsOneWidget);
-    expect(find.textContaining('Sisa '), findsOneWidget);
+    expect(find.byType(TripStatusCard), findsOneWidget);
+    expect(find.textContaining(' · Tiba '), findsOneWidget);
+    expect(find.textContaining('Sisa'), findsNothing);
     expect(find.text(WalkingNavigationScreen.startLabel), findsNothing);
 
-    await tester.tap(find.text('Akhiri rute'));
+    await tester.tap(find.byTooltip(TripStatusCard.endTooltip));
     await _settleStop(tester);
     expect(find.byType(WalkingNavigationScreen), findsNothing);
     expect(services.session.current.mode, SessionMode.none);
@@ -305,7 +357,7 @@ void main() {
     await _frames(tester);
     expect(services.navigation.current.status, NavigationStatus.arrived);
     expect(find.text('Anda telah tiba di ${_there.name}'), findsOneWidget);
-    expect(find.text('Akhiri rute'), findsNothing);
+    expect(find.byTooltip(TripStatusCard.endTooltip), findsNothing);
     final next = find.byWidgetPredicate(
       (w) =>
           w.key is ValueKey<String> &&
@@ -551,11 +603,356 @@ void main() {
     await tester.tap(find.text(WalkingNavigationScreen.startLabel));
     await _frames(tester, 3);
     expect(services.session.current.mode, SessionMode.navigation);
-    expect(find.text('Akhiri rute'), findsOneWidget);
-    await tester.tap(find.text('Akhiri rute'));
+    expect(find.byTooltip(TripStatusCard.endTooltip), findsOneWidget);
+    await tester.tap(find.byTooltip(TripStatusCard.endTooltip));
     await _settleStop(tester);
     expect(find.byType(WalkingNavigationScreen), findsNothing);
     expect(tester.takeException(), isNull);
     await _tearDown(tester);
+  });
+
+  group('Wave 3: walking navigation', () {
+    // SINTETIS: a facility inside a building, reached at the building's
+    // door. The hint is test data, not campus content.
+    const hint = 'Gedung uji, lantai 3';
+    final facilityTarget = NavigationTarget(
+      id: 'facility-uji',
+      name: 'Fasilitas uji',
+      kind: NavigationTargetKind.facility,
+      point: _there.navigationPoint,
+      isPlaceholderPoint: true,
+      candidates: [_there.navigationPoint],
+      locationHint: hint,
+    );
+
+    Finder recenterButton() =>
+        find.widgetWithIcon(IconButton, Icons.my_location_rounded);
+
+    Color? recenterBackground(WidgetTester tester) => tester
+        .widget<IconButton>(recenterButton())
+        .style
+        ?.backgroundColor
+        ?.resolve(<WidgetState>{});
+
+    testWidgets('a facility preview says where it is inside the building, '
+        'and arrival repeats it', (tester) async {
+      final location = _Location(_fixAt(_here.position));
+      final services = _services(location: location);
+      await _openPreview(tester, services, target: facilityTarget);
+      expect(find.text(hint), findsOneWidget);
+      expect(find.text(WalkingNavigationScreen.doorNote), findsOneWidget);
+      expect(find.text('Tujuan perkiraan'), findsOneWidget);
+
+      await tester.tap(find.text(WalkingNavigationScreen.startLabel));
+      await _frames(tester);
+      // The trip card keeps the hint while walking, without repeating the
+      // preview's "Tujuan perkiraan" note.
+      expect(find.text(hint), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(TripStatusCard),
+          matching: find.text('Tujuan perkiraan'),
+        ),
+        findsNothing,
+      );
+
+      location.emit(_fixAt(_there.navigationPoint));
+      await _frames(tester);
+      expect(services.navigation.current.status, NavigationStatus.arrived);
+      expect(find.text(hint), findsOneWidget);
+      expect(find.text(ArrivalCard.indoorNote), findsOneWidget);
+      await _tearDown(tester);
+    });
+
+    testWidgets('a POI preview shows no indoor hint', (tester) async {
+      final services = _services(location: _Location(_fixAt(_here.position)));
+      await _openPreview(tester, services);
+      expect(find.text(WalkingNavigationScreen.doorNote), findsNothing);
+      expect(find.byIcon(Icons.meeting_room_rounded), findsNothing);
+      await _tearDown(tester);
+    });
+
+    testWidgets('no Indonesian voice: a dismissible notice while walking that '
+        'clears once a voice is installed', (tester) async {
+      final voice = FakeVoiceGuidance(available: false);
+      final services = _services(
+        location: _Location(_fixAt(_here.position)),
+        voice: voice,
+      );
+      await _openPreview(tester, services);
+      // Not in the preview: nothing is spoken there.
+      expect(find.text(WalkingNavigationScreen.voiceNote), findsNothing);
+      await tester.tap(find.text(WalkingNavigationScreen.startLabel));
+      await _frames(tester);
+      expect(find.text(WalkingNavigationScreen.voiceNote), findsOneWidget);
+
+      // Back from Android's TTS settings with the voice installed.
+      voice.available = true;
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await _frames(tester, 4);
+      expect(find.text(WalkingNavigationScreen.voiceNote), findsNothing);
+
+      // Removed again: the notice returns, and Tutup keeps it away.
+      voice.available = false;
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await _frames(tester, 4);
+      expect(find.text(WalkingNavigationScreen.voiceNote), findsOneWidget);
+      await tester.tap(find.byTooltip('Tutup pemberitahuan suara'));
+      await _frames(tester, 4);
+      expect(find.text(WalkingNavigationScreen.voiceNote), findsNothing);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await _frames(tester, 4);
+      expect(find.text(WalkingNavigationScreen.voiceNote), findsNothing);
+      await _tearDown(tester);
+    });
+
+    testWidgets('a voice that is installed shows no notice', (tester) async {
+      final services = _services(location: _Location(_fixAt(_here.position)));
+      await _openPreview(tester, services);
+      await tester.tap(find.text(WalkingNavigationScreen.startLabel));
+      await _frames(tester);
+      expect(find.text(WalkingNavigationScreen.voiceNote), findsNothing);
+      await _tearDown(tester);
+    });
+
+    testWidgets('a building passed on the way shows a pill for 4 s, without '
+        'audio', (tester) async {
+      final session = _Session();
+      final audio = _RecordingAudio();
+      final services = _services(
+        location: _Location(_fixAt(_here.position)),
+        session: session,
+        audio: audio,
+      );
+      await _openPreview(tester, services);
+      final passed = fakePois[1];
+      // Not before the walk starts.
+      session.fire(passed.id, TriggerResponse.brief);
+      await _frames(tester, 2);
+      expect(
+        find.text(WalkingNavigationScreen.passingLabel(passed.name)),
+        findsNothing,
+      );
+
+      await tester.tap(find.text(WalkingNavigationScreen.startLabel));
+      await _frames(tester);
+      session.fire(passed.id, TriggerResponse.brief);
+      await _frames(tester, 3);
+      expect(
+        find.text(WalkingNavigationScreen.passingLabel(passed.name)),
+        findsOneWidget,
+      );
+      // The walk goes on: same instruction panel and trip card.
+      expect(find.byTooltip(TripStatusCard.endTooltip), findsOneWidget);
+      expect(audio.current.status, isNot(PlaybackStatus.playing));
+
+      // An unknown POI never shows a made-up name.
+      session.fire('poi-tidak-ada', TriggerResponse.brief);
+      await _frames(tester, 2);
+      expect(find.textContaining('Melewati'), findsOneWidget);
+
+      await tester.pump(WalkingNavigationScreen.briefPillDuration);
+      await _frames(tester, 4);
+      expect(find.textContaining('Melewati'), findsNothing);
+      await _tearDown(tester);
+    });
+
+    testWidgets('Trail: a prompt on the way shows its card over the route', (
+      tester,
+    ) async {
+      final session = _Session();
+      final services = _services(
+        location: _Location(_fixAt(_here.position)),
+        session: session,
+      );
+      await _openPreview(tester, services, trail: true);
+      await tester.tap(find.text(WalkingNavigationScreen.startLabel));
+      await _frames(tester);
+      final reached = fakePois[1];
+      session.fire(reached.id, TriggerResponse.full);
+      await _frames(tester, 3);
+      expect(
+        find.text(WalkingNavigationScreen.approachingLabel(reached.name)),
+        findsOneWidget,
+      );
+      expect(find.text('Lihat'), findsOneWidget);
+      expect(find.text('Lewati'), findsOneWidget);
+      // Dengarkan, or the honest label when no narration is ready.
+      expect(
+        find.text('Dengarkan').evaluate().length +
+            find.text('Narasi belum tersedia').evaluate().length,
+        1,
+      );
+      // The walk keeps going behind it.
+      expect(find.byTooltip(TripStatusCard.endTooltip), findsOneWidget);
+
+      await tester.tap(find.text('Lewati'));
+      await _frames(tester, 4);
+      expect(
+        find.text(WalkingNavigationScreen.approachingLabel(reached.name)),
+        findsNothing,
+      );
+      await _tearDown(tester);
+    });
+
+    testWidgets('outside Trail a full trigger shows no prompt card', (
+      tester,
+    ) async {
+      final session = _Session();
+      final services = _services(
+        location: _Location(_fixAt(_here.position)),
+        session: session,
+      );
+      await _openPreview(tester, services);
+      await tester.tap(find.text(WalkingNavigationScreen.startLabel));
+      await _frames(tester);
+      session.fire(fakePois[1].id, TriggerResponse.full);
+      await _frames(tester, 3);
+      expect(
+        find.text(WalkingNavigationScreen.approachingLabel(fakePois[1].name)),
+        findsNothing,
+      );
+      await _tearDown(tester);
+    });
+
+    testWidgets('the 10th Trail stop keeps its arrival card after the session '
+        'ends, until Selesai', (tester) async {
+      final location = _Location(_fixAt(_here.position));
+      final trail = _CompleteTrail([_here.id, _there.id]);
+      final services = _services(location: location, trail: trail);
+      await _openPreview(tester, services, trail: true);
+      await tester.tap(find.text(WalkingNavigationScreen.startLabel));
+      await _frames(tester);
+      location.emit(_fixAt(_there.navigationPoint));
+      await _frames(tester);
+      final headline = 'Anda telah tiba di ${_there.name}';
+      final note = WalkingNavigationScreen.trailCompleteNote(2, 2);
+      expect(find.text(headline), findsOneWidget);
+      expect(find.text(note), findsOneWidget);
+
+      // DeviceTrailService ends navigation and the session on 10/10.
+      await services.navigation.stop();
+      await services.session.end();
+      await _settleStop(tester);
+      expect(find.byType(WalkingNavigationScreen), findsOneWidget);
+      expect(find.text(headline), findsOneWidget);
+      expect(find.text(note), findsOneWidget);
+
+      await tester.tap(find.text('Selesai'));
+      await _frames(tester);
+      expect(find.byType(WalkingNavigationScreen), findsNothing);
+      await _tearDown(tester);
+    });
+
+    testWidgets('the arrival detail shows a checked-in POI as checked in', (
+      tester,
+    ) async {
+      final location = _Location(_fixAt(_here.position));
+      final services = _services(
+        location: location,
+        trail: _CompleteTrail([_there.id]),
+      );
+      // The detail's audio time row needs 430 wide (see below).
+      await _openPreview(tester, services, width: 430);
+      await tester.tap(find.text(WalkingNavigationScreen.startLabel));
+      await _frames(tester);
+      location.emit(_fixAt(_there.navigationPoint));
+      await _frames(tester);
+      await tester.ensureVisible(find.text('Lihat Detail POI'));
+      await tester.tap(find.text('Lihat Detail POI'));
+      await _frames(tester, 6);
+      expect(
+        tester.widget<PoiDetailScreen>(find.byType(PoiDetailScreen)).checkedIn,
+        isTrue,
+      );
+      await _tearDown(tester);
+    });
+
+    testWidgets('a failed start keeps a running Explore session', (
+      tester,
+    ) async {
+      final session = _Session();
+      final services = _services(
+        location: _Location(_fixAt(_here.position)),
+        session: session,
+      );
+      await session.start(SessionMode.explore);
+      await _openPreview(
+        tester,
+        services,
+        start: () async {
+          await session.start(SessionMode.navigation);
+          throw StateError('SINTETIS: navigasi gagal dimulai');
+        },
+      );
+      await tester.tap(find.text(WalkingNavigationScreen.startLabel));
+      await _settleStop(tester);
+      expect(session.current.mode, SessionMode.explore);
+      expect(session.ends, 0);
+      expect(services.navigation.current.status, NavigationStatus.idle);
+      // Back in the preview with the reason.
+      expect(find.byTooltip(TripStatusCard.endTooltip), findsNothing);
+      expect(
+        find.text(
+          WalkingNavigationScreen.problemMessage(RouteProblem.unavailable),
+        ),
+        findsOneWidget,
+      );
+      await _tearDown(tester);
+    });
+
+    testWidgets('a failed start without Explore ends the session', (
+      tester,
+    ) async {
+      final session = _Session();
+      final services = _services(
+        location: _Location(_fixAt(_here.position)),
+        session: session,
+      );
+      await _openPreview(
+        tester,
+        services,
+        start: () async {
+          await session.start(SessionMode.navigation);
+          throw StateError('SINTETIS: navigasi gagal dimulai');
+        },
+      );
+      await tester.tap(find.text(WalkingNavigationScreen.startLabel));
+      await _settleStop(tester);
+      expect(session.current.mode, SessionMode.none);
+      expect(session.ends, 1);
+      await _tearDown(tester);
+    });
+
+    testWidgets('the camera follows the walker until the map is moved; '
+        'Pusatkan lokasi saya follows again', (tester) async {
+      final services = _services(location: _Location(_fixAt(_here.position)));
+      await _openPreview(tester, services);
+      // In the preview the button only centres; it is not "on".
+      expect(recenterBackground(tester), Colors.white);
+      await tester.tap(find.text(WalkingNavigationScreen.startLabel));
+      await _frames(tester);
+      expect(recenterBackground(tester), AgamColors.brand);
+
+      final map = tester.widget<OfflineCampusMap>(
+        find.descendant(
+          of: find.byType(WalkingNavigationScreen),
+          matching: find.byType(OfflineCampusMap),
+        ),
+      );
+      expect(map.onUserInteract, isNotNull);
+      map.onUserInteract!();
+      await _frames(tester, 3);
+      expect(recenterBackground(tester), Colors.white);
+
+      await tester.tap(recenterButton());
+      await _frames(tester, 8);
+      expect(recenterBackground(tester), AgamColors.brand);
+      expect(tester.takeException(), isNull);
+      await _tearDown(tester);
+    });
   });
 }

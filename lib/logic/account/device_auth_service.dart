@@ -107,7 +107,7 @@ class DeviceAuthService implements AuthService {
     required String password,
   }) async {
     final user = await _gateway.signIn(email: email, password: password);
-    final UserRole? role;
+    UserRole? role;
     try {
       role = await _profiles.read(user.uid);
     } on AuthException {
@@ -115,8 +115,20 @@ class DeviceAuthService implements AuthService {
       rethrow;
     }
     if (role == null) {
-      await _safeSignOut();
-      throw const AuthException(AuthErrorCode.unknown);
+      final localRole = await _local.readRole(user.uid);
+      if (localRole == null) {
+        await _safeSignOut();
+        throw const AuthException(AuthErrorCode.unknown);
+      }
+      // Profil Firestore hilang (mis. penghapusan akun sebelumnya gagal di
+      // tengah jalan saat offline), tetapi salinan role lokal masih tersedia:
+      // coba pulihkan profil di Firestore dan tetap izinkan masuk.
+      try {
+        await _profiles.create(uid: user.uid, role: localRole);
+      } on AuthException {
+        // Tetap lanjutkan masuk memakai role lokal agar akun tidak terkunci.
+      }
+      role = localRole;
     }
     await _local.saveRole(user.uid, role);
     final account = _account(user, role);
@@ -150,14 +162,31 @@ class DeviceAuthService implements AuthService {
   Future<void> deleteAccount({required String password}) async {
     final account = _current.account;
     if (account == null) return;
+    final uid = account.uid;
+    final role = account.role;
     await _gateway.reauthenticate(password: password);
     await _beforeDelete?.call();
-    await _deleteRemoteLogs?.call(account.uid);
-    await _profiles.delete(account.uid);
-    await _local.clear(account.uid);
-    await _clearLocalData?.call(account.uid);
-    await _gateway.deleteCurrentUser();
-    _emit(const AuthState.signedOut());
+    await _deleteRemoteLogs?.call(uid);
+    await _profiles.delete(uid);
+    try {
+      await _gateway.deleteCurrentUser();
+    } on Object {
+      // Akun Firebase Auth masih ada: coba pulihkan profil di Firestore agar
+      // email tidak terkunci permanen dan pengguna dapat mencoba ulang.
+      try {
+        await _profiles.create(uid: uid, role: role);
+      } on Object {
+        // Best-effort; salinan role lokal tetap dipertahankan hingga akun Auth
+        // benar-benar terhapus.
+      }
+      rethrow;
+    }
+    try {
+      await _local.clear(uid);
+      await _clearLocalData?.call(uid);
+    } finally {
+      if (_current.isSignedIn) _emit(const AuthState.signedOut());
+    }
   }
 
   Future<void> dispose() async {

@@ -7,7 +7,9 @@ import '../contracts/app_services.dart';
 import '../contracts/models/content.dart';
 import '../contracts/models/discovery.dart';
 import '../contracts/models/navigation.dart';
+import '../contracts/models/location.dart';
 import '../contracts/models/session.dart';
+import '../logic/trail/device_trail_service.dart';
 import 'poi_detail_screen.dart';
 import 'walking_navigation_screen.dart';
 import 'widgets/agam_components.dart';
@@ -36,7 +38,8 @@ class OrientationTrailScreen extends StatefulWidget {
   State<OrientationTrailScreen> createState() => _OrientationTrailScreenState();
 }
 
-class _OrientationTrailScreenState extends State<OrientationTrailScreen> {
+class _OrientationTrailScreenState extends State<OrientationTrailScreen>
+    with WidgetsBindingObserver {
   late TrailProgress _progress;
   List<Poi> _pois = const [];
   int _filter = 0;
@@ -45,9 +48,18 @@ class _OrientationTrailScreenState extends State<OrientationTrailScreen> {
   NavigationState _navigation = const NavigationState.idle();
   final _subscriptions = <StreamSubscription<dynamic>>[];
 
+  /// Before the first start the nearest stop is previewed from a fix held
+  /// only in memory while this tab is shown (PRD §6, rules §5.1): never
+  /// stored, logged or sent, and dropped as soon as the read stops.
+  StreamSubscription<LocationFix>? _warmFix;
+  LocationFix? _fix;
+  bool _appVisible = true;
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _appVisible = _isVisible(WidgetsBinding.instance.lifecycleState);
     _progress = widget.services.trail.current;
     _subscriptions.add(
       widget.services.pois.watchPois().listen((pois) {
@@ -56,24 +68,76 @@ class _OrientationTrailScreenState extends State<OrientationTrailScreen> {
       }),
     );
     _subscriptions.add(
-      widget.services.trail.progress.listen((progress) {
-        if (!mounted) return;
-        setState(() => _progress = progress);
-      }),
+      widget.services.trail.progress.listen(
+        (progress) {
+          if (!mounted) return;
+          setState(() => _progress = progress);
+          _syncWarmFix();
+        },
+        onError: (Object _) {
+          if (mounted) _message('Progres trail belum dapat diperbarui.');
+        },
+      ),
     );
     _subscriptions.add(
       widget.services.navigation.state.listen((state) {
         if (mounted) setState(() => _navigation = state);
       }),
     );
+    _syncWarmFix();
   }
 
   @override
+  void didUpdateWidget(OrientationTrailScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isActive != widget.isActive) _syncWarmFix();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _appVisible = _isVisible(state);
+    _syncWarmFix();
+  }
+
+  static bool _isVisible(AppLifecycleState? state) =>
+      state == null ||
+      state == AppLifecycleState.resumed ||
+      state == AppLifecycleState.inactive;
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _warmFix?.cancel();
     for (final subscription in _subscriptions) {
       subscription.cancel();
     }
     super.dispose();
+  }
+
+  /// Location is read only while the device trail can still pick its
+  /// nearest start: the tab shown, the app visible, no trail running and no
+  /// stop checked in yet.
+  bool get _wantsWarmFix =>
+      widget.isActive &&
+      _appVisible &&
+      !_progress.active &&
+      _progress.visitedCount == 0 &&
+      widget.services.trail is DeviceTrailService;
+
+  void _syncWarmFix() {
+    if (_wantsWarmFix) {
+      _warmFix ??= widget.services.location.positions.listen(
+        (fix) {
+          if (mounted) setState(() => _fix = fix);
+        },
+        // A missing fix only falls back to the official first stop.
+        onError: (Object _) {},
+      );
+    } else if (_warmFix != null) {
+      _warmFix?.cancel();
+      _warmFix = null;
+      _fix = null;
+    }
   }
 
   List<Poi> get _orderedPois => [
@@ -99,13 +163,25 @@ class _OrientationTrailScreenState extends State<OrientationTrailScreen> {
 
   Poi? _poiById(String? id) {
     if (id == null) return null;
-    for (final poi in _orderedPois) {
-      if (poi.id == id) return poi;
+    for (final poi in _pois) {
+      if (poi.id == id && _progress.order.contains(id)) return poi;
     }
     return null;
   }
 
   Poi? get _nextPoi => _poiById(_progress.nextPoiId);
+
+  /// The stop "Mulai Trail" will actually lead to. Before the first start
+  /// the device trail still picks the nearest stop, so the preview asks it
+  /// with the same rule instead of showing trailOrder 1 and then jumping.
+  Poi? get _effectiveFirstStop {
+    if (widget.services.trail case final DeviceTrailService device
+        when !_progress.active && _progress.visitedCount == 0) {
+      final preview = _poiById(device.previewFirstStopId(_fix?.position));
+      if (preview != null) return preview;
+    }
+    return _nextPoi;
+  }
 
   bool _hasArrivedAt(Poi poi) =>
       _navigation.target?.id == poi.id &&
@@ -113,52 +189,84 @@ class _OrientationTrailScreenState extends State<OrientationTrailScreen> {
 
   bool _canContinue(Poi? destination) {
     if (_busy) return false;
-    if (destination == null && _nextPoi == null) {
+    if (destination == null && _effectiveFirstStop == null) {
       _message('Semua gedung pada trail sudah dikunjungi.');
       return false;
     }
     return true;
   }
 
+  /// A Trail session needs precise location while in use (PRD §6); the
+  /// request runs only before the session starts.
+  Future<bool> _ensureLocationPermission() async {
+    if (widget.services.session.current.mode == SessionMode.trail) return true;
+    final status = await widget.services.permissions.requestLocation();
+    if (status == LocationPermissionStatus.granted) return true;
+    if (mounted) {
+      _message(
+        status == LocationPermissionStatus.serviceDisabled
+            ? 'Aktifkan GPS perangkat untuk memulai Orientation Trail.'
+            : 'Izin lokasi akurat saat aplikasi digunakan diperlukan.',
+      );
+    }
+    return false;
+  }
+
   /// Starts the trail session and its navigation; throws [StateError] when
-  /// the trail cannot start.
+  /// the trail cannot start. Each step runs only when it is still needed, so
+  /// resuming a running trail never restarts its route.
   Future<void> _startTrail(Poi? destination) async {
-    await widget.services.trail.start();
+    final services = widget.services;
+    await services.trail.start();
     // The first start picks the nearest POI and rotates the order, so the
     // next stop is read only after start().
     final targetPoi =
-        destination ?? _poiById(widget.services.trail.current.nextPoiId);
+        destination ??
+        _poiById(services.trail.current.nextPoiId) ??
+        _poiFromAll(services.trail.current.nextPoiId);
     if (targetPoi == null) throw StateError('Trail belum dapat dimulai.');
-    await widget.services.session.start(SessionMode.trail);
-    await widget.services.navigation.start(NavigationTarget.poi(targetPoi));
-  }
-
-  Future<void> _continueTrail([Poi? destination]) async {
-    if (!_canContinue(destination)) return;
-    setState(() => _busy = true);
-    try {
-      await _startTrail(destination);
-    } on StateError {
-      if (mounted) _message('Trail belum dapat dimulai.');
-    } finally {
-      if (mounted) setState(() => _busy = false);
+    if (services.session.current.mode != SessionMode.trail) {
+      await services.session.start(SessionMode.trail);
+    }
+    final navigation = services.navigation.current;
+    if (navigation.target?.id != targetPoi.id ||
+        navigation.status == NavigationStatus.idle ||
+        navigation.status == NavigationStatus.error) {
+      await services.navigation.start(NavigationTarget.poi(targetPoi));
     }
   }
 
-  /// Rute on a stop opens the route preview; "Mulai rute" there starts the
-  /// trail. Trail may still choose another first stop when it starts (the
-  /// nearest one), and the route screen then follows that stop.
+  Poi? _poiFromAll(String? id) {
+    for (final poi in _pois) {
+      if (poi.id == id) return poi;
+    }
+    return null;
+  }
+
+  /// Rute on a stop and the bottom action both open UI06. A preview there
+  /// starts the trail on "Mulai rute"; a route already running opens on its
+  /// walk. "Akhiri rute" there stops only this leg: the trail keeps running
+  /// until "Akhiri Trail" here.
   Future<void> _routeTrail([Poi? destination]) async {
     if (!_canContinue(destination)) return;
-    final poi = destination ?? _nextPoi;
+    final poi = destination ?? _effectiveFirstStop;
     if (poi == null) return;
+    setState(() => _busy = true);
+    final bool allowed;
+    try {
+      allowed = await _ensureLocationPermission();
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+    if (!allowed || !mounted) return;
+    final navigation = widget.services.navigation;
     await WalkingNavigationScreen.open(
       context,
       services: widget.services,
       target: NavigationTarget.poi(poi),
       trail: true,
       start: () => _startTrail(destination),
-      end: _endTrail,
+      end: navigation.stop,
     );
   }
 
@@ -208,7 +316,7 @@ class _OrientationTrailScreenState extends State<OrientationTrailScreen> {
     final total = _progress.total;
     final completed = _progress.visitedCount;
     final percent = total == 0 ? 0.0 : completed / total;
-    final nextPoi = _nextPoi;
+    final nextPoi = _effectiveFirstStop;
     final visible = _visiblePois;
     final play = widget.isActive;
 
@@ -293,7 +401,7 @@ class _OrientationTrailScreenState extends State<OrientationTrailScreen> {
                               last: i == visible.length - 1,
                               done: _progress.visited.contains(visible[i].id),
                               isArrived: _hasArrivedAt(visible[i]),
-                              isNext: visible[i].id == _progress.nextPoiId,
+                              isNext: visible[i].id == nextPoi?.id,
                               isActive: _progress.active,
                               expanded: _detailPoiId == visible[i].id,
                               navigationState: _navigation,
@@ -303,8 +411,8 @@ class _OrientationTrailScreenState extends State<OrientationTrailScreen> {
                                     ? null
                                     : visible[i].id,
                               ),
-                              // Only the next stop has this button; the
-                              // service may still pick the nearest start.
+                              // Only the next stop has this button; it is
+                              // the stop the trail will start toward.
                               onRoute: () => _routeTrail(),
                               onCheckIn: () => _showCheckInStatus(
                                 visible[i],
@@ -328,7 +436,7 @@ class _OrientationTrailScreenState extends State<OrientationTrailScreen> {
             isActive: _progress.active,
             hasProgress: completed > 0,
             navigation: _navigation,
-            onContinue: _continueTrail,
+            onContinue: _routeTrail,
             onEnd: _endTrail,
           ),
         ],
@@ -657,7 +765,7 @@ class _TrailStep extends StatelessWidget {
                               ),
                             ),
                           ],
-                          if (done || isArrived) ...[
+                          if (done) ...[
                             const SizedBox(height: 14),
                             Row(
                               children: [
@@ -677,6 +785,35 @@ class _TrailStep extends StatelessWidget {
                                     onPressed: onDetails,
                                     height: 44,
                                     icon: Icons.info_outline_rounded,
+                                    label: 'Detail',
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ] else if (isActive && isArrived) ...[
+                            // A Trail arrival checks in on its own; until the
+                            // record lands, nothing pretends it is done.
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.where_to_vote_rounded,
+                                  size: 18,
+                                  color: AgamColors.success,
+                                ),
+                                const SizedBox(width: 10),
+                                const Expanded(
+                                  child: Text(
+                                    'Anda sudah tiba. Check-in sedang dicatat.',
+                                    style: AgamText.caption,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                SizedBox(
+                                  width: 104,
+                                  child: AgamTonalButton(
+                                    onPressed: onDetails,
+                                    height: 44,
                                     label: 'Detail',
                                   ),
                                 ),
@@ -794,22 +931,33 @@ class _TrailBottomArea extends StatelessWidget {
   final Poi? nextPoi;
   final bool busy;
   final bool isActive;
-
-  /// Before the first check-in the start is still the nearest POI, picked
-  /// when the trail starts, so the button does not name a stop yet.
   final bool hasProgress;
   final NavigationState navigation;
   final Future<void> Function([Poi?]) onContinue;
   final Future<void> Function() onEnd;
 
+  static const _walkingStatuses = {
+    NavigationStatus.calculating,
+    NavigationStatus.onRoute,
+    NavigationStatus.offRoute,
+    NavigationStatus.rerouting,
+  };
+
   @override
   Widget build(BuildContext context) {
+    final poi = nextPoi;
+    final towardNext =
+        poi != null &&
+        navigation.target?.id == poi.id &&
+        _walkingStatuses.contains(navigation.status);
+    // The label stays a short verb; the stop and distance get their own
+    // line above, so a long building name never truncates the action.
     final buttonText = isActive
-        ? 'Lanjutkan Trail: ${nextPoi?.name ?? 'selesai'}'
-        : nextPoi == null || !hasProgress
-        ? 'Mulai Trail'
-        : 'Mulai Trail: ${nextPoi!.name}';
-    final remaining = navigation.remainingDistanceM;
+        ? (towardNext ? 'Lanjutkan navigasi' : 'Buka peta rute')
+        : hasProgress
+        ? 'Lanjutkan Trail'
+        : 'Mulai Trail';
+    final remaining = towardNext ? navigation.remainingDistanceM : null;
     final approximateDestination =
         isActive &&
         navigation.target?.isPlaceholderPoint == true &&
@@ -832,44 +980,47 @@ class _TrailBottomArea extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (approximateDestination) ...[
-              const Text(
-                'Tujuan perkiraan',
-                style: AgamText.caption,
-                textAlign: TextAlign.center,
+            if (poi != null) ...[
+              _NextStopLine(
+                name: poi.name,
+                remainingM: remaining,
+                approximate: approximateDestination,
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 10),
             ],
             Row(
               children: [
                 Expanded(
                   child: AgamPrimaryButton(
-                    onPressed: busy || nextPoi == null
-                        ? null
-                        : () => onContinue(),
+                    onPressed: busy || poi == null ? null : () => onContinue(),
                     busy: busy,
-                    icon: Icons.flag_rounded,
-                    label: remaining == null
-                        ? buttonText
-                        : '$buttonText · ${remaining.round()} m',
+                    icon: isActive
+                        ? Icons.navigation_rounded
+                        : Icons.flag_rounded,
+                    label: buttonText,
                   ),
                 ),
                 if (isActive) ...[
                   const SizedBox(width: 10),
                   Tooltip(
                     message: 'Akhiri Trail',
-                    child: AgamPressFeedback(
-                      child: Material(
-                        color: AgamColors.dangerTint,
-                        shape: const CircleBorder(),
-                        child: InkWell(
-                          onTap: onEnd,
-                          customBorder: const CircleBorder(),
-                          child: const SizedBox.square(
-                            dimension: 54,
-                            child: Icon(
-                              Icons.stop_rounded,
-                              color: AgamColors.danger,
+                    child: Semantics(
+                      button: true,
+                      label: 'Akhiri Trail',
+                      excludeSemantics: true,
+                      child: AgamPressFeedback(
+                        child: Material(
+                          color: AgamColors.dangerTint,
+                          shape: const CircleBorder(),
+                          child: InkWell(
+                            onTap: onEnd,
+                            customBorder: const CircleBorder(),
+                            child: const SizedBox.square(
+                              dimension: 54,
+                              child: Icon(
+                                Icons.stop_rounded,
+                                color: AgamColors.danger,
+                              ),
                             ),
                           ),
                         ),
@@ -881,6 +1032,83 @@ class _TrailBottomArea extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// "Tujuan berikutnya" with the stop name on up to two lines and the live
+/// remaining distance in tabular figures, so the number never jitters.
+class _NextStopLine extends StatelessWidget {
+  const _NextStopLine({
+    required this.name,
+    required this.remainingM,
+    required this.approximate,
+  });
+
+  final String name;
+  final double? remainingM;
+  final bool approximate;
+
+  @override
+  Widget build(BuildContext context) {
+    final distance = remainingM == null ? null : '${remainingM!.round()} m';
+    return Semantics(
+      container: true,
+      label: [
+        'Tujuan berikutnya: $name',
+        ?distance,
+        if (approximate) 'Tujuan perkiraan',
+      ].join(', '),
+      excludeSemantics: true,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: AgamColors.tint,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.place_rounded,
+              size: 20,
+              color: AgamColors.brand,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  approximate ? 'Tujuan perkiraan' : 'Tujuan berikutnya',
+                  style: AgamText.caption,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: AgamText.label,
+                ),
+              ],
+            ),
+          ),
+          if (distance != null) ...[
+            const SizedBox(width: 12),
+            // Updates with every fix, so it changes in place without motion.
+            Text(
+              distance,
+              style: AgamText.label.copyWith(
+                color: AgamColors.brand,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

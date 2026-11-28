@@ -57,6 +57,28 @@ class WalkingNavigationScreen extends StatefulWidget {
   static const passageNote =
       'Rute ini lewat lorong dalam gedung yang belum diverifikasi.';
 
+  /// A facility inside a building: the route ends at the building door.
+  static const doorNote =
+      'Rute menuju pintu gedung; lanjutkan ke dalam gedung.';
+
+  /// Shown while walking when no offline Indonesian TTS voice is installed
+  /// (PRD §10, §19): the turn instructions stay on screen only.
+  static const voiceNote =
+      'Suara Bahasa Indonesia belum terpasang, jadi arahan hanya tampil di '
+      'layar. Pasang data suaranya di pengaturan text-to-speech (TTS) '
+      'Android.';
+
+  /// How long the "Melewati …" pill stays for a POI passed on the way.
+  static const briefPillDuration = Duration(seconds: 4);
+
+  static String passingLabel(String name) => 'Melewati $name';
+
+  static String approachingLabel(String name) => 'Anda mendekati $name';
+
+  static String trailCompleteNote(int visited, int total) =>
+      'Orientation Trail selesai ($visited/$total). Lencana Penjelajah '
+      'Ganesha terbuka.';
+
   static String problemMessage(RouteProblem problem) => switch (problem) {
     RouteProblem.locating =>
       'Posisi Anda belum terbaca. Pastikan GPS menyala; rute muncul begitu '
@@ -97,7 +119,8 @@ class WalkingNavigationScreen extends StatefulWidget {
 
 enum _Phase { preview, active }
 
-class _WalkingNavigationScreenState extends State<WalkingNavigationScreen> {
+class _WalkingNavigationScreenState extends State<WalkingNavigationScreen>
+    with WidgetsBindingObserver {
   static const _activeStatuses = {
     NavigationStatus.calculating,
     NavigationStatus.onRoute,
@@ -128,9 +151,29 @@ class _WalkingNavigationScreenState extends State<WalkingNavigationScreen> {
   RecommendationView? _recommendation;
   int _recommendRequest = 0;
 
+  // Voice guidance (B10): asked when the walk starts and on resume, so an
+  // Indonesian voice installed meanwhile clears the notice.
+  bool _voiceAvailable = true;
+  bool _voiceNoticeDismissed = false;
+  int _voiceRequest = 0;
+
+  // A POI passed on the way (brief trigger) and a Trail prompt (full).
+  Poi? _passing;
+  Timer? _passingTimer;
+  Poi? _prompted;
+
+  // The 10th Trail stop: the session has ended, the arrival card stays.
+  bool _trailFinished = false;
+
+  // Camera follow while walking; off once the user moves the map.
+  bool _followUser = true;
+  WalkingRoute? _lastActiveRoute;
+
   StreamSubscription<LocationFix>? _positions;
   StreamSubscription<NavigationState>? _navigationStates;
   StreamSubscription<List<Poi>>? _poiStream;
+  StreamSubscription<PoiTriggerEvent>? _triggers;
+  StreamSubscription<TrailProgress>? _trailProgress;
 
   AppServices get _services => widget.services;
 
@@ -143,9 +186,18 @@ class _WalkingNavigationScreenState extends State<WalkingNavigationScreen> {
             _activeStatuses.contains(_navigation.status)
         ? _Phase.active
         : _Phase.preview;
+    _lastActiveRoute = _navigation.route;
+    WidgetsBinding.instance.addObserver(this);
     _fix = _services.location.lastFix;
     _positions = _services.location.positions.listen(_onFix);
     _navigationStates = _services.navigation.state.listen(_onNavigation);
+    _triggers = _services.session.triggers.listen(_onTrigger);
+    if (widget.trail) {
+      // Check-in can land after arrival; the completion note follows it.
+      _trailProgress = _services.trail.progress.listen((_) {
+        if (mounted) setState(() {});
+      });
+    }
     _poiStream = _services.pois.watchPois().listen((pois) {
       if (!mounted) return;
       final first = !_poisLoaded;
@@ -155,17 +207,115 @@ class _WalkingNavigationScreenState extends State<WalkingNavigationScreen> {
     });
     if (_phase == _Phase.preview) {
       _replan();
-    } else if (_navigation.status == NavigationStatus.arrived) {
-      _recommendAfter(_navigation.target);
+    } else {
+      _checkVoice();
+      if (_navigation.status == NavigationStatus.arrived) {
+        _recommendAfter(_navigation.target);
+      }
     }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _passingTimer?.cancel();
     _positions?.cancel();
     _navigationStates?.cancel();
     _poiStream?.cancel();
+    _triggers?.cancel();
+    _trailProgress?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Back from Android's TTS settings: the voice may be installed now.
+    if (state == AppLifecycleState.resumed) _checkVoice();
+  }
+
+  // ---- Voice guidance (PRD §10) ----
+
+  Future<void> _checkVoice() async {
+    if (_phase != _Phase.active) return;
+    final request = ++_voiceRequest;
+    bool available;
+    try {
+      available = await _services.voice.isAvailable();
+    } catch (_) {
+      available = false;
+    }
+    if (!mounted || request != _voiceRequest) return;
+    if (available != _voiceAvailable) {
+      setState(() => _voiceAvailable = available);
+    }
+  }
+
+  bool get _showVoiceNotice =>
+      _phase == _Phase.active &&
+      !_arrived &&
+      !_voiceAvailable &&
+      !_voiceNoticeDismissed;
+
+  // ---- POIs on the way ----
+
+  Poi? _poiById(String id) {
+    for (final poi in _pois) {
+      if (poi.id == id) return poi;
+    }
+    return null;
+  }
+
+  /// Navigation passes other buildings quietly (brief: a pill, no audio).
+  /// Trail plays its prompt (full), so the card it belongs to is shown here
+  /// too: this map covers the Trail tab while walking.
+  void _onTrigger(PoiTriggerEvent event) {
+    if (!mounted || _closed || _trailFinished || _arrived) return;
+    final poi = _poiById(event.poiId);
+    // An unknown POI shows nothing rather than a made-up name.
+    if (poi == null) return;
+    switch (event.response) {
+      case TriggerResponse.brief:
+        if (_phase != _Phase.active || poi.id == _shownTarget.id) return;
+        _passingTimer?.cancel();
+        setState(() => _passing = poi);
+        _passingTimer = Timer(WalkingNavigationScreen.briefPillDuration, () {
+          if (mounted) setState(() => _passing = null);
+        });
+      case TriggerResponse.full:
+        if (!widget.trail) return;
+        setState(() => _prompted = poi);
+    }
+  }
+
+  Future<void> _listenPrompted(Poi poi) async {
+    final audio = _services.audio;
+    final state = audio.current;
+    final playing =
+        state.clip?.poiId == poi.id &&
+        state.clip?.kind == AudioClipKind.narration &&
+        state.status == PlaybackStatus.playing;
+    try {
+      if (playing) {
+        await audio.pause();
+      } else {
+        await audio.play(
+          AudioClip(poiId: poi.id, kind: AudioClipKind.narration),
+        );
+      }
+    } catch (_) {
+      // Playback errors surface in the audio state; the card stays.
+    }
+  }
+
+  Future<void> _skipPrompted(Poi poi) async {
+    setState(() => _prompted = null);
+    final audio = _services.audio;
+    final clip = audio.current.clip;
+    if (clip?.poiId == poi.id && clip?.kind == AudioClipKind.prompt) {
+      try {
+        await audio.stop();
+      } catch (_) {}
+    }
   }
 
   // ---- Preview ----
@@ -173,6 +323,9 @@ class _WalkingNavigationScreenState extends State<WalkingNavigationScreen> {
   void _onFix(LocationFix fix) {
     if (!mounted) return;
     setState(() => _fix = fix);
+    if (_phase == _Phase.active && !_arrived && _followUser && _mapReady) {
+      _map.currentState?.follow(fix.position);
+    }
     if (_phase != _Phase.preview || _planning || _starting) return;
     final from = _plannedFrom;
     final moved =
@@ -198,11 +351,14 @@ class _WalkingNavigationScreenState extends State<WalkingNavigationScreen> {
       return;
     }
     if (!_services.map.isInsideCampus(fix.position)) {
+      final first = _problem != RouteProblem.outsideCampus;
       setState(() {
         _plan = null;
         _plannedFrom = fix.position;
         _problem = RouteProblem.outsideCampus;
       });
+      // Show the destination on campus, once, not the void around the user.
+      if (first) _afterFrame(_fitPreview);
       return;
     }
     if (!_services.map.isInsideCampus(_target.point)) {
@@ -284,6 +440,8 @@ class _WalkingNavigationScreenState extends State<WalkingNavigationScreen> {
     _pauseNarration();
     setState(() => _starting = true);
     final navigation = _services.navigation;
+    // Explore keeps running if this route cannot start (B17).
+    final priorMode = _services.session.current.mode;
     try {
       await (widget.start ?? _defaultStart)();
       var state = navigation.current;
@@ -303,13 +461,16 @@ class _WalkingNavigationScreenState extends State<WalkingNavigationScreen> {
           (_activeStatuses.contains(state.status) &&
               (state.route?.path.length ?? 0) >= 2);
       if (!walking) {
-        await _failStart(_currentProblem());
+        await _failStart(_currentProblem(), priorMode);
         return;
       }
       setState(() {
         _navigation = state;
         _phase = _Phase.active;
+        _followUser = true;
+        _lastActiveRoute = state.route;
       });
+      _checkVoice();
       if (state.status == NavigationStatus.arrived) {
         _recommendAfter(state.target);
       } else if (_fix?.position case final position?) {
@@ -317,9 +478,9 @@ class _WalkingNavigationScreenState extends State<WalkingNavigationScreen> {
         _afterFrame(() => _map.currentState?.flyTo(position, zoom: 18.5));
       }
     } on TimeoutException {
-      await _failStart(RouteProblem.locating);
+      await _failStart(RouteProblem.locating, priorMode);
     } catch (_) {
-      await _failStart(_currentProblem());
+      await _failStart(_currentProblem(), priorMode);
     } finally {
       if (mounted) setState(() => _starting = false);
     }
@@ -334,11 +495,34 @@ class _WalkingNavigationScreenState extends State<WalkingNavigationScreen> {
     return RouteProblem.unavailable;
   }
 
-  Future<void> _failStart(RouteProblem problem) async {
-    if (_sessionRunning) {
-      await _stopRoute();
-    } else {
-      await _services.navigation.stop();
+  /// Back to the preview with the reason. A session that ran before "Mulai
+  /// rute" is kept: Explore returns to Explore instead of ending.
+  Future<void> _failStart(RouteProblem problem, SessionMode priorMode) async {
+    try {
+      if (priorMode == SessionMode.explore) {
+        // A caller's own end (Trail) still runs; if Trail was freshly started
+        // from Explore, stop it too before returning to Explore.
+        if (widget.end != null) {
+          await _stopRoute();
+        } else {
+          await _services.navigation.stop();
+        }
+        if (widget.trail) await _services.trail.stop();
+        if (_services.session.current.mode != SessionMode.explore) {
+          await _services.session.start(SessionMode.explore);
+        }
+      } else if (priorMode == SessionMode.none && widget.trail) {
+        // A brand-new Trail whose first route failed must not stay active.
+        await _services.navigation.stop();
+        await _services.session.end();
+        await _services.trail.stop();
+      } else if (_sessionRunning) {
+        await _stopRoute();
+      } else {
+        await _services.navigation.stop();
+      }
+    } catch (_) {
+      // The preview still shows the reason; the user can try again.
     }
     if (!mounted) return;
     setState(() {
@@ -374,12 +558,45 @@ class _WalkingNavigationScreenState extends State<WalkingNavigationScreen> {
     }
   }
 
+  /// The last Trail stop ends the session (10/10) right after arrival. The
+  /// arrival card stays so `tiba` can finish and Selesai closes it.
+  bool _finishesTrail(NavigationState state) {
+    if (!widget.trail || _phase != _Phase.active) return false;
+    if (state.status != NavigationStatus.idle) return false;
+    final trail = _services.trail.current;
+    if (!trail.isComplete) return false;
+    final previous = _navigation;
+    return previous.status == NavigationStatus.arrived ||
+        (previous.target != null &&
+            trail.visited.contains(previous.target!.id));
+  }
+
   void _onNavigation(NavigationState state) {
-    if (!mounted) return;
+    if (!mounted || _trailFinished) return;
+    if (!_starting && !_ending && _finishesTrail(state)) {
+      final target = _navigation.target ?? _target;
+      setState(() {
+        _trailFinished = true;
+        _prompted = null;
+        _passing = null;
+        // Kept as an arrival: the session has ended, the card has not.
+        _navigation = NavigationState(
+          status: NavigationStatus.arrived,
+          target: target,
+        );
+      });
+      return;
+    }
     final arrived =
         state.status == NavigationStatus.arrived &&
         _navigation.status != NavigationStatus.arrived;
-    setState(() => _navigation = state);
+    setState(() {
+      _navigation = state;
+      if (arrived) {
+        _prompted = null;
+        _passing = null;
+      }
+    });
     if (_phase != _Phase.active || _starting || _ending) return;
     // Ended elsewhere: the session timed out or Trail was stopped.
     if (state.status == NavigationStatus.idle) {
@@ -387,6 +604,42 @@ class _WalkingNavigationScreenState extends State<WalkingNavigationScreen> {
       return;
     }
     if (arrived) _recommendAfter(state.target);
+    final route = state.route;
+    if (state.status == NavigationStatus.onRoute &&
+        route != null &&
+        !identical(route, _lastActiveRoute)) {
+      final rerouted = _lastActiveRoute != null;
+      _lastActiveRoute = route;
+      if (rerouted) _afterFrame(_refitAfterReroute);
+    }
+  }
+
+  /// A new route keeps the walker and its start in view: recentered while
+  /// following, otherwise fitted to the user and the first part of it.
+  void _refitAfterReroute() {
+    if (_phase != _Phase.active || _arrived) return;
+    final position = _fix?.position;
+    if (_followUser && position != null) {
+      _map.currentState?.follow(position);
+    } else {
+      _fitStart();
+    }
+  }
+
+  void _onUserMovedMap() {
+    if (_phase == _Phase.active && _followUser) {
+      setState(() => _followUser = false);
+    }
+  }
+
+  /// "Pusatkan lokasi saya": while walking it also turns following back on.
+  void _recenter(GeoPoint position) {
+    if (_phase == _Phase.active && !_arrived) {
+      setState(() => _followUser = true);
+      _map.currentState?.flyTo(position, zoom: 18.5);
+    } else {
+      _fit([position]);
+    }
   }
 
   // ---- Arrival (UI07) ----
@@ -402,6 +655,9 @@ class _WalkingNavigationScreenState extends State<WalkingNavigationScreen> {
       final result = await _services.recommendations.recommend(
         from: from,
         afterPoiId: target.kind == NavigationTargetKind.poi ? target.id : null,
+        afterFacilityId: target.kind == NavigationTargetKind.facility
+            ? target.id
+            : null,
       );
       final pois = await _services.pois.watchPois().first;
       if (!mounted || request != _recommendRequest) return;
@@ -433,6 +689,8 @@ class _WalkingNavigationScreenState extends State<WalkingNavigationScreen> {
     setState(() {
       _target = NavigationTarget.poi(poi);
       _recommendation = null;
+      _prompted = null;
+      _passing = null;
       _phase = _Phase.preview;
       _plan = null;
       _plannedFrom = null;
@@ -452,7 +710,7 @@ class _WalkingNavigationScreenState extends State<WalkingNavigationScreen> {
           poi: poi,
           audio: _services.audio,
           settings: _services.settings,
-          checkedIn: false,
+          checkedIn: _services.trail.current.visited.contains(poi.id),
           navigationAvailable: !widget.trail,
           onNavigate: () async {
             routeRequested = true;
@@ -497,6 +755,11 @@ class _WalkingNavigationScreenState extends State<WalkingNavigationScreen> {
   /// The whole walk, from the user to the access point.
   void _fitPreview() {
     if (!_mapReady || _phase != _Phase.preview) return;
+    // Outside campus the offline tiles end; frame the destination alone.
+    if (_problem == RouteProblem.outsideCampus) {
+      _map.currentState?.focusOn(_target.point);
+      return;
+    }
     _fit([?_fix?.position, ...?_plan?.path, _target.point]);
   }
 
@@ -558,20 +821,23 @@ class _WalkingNavigationScreenState extends State<WalkingNavigationScreen> {
     final reduceMotion = MediaQuery.disableAnimationsOf(context);
     final rise = route?.animation;
 
-    Widget bottom = _bottomCard(target);
-    if (rise != null && !reduceMotion) {
-      // The card rises over the map as the page opens and drops on the
-      // way out, both on the strong ease-out.
-      bottom = SlideTransition(
-        position: Tween(begin: const Offset(0, .3), end: Offset.zero).animate(
-          CurvedAnimation(
-            parent: rise,
-            curve: AgamMotion.easeOut,
-            reverseCurve: AgamMotion.easeOut.flipped,
+    Widget buildBottom(double availableHeight) {
+      Widget bottom = _bottomCard(target, availableHeight: availableHeight);
+      if (rise != null && !reduceMotion) {
+        // The card rises over the map as the page opens and drops on the
+        // way out, both on the strong ease-out.
+        bottom = SlideTransition(
+          position: Tween(begin: const Offset(0, .3), end: Offset.zero).animate(
+            CurvedAnimation(
+              parent: rise,
+              curve: AgamMotion.easeOut,
+              reverseCurve: AgamMotion.easeOut.flipped,
+            ),
           ),
-        ),
-        child: bottom,
-      );
+          child: bottom,
+        );
+      }
+      return bottom;
     }
 
     return PopScope(
@@ -595,6 +861,7 @@ class _WalkingNavigationScreenState extends State<WalkingNavigationScreen> {
               userAccuracyM: _fix?.accuracyM,
               initialFocus: position ?? path.firstOrNull ?? target.point,
               onMapReady: _onMapReady,
+              onUserInteract: _onUserMovedMap,
               routePath: path,
               // The straight walk from the user onto the path or out of a
               // building door is not mapped; drawn apart from the route.
@@ -613,33 +880,60 @@ class _WalkingNavigationScreenState extends State<WalkingNavigationScreen> {
             ),
             SafeArea(
               minimum: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _topSlot(),
-                  Expanded(child: SizedBox.expand(key: _mapWindow)),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      const Expanded(
-                        child: Align(
-                          alignment: Alignment.bottomLeft,
-                          child: MapAttribution(),
+              child: LayoutBuilder(
+                builder: (context, constraints) => Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _topSlot(),
+                    // Notices float over the map window instead of resizing
+                    // it, so showing one never shifts the camera's framing.
+                    Expanded(
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          SizedBox.expand(key: _mapWindow),
+                          Align(
+                            alignment: Alignment.topCenter,
+                            child: _topNotices(),
+                          ),
+                          Align(
+                            alignment: Alignment.bottomCenter,
+                            child: _promptSlot(),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        const Expanded(
+                          child: Align(
+                            alignment: Alignment.bottomLeft,
+                            child: MapAttribution(),
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      _FloatingIconButton(
-                        tooltip: 'Pusatkan lokasi saya',
-                        icon: Icons.my_location_rounded,
-                        onPressed: position == null
-                            ? null
-                            : () => _fit([position]),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  bottom,
-                ],
+                        const SizedBox(width: 8),
+                        _FloatingIconButton(
+                          tooltip: 'Pusatkan lokasi saya',
+                          icon: Icons.my_location_rounded,
+                          // Filled while the camera follows the walker; white
+                          // once the user has moved the map away.
+                          toggleable: _phase == _Phase.active && !_arrived,
+                          active:
+                              _phase == _Phase.active &&
+                              !_arrived &&
+                              _followUser &&
+                              position != null,
+                          onPressed: position == null
+                              ? null
+                              : () => _recenter(position),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    buildBottom(constraints.maxHeight),
+                  ],
+                ),
               ),
             ),
           ],
@@ -696,9 +990,64 @@ class _WalkingNavigationScreenState extends State<WalkingNavigationScreen> {
     );
   }
 
+  /// The voice notice and the "Melewati …" pill, under the instruction
+  /// panel. Both fade and drop 6 px in; reduced motion shows them at rest.
+  Widget _topNotices() {
+    final passing = _passing;
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _Presence(
+            child: _showVoiceNotice
+                ? _VoiceNotice(
+                    key: const ValueKey('voice-notice'),
+                    onDismiss: () =>
+                        setState(() => _voiceNoticeDismissed = true),
+                  )
+                : null,
+          ),
+          _Presence(
+            child: passing == null || _arrived
+                ? null
+                : Padding(
+                    key: ValueKey('passing-${passing.id}'),
+                    padding: EdgeInsets.only(top: _showVoiceNotice ? 8 : 0),
+                    child: _PassingPill(name: passing.name),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// The Trail prompt card for a POI reached on the way (UI03 actions).
+  Widget _promptSlot() {
+    final poi = _prompted;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: _Presence(
+        child: poi == null || _arrived
+            ? null
+            : _TrailPromptCard(
+                key: ValueKey('prompt-${poi.id}'),
+                poi: poi,
+                audio: _services.audio,
+                onListen: () => _listenPrompted(poi),
+                onView: () => _openDetail(poi),
+                onSkip: () => _skipPrompted(poi),
+              ),
+      ),
+    );
+  }
+
   /// One card at the bottom that changes with the phase; its height glides
   /// while the old content fades out and the new fades in.
-  Widget _bottomCard(NavigationTarget target) {
+  Widget _bottomCard(
+    NavigationTarget target, {
+    required double availableHeight,
+  }) {
     final Widget content;
     if (_phase == _Phase.preview) {
       content = _PreviewCard(
@@ -721,10 +1070,12 @@ class _WalkingNavigationScreenState extends State<WalkingNavigationScreen> {
         onEnd: _ending ? null : _end,
       );
     }
-    // On arrival the walk is over and "Lanjut ke mana?" needs the room, so
-    // the card may cover most of the map instead of starting scrolled.
-    final maxHeight =
-        MediaQuery.sizeOf(context).height * (_arrived ? .85 : .62);
+    // On arrival the walk is over and "Lanjut ke mana?" needs the room, while
+    // leaving space for the fading top bar and map attribution row above it.
+    final maxHeight = math.max(
+      120.0,
+      math.min(availableHeight * (_arrived ? .78 : .62), availableHeight - 180),
+    );
     return ConstrainedBox(
       constraints: BoxConstraints(maxHeight: maxHeight),
       child: AgamAnimatedSize(
@@ -758,6 +1109,13 @@ class _WalkingNavigationScreenState extends State<WalkingNavigationScreen> {
       }
     }
     final recommendation = _recommendation;
+    final trail = _services.trail.current;
+    final completionNote = widget.trail && trail.isComplete
+        ? WalkingNavigationScreen.trailCompleteNote(
+            trail.visitedCount,
+            trail.total,
+          )
+        : null;
     return SingleChildScrollView(
       key: ValueKey('arrived-${target.id}'),
       reverse: true,
@@ -782,6 +1140,9 @@ class _WalkingNavigationScreenState extends State<WalkingNavigationScreen> {
             voice: _services.voice,
             onFinish: widget.trail ? _close : _end,
             onOpenDetail: poi == null ? null : () => _openDetail(poi!),
+            locationHint: target.locationHint,
+            enterBuilding: target.candidates.isNotEmpty,
+            completionNote: completionNote,
           ),
         ],
       ),
@@ -819,6 +1180,12 @@ class _PreviewCard extends StatelessWidget {
   final bool starting;
   final VoidCallback onStart;
   final VoidCallback onRetry;
+
+  String? get _indoorHint {
+    if (target.kind != NavigationTargetKind.facility) return null;
+    final hint = target.locationHint?.trim();
+    return hint == null || hint.isEmpty ? null : hint;
+  }
 
   bool get _unverifiedPassage =>
       plan?.steps.any(
@@ -869,6 +1236,10 @@ class _PreviewCard extends StatelessWidget {
             if (target.isPlaceholderPoint) ...[
               const SizedBox(height: 4),
               const Text('Tujuan perkiraan', style: AgamText.caption),
+            ],
+            if (_indoorHint case final hint?) ...[
+              const SizedBox(height: 12),
+              _IndoorHintRow(hint: hint, toDoor: target.candidates.isNotEmpty),
             ],
             if (problem == null && plan != null && _unverifiedPassage) ...[
               const SizedBox(height: 4),
@@ -953,6 +1324,9 @@ class _TripCard extends StatelessWidget {
     remainingDistanceM: state.remainingDistanceM,
     remainingEta: state.remainingEta,
     isApproximate: target.isPlaceholderPoint,
+    locationHint: target.kind == NavigationTargetKind.facility
+        ? target.locationHint
+        : null,
     onEnd: onEnd,
   );
 }
@@ -1013,12 +1387,21 @@ class _FloatingIconButton extends StatelessWidget {
     required this.icon,
     required this.onPressed,
     this.foreground = AgamColors.brand,
+    this.active = false,
+    this.toggleable = false,
   });
 
   final String tooltip;
   final IconData icon;
   final VoidCallback? onPressed;
   final Color foreground;
+
+  /// Filled in the brand colour while the state it controls is on (the
+  /// camera following the walker); the colours ease over 200 ms.
+  final bool active;
+
+  /// Whether [active] is a state screen readers should hear as on/off.
+  final bool toggleable;
 
   @override
   Widget build(BuildContext context) => AgamPressFeedback(
@@ -1027,16 +1410,285 @@ class _FloatingIconButton extends StatelessWidget {
         shape: BoxShape.circle,
         boxShadow: AgamShadows.floating,
       ),
-      child: IconButton(
-        tooltip: tooltip,
-        icon: Icon(icon),
-        style: IconButton.styleFrom(
-          backgroundColor: Colors.white,
-          foregroundColor: foreground,
-          disabledBackgroundColor: Colors.white,
-          fixedSize: const Size.square(48),
+      child: Semantics(
+        toggled: toggleable && onPressed != null ? active : null,
+        child: TweenAnimationBuilder<double>(
+          tween: Tween(end: active ? 1 : 0),
+          duration: AgamMotion.duration(context, 200),
+          curve: AgamMotion.easeOut,
+          builder: (context, t, _) => IconButton(
+            tooltip: tooltip,
+            icon: Icon(icon),
+            style: IconButton.styleFrom(
+              backgroundColor: Color.lerp(Colors.white, foreground, t),
+              foregroundColor: Color.lerp(foreground, Colors.white, t),
+              disabledBackgroundColor: Colors.white,
+              fixedSize: const Size.square(48),
+            ),
+            onPressed: onPressed,
+          ),
         ),
-        onPressed: onPressed,
+      ),
+    ),
+  );
+}
+
+/// Fades and drops a small overlay in (200 ms) and out (140 ms) on the
+/// strong ease-out. `null` hides it; reduced motion swaps without motion.
+class _Presence extends StatelessWidget {
+  const _Presence({required this.child});
+
+  final Widget? child;
+
+  @override
+  Widget build(BuildContext context) => AnimatedSwitcher(
+    duration: AgamMotion.duration(context, 200),
+    reverseDuration: AgamMotion.duration(context, 140),
+    switchInCurve: AgamMotion.easeOut,
+    switchOutCurve: AgamMotion.easeOut,
+    layoutBuilder: (current, previous) => Stack(
+      alignment: Alignment.topCenter,
+      children: [...previous, ?current],
+    ),
+    transitionBuilder: (child, animation) => FadeTransition(
+      opacity: animation,
+      child: SlideTransition(
+        position: Tween(
+          begin: const Offset(0, -.12),
+          end: Offset.zero,
+        ).animate(animation),
+        child: child,
+      ),
+    ),
+    child: child ?? const SizedBox.shrink(key: ValueKey('none')),
+  );
+}
+
+/// Where a facility is inside its building, under the route summary.
+class _IndoorHintRow extends StatelessWidget {
+  const _IndoorHintRow({required this.hint, required this.toDoor});
+
+  final String hint;
+
+  /// The route ends at the building's door, not at the facility itself.
+  final bool toDoor;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.fromLTRB(12, 10, 14, 10),
+    decoration: BoxDecoration(
+      color: AgamColors.tint,
+      borderRadius: BorderRadius.circular(AgamRadius.control),
+    ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.only(top: 1),
+          child: Icon(
+            Icons.meeting_room_rounded,
+            size: 18,
+            color: AgamColors.brand,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(hint, style: AgamText.label.copyWith(color: AgamColors.ink)),
+              if (toDoor) ...[
+                const SizedBox(height: 2),
+                const Text(
+                  WalkingNavigationScreen.doorNote,
+                  style: AgamText.caption,
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+/// No Indonesian voice: the instructions are visual only. Calm, compact,
+/// and dismissible for the rest of this walk.
+class _VoiceNotice extends StatelessWidget {
+  const _VoiceNotice({super.key, required this.onDismiss});
+
+  final VoidCallback onDismiss;
+
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+    decoration: _cardDecoration.copyWith(
+      borderRadius: BorderRadius.circular(AgamRadius.tile),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.fromLTRB(14, 4, 4, 4),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.volume_off_rounded,
+            size: 18,
+            color: AgamColors.muted,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Semantics(
+                liveRegion: true,
+                child: const Text(
+                  WalkingNavigationScreen.voiceNote,
+                  style: AgamText.caption,
+                ),
+              ),
+            ),
+          ),
+          IconButton(
+            tooltip: 'Tutup pemberitahuan suara',
+            onPressed: onDismiss,
+            color: AgamColors.muted,
+            icon: const Icon(Icons.close_rounded, size: 18),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+/// A building passed on the way: a quiet pill, gone after a few seconds.
+class _PassingPill extends StatelessWidget {
+  const _PassingPill({required this.name});
+
+  final String name;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    liveRegion: true,
+    child: Container(
+      padding: const EdgeInsets.fromLTRB(12, 8, 16, 8),
+      decoration: BoxDecoration(
+        color: AgamColors.ink.withValues(alpha: .88),
+        borderRadius: BorderRadius.circular(999),
+        boxShadow: AgamShadows.floating,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.apartment_rounded, size: 16, color: Colors.white),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              WalkingNavigationScreen.passingLabel(name),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+/// The Trail prompt for a POI reached while this map covers the Trail tab:
+/// the voice prompt is already playing, so its card must be visible too.
+class _TrailPromptCard extends StatelessWidget {
+  const _TrailPromptCard({
+    super.key,
+    required this.poi,
+    required this.audio,
+    required this.onListen,
+    required this.onView,
+    required this.onSkip,
+  });
+
+  final Poi poi;
+  final AudioService audio;
+  final VoidCallback onListen;
+  final VoidCallback onView;
+  final VoidCallback onSkip;
+
+  bool get _narrationAvailable =>
+      poi.metadata.approved &&
+      !poi.metadata.isPlaceholder &&
+      poi.media.narrationAudio?.isNotEmpty == true;
+
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+    decoration: _cardDecoration,
+    child: Padding(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              const AgamIconTile(icon: Icons.apartment_rounded, size: 40),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Semantics(
+                  liveRegion: true,
+                  header: true,
+                  child: Text(
+                    WalkingNavigationScreen.approachingLabel(poi.name),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: AgamText.label.copyWith(color: AgamColors.ink),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          StreamBuilder<PlaybackState>(
+            stream: audio.state,
+            initialData: audio.current,
+            builder: (context, snapshot) {
+              final state = snapshot.data;
+              final playing =
+                  state?.clip?.poiId == poi.id &&
+                  state?.clip?.kind == AudioClipKind.narration &&
+                  state?.status == PlaybackStatus.playing;
+              return AgamPrimaryButton(
+                height: 48,
+                onPressed: _narrationAvailable ? onListen : null,
+                icon: playing ? Icons.pause_rounded : Icons.headphones_rounded,
+                label: _narrationAvailable
+                    ? (playing ? 'Jeda cerita' : 'Dengarkan')
+                    : 'Narasi belum tersedia',
+              );
+            },
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: AgamTonalButton(
+                  onPressed: onView,
+                  icon: Icons.info_outline_rounded,
+                  label: 'Lihat',
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: AgamTonalButton(
+                  onPressed: onSkip,
+                  icon: Icons.skip_next_rounded,
+                  foreground: AgamColors.muted,
+                  label: 'Lewati',
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     ),
   );

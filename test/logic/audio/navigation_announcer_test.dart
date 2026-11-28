@@ -45,6 +45,7 @@ class _CountingVoice implements VoiceGuidance {
   Completer<void>? gate;
   int checks = 0;
   int speakCalls = 0;
+  int stops = 0;
 
   @override
   Future<bool> isAvailable() async {
@@ -57,7 +58,7 @@ class _CountingVoice implements VoiceGuidance {
   Future<void> speak(String text) async => speakCalls++;
 
   @override
-  Future<void> stop() async {}
+  Future<void> stop() async => stops++;
 }
 
 RouteStep _step(Maneuver maneuver, String text) => RouteStep(
@@ -241,6 +242,93 @@ void main() {
     slow.gate!.complete();
     await pumpEventQueue();
     expect(slow.speakCalls, 0);
+  });
+
+  test('race onRoute -> arrived saat isAvailable berjalan: langkah lama tidak dibacakan', () async {
+    final slow = _CountingVoice(available: true);
+    await announcer.dispose();
+    announcer = NavigationAnnouncer(
+      navigation: navigation,
+      voice: slow,
+      audio: audio,
+    )..start();
+    slow.gate = Completer<void>();
+    navigation.emit(_onRoute(route, 0));
+    await pumpEventQueue();
+    navigation.emit(_status(NavigationStatus.arrived, route: route));
+    await pumpEventQueue();
+    slow.gate!.complete();
+    await pumpEventQueue();
+    expect(slow.speakCalls, 0);
+    expect(slow.stops, 1);
+    expect(audio.current.clip?.poiId, 'synthetic-a');
+    expect(audio.current.clip?.kind, AudioClipKind.arrival);
+  });
+
+  test('race onRoute -> idle/error saat isAvailable berjalan: langkah lama tidak dibacakan', () async {
+    final slow = _CountingVoice(available: true);
+    await announcer.dispose();
+    announcer = NavigationAnnouncer(
+      navigation: navigation,
+      voice: slow,
+      audio: audio,
+    )..start();
+    slow.gate = Completer<void>();
+    navigation.emit(_onRoute(route, 0));
+    await pumpEventQueue();
+    navigation.emit(const NavigationState.idle());
+    await pumpEventQueue();
+    slow.gate!.complete();
+    await pumpEventQueue();
+    expect(slow.speakCalls, 0);
+    expect(slow.stops, 1);
+
+    slow.gate = Completer<void>();
+    navigation.emit(_onRoute(route, 1));
+    await pumpEventQueue();
+    navigation.emit(_status(NavigationStatus.error));
+    await pumpEventQueue();
+    slow.gate!.complete();
+    await pumpEventQueue();
+    expect(slow.speakCalls, 0);
+    expect(slow.stops, 2);
+  });
+
+  test('tidak menabrak audio prompt atau arrival yang sedang diputar', () async {
+    await audio.play(
+      const AudioClip(poiId: 'synthetic-a', kind: AudioClipKind.prompt),
+    );
+    await emit(_onRoute(route, 0));
+    expect(voice.spoken, isEmpty);
+
+    // Setelah prompt berhenti, langkah berikutnya tetap dibacakan.
+    await audio.stop();
+    await emit(_onRoute(route, 1));
+    expect(voice.spoken, ['Belok kiri']);
+
+    // Audio arrival yang sedang diputar juga menahan langkah depart rute baru.
+    await audio.play(
+      const AudioClip(poiId: 'synthetic-a', kind: AudioClipKind.arrival),
+    );
+    final nextRoute = _route([
+      _step(Maneuver.depart, 'Mulai berjalan ke selatan'),
+      _step(Maneuver.turnRight, 'Belok kanan'),
+    ]);
+    await emit(_onRoute(nextRoute, 0));
+    expect(voice.spoken, ['Belok kiri']);
+
+    // Saat prompt/arrival dijeda (bukan playing), arahan tetap dibacakan.
+    await audio.pause();
+    await emit(_onRoute(nextRoute, 1));
+    expect(voice.spoken, ['Belok kiri', 'Belok kanan']);
+  });
+
+  test('narasi yang sedang diputar tidak memblokir arahan navigasi', () async {
+    await audio.play(
+      const AudioClip(poiId: 'synthetic-a', kind: AudioClipKind.narration),
+    );
+    await emit(_onRoute(route, 0));
+    expect(voice.spoken, ['Mulai berjalan ke utara']);
   });
 
   test('navigasi dihentikan: TTS berhenti dan langkah dilupakan', () async {

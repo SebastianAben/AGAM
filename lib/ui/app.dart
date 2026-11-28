@@ -29,12 +29,17 @@ class AgamApp extends StatefulWidget {
     super.key,
     this.services,
     this.poiViewRequests = const Stream.empty(),
+    this.poiDismissed = const Stream.empty(),
     this.onPoiAction,
   });
 
   /// Services can be injected; otherwise device location and permission are real.
   final AppServices? services;
   final Stream<String> poiViewRequests;
+
+  /// POI ids the user skipped from the notification ("Lewati"), so their
+  /// card does not come back when the app returns to the foreground.
+  final Stream<String> poiDismissed;
   final Future<void> Function(String, TriggerAction)? onPoiAction;
 
   @override
@@ -112,6 +117,7 @@ class _AgamAppState extends State<AgamApp> {
                 key: ValueKey(_authState.account?.uid),
                 services: _appServices,
                 poiViewRequests: widget.poiViewRequests,
+                poiDismissed: widget.poiDismissed,
                 onPoiAction: widget.onPoiAction,
               ),
       ),
@@ -127,11 +133,13 @@ class _SignedInFlow extends StatefulWidget {
     super.key,
     required this.services,
     required this.poiViewRequests,
+    this.poiDismissed = const Stream.empty(),
     required this.onPoiAction,
   });
 
   final AppServices services;
   final Stream<String> poiViewRequests;
+  final Stream<String> poiDismissed;
   final Future<void> Function(String, TriggerAction)? onPoiAction;
 
   @override
@@ -172,6 +180,7 @@ class _SignedInFlowState extends State<_SignedInFlow> {
               key: const ValueKey('shell'),
               services: widget.services,
               poiViewRequests: widget.poiViewRequests,
+              poiDismissed: widget.poiDismissed,
               onPoiAction: widget.onPoiAction,
             )
           : OnboardingScreen(
@@ -188,11 +197,13 @@ class AgamMainShell extends StatefulWidget {
     super.key,
     required this.services,
     this.poiViewRequests = const Stream.empty(),
+    this.poiDismissed = const Stream.empty(),
     this.onPoiAction,
   });
 
   final AppServices services;
   final Stream<String> poiViewRequests;
+  final Stream<String> poiDismissed;
   final Future<void> Function(String, TriggerAction)? onPoiAction;
 
   @override
@@ -207,8 +218,22 @@ class _AgamMainShellState extends State<AgamMainShell> {
   @override
   void initState() {
     super.initState();
+    // A notification "Lihat" lands on Jelajah with nothing stacked over
+    // it: profile, search or an older detail close first, so the requested
+    // POI detail opens straight over the map. This runs before the map's
+    // own listener, which looks the POI up asynchronously and then pushes.
+    // A screen that refuses to close (active walking guidance, whose brief
+    // notification opens the POI too) is kept: popUntil would bypass its
+    // PopScope and leave navigation running without its screen.
     _views = widget.poiViewRequests.listen((_) {
-      if (mounted) setState(() => _selectedIndex = 0);
+      if (!mounted) return;
+      Navigator.of(context).popUntil(
+        (route) =>
+            route.isFirst ||
+            (route is ModalRoute &&
+                route.popDisposition == RoutePopDisposition.doNotPop),
+      );
+      setState(() => _selectedIndex = 0);
     });
   }
 
@@ -273,6 +298,7 @@ class _AgamMainShellState extends State<AgamMainShell> {
                   isActive: _selectedIndex == 0,
                   onTabSelected: _selectTab,
                   poiViewRequests: widget.poiViewRequests,
+                  poiDismissed: widget.poiDismissed,
                   poiMapRequests: _mapRequests.stream,
                   onPoiAction: widget.onPoiAction,
                   onAutomaticPoi: () => _selectTab(0),

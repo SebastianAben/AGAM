@@ -87,11 +87,21 @@ Future<LaServices> createLaServices({
     ),
   )..attachToAppLifecycle();
 
+  NavigationController? activeNavigation;
   final session = DeviceSessionController(
     location: location,
     pois: pois,
     isInsideCampus: map.isInsideCampus,
     trialModeAvailable: developerTrialAvailable,
+    activeNavigationTargetId: () {
+      final state = activeNavigation?.current;
+      if (state == null || state.status == NavigationStatus.idle) return null;
+      final target = state.target;
+      if (target == null || target.kind != NavigationTargetKind.poi) {
+        return null;
+      }
+      return target.id;
+    },
   );
 
   final audio = DeviceAudioService(
@@ -110,7 +120,16 @@ Future<LaServices> createLaServices({
   )..start();
 
   final navigationController = navigation(location, session);
+  activeNavigation = navigationController;
   final voice = DeviceVoiceGuidance();
+  WidgetsBinding.instance.addObserver(
+    _LaLifecycleObserver(
+      onResumed: () {
+        voice.refreshAvailability();
+        unawaited(responder.dismissForegroundNotifications());
+      },
+    ),
+  );
   final announcer = NavigationAnnouncer(
     navigation: navigationController,
     voice: voice,
@@ -152,4 +171,15 @@ Future<PoiRepositoryImpl> createLaPoiRepository({
   if (!bundledOnly) unawaited(pois.refresh());
 
   return pois;
+}
+
+class _LaLifecycleObserver with WidgetsBindingObserver {
+  _LaLifecycleObserver({required this.onResumed});
+
+  final VoidCallback onResumed;
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) onResumed();
+  }
 }

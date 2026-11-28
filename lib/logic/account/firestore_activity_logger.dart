@@ -83,15 +83,33 @@ class FirestoreActivityLogger implements ActivityLogger {
 
   /// Menghapus seluruh log milik [uid] (hapus akun, PRD §16). Rules hanya
   /// mengizinkan pemilik membaca dan menghapus log miliknya.
+  ///
+  /// Query membaca langsung dari server agar tidak mengandalkan cache offline
+  /// yang usang. Galat Firestore dipetakan ke [AuthException] agar UI dapat
+  /// menampilkan pesan koneksi/galat yang jelas.
   Future<void> deleteAllFor(String uid) async {
-    final snapshot = await _logs.where('uid', isEqualTo: uid).get();
-    const chunk = 400;
-    for (var i = 0; i < snapshot.docs.length; i += chunk) {
-      final batch = _firestore.batch();
-      for (final doc in snapshot.docs.skip(i).take(chunk)) {
-        batch.delete(doc.reference);
+    try {
+      final snapshot = await _logs
+          .where('uid', isEqualTo: uid)
+          .get(const GetOptions(source: Source.server));
+      const chunk = 400;
+      for (var i = 0; i < snapshot.docs.length; i += chunk) {
+        final batch = _firestore.batch();
+        for (final doc in snapshot.docs.skip(i).take(chunk)) {
+          batch.delete(doc.reference);
+        }
+        await batch.commit();
       }
-      await batch.commit();
+    } on FirebaseException catch (e) {
+      throw AuthException(_authErrorCodeForFirestore(e.code));
     }
   }
+
+  static AuthErrorCode _authErrorCodeForFirestore(String code) =>
+      switch (code) {
+        'unavailable' ||
+        'deadline-exceeded' ||
+        'network-request-failed' => AuthErrorCode.network,
+        _ => AuthErrorCode.unknown,
+      };
 }

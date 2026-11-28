@@ -38,6 +38,7 @@ class DeviceSessionController
     this.trialModeAvailable = false,
     DateTime Function()? clock,
     GeofenceEngine Function(List<Poi> pois)? engineFactory,
+    this._activeNavigationTargetId,
   }) : _poiRepository = pois,
        _clock = clock ?? DateTime.now,
        _engineFactory = engineFactory ?? ((pois) => GeofenceEngine(pois: pois));
@@ -46,6 +47,7 @@ class DeviceSessionController
   final PoiRepository _poiRepository;
   final bool Function(GeoPoint point) _isInsideCampus;
   final DateTime Function() _clock;
+  final String? Function()? _activeNavigationTargetId;
   @override
   final bool trialModeAvailable;
   bool _trialModeEnabled = false;
@@ -176,8 +178,19 @@ class DeviceSessionController
     final active = engine.activePoiIds;
     final entries = engine.evaluate(fix, enabled: _insideCampus);
     _emitDeactivated(active.difference(engine.activePoiIds));
+    if (entries.isEmpty) return;
     final mode = _current.mode;
+    final navigationTargetId = mode == SessionMode.navigation
+        ? _activeNavigationTargetId?.call()
+        : null;
     for (final entry in entries) {
+      // PRD §9.2 butir 7: notifikasi ringkas navigasi hanya untuk POI yang
+      // bukan tujuan aktif.
+      if (mode == SessionMode.navigation &&
+          navigationTargetId != null &&
+          entry.poiId == navigationTargetId) {
+        continue;
+      }
       _triggerController.add(
         PoiTriggerEvent(
           poiId: entry.poiId,

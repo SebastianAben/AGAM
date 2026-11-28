@@ -1,5 +1,47 @@
 # Session Handoff — AGAM
 
+## Audit Bug 3-Model & Perbaikan Menyeluruh B01–B27 (4 Gelombang) — 28 November 2026
+
+- **Branch:** `dev` (basis `2442632`, belum di-commit/push sesuai aturan kerja).
+- **Latar belakang:** Setelah pengujian fungsional live di Android Emulator `agam_lean` (API 36) dan audit 3-model Bug Council (`gemini-4-neon`, `claude-opus-5-5`, `gpt-6-luna`), teridentifikasi 27 temuan (`B01`–`B27`) lintas geofencing, navigasi/routing, audio/TTS, data/akun, Orientation Trail, rekomendasi, dan UI/UX. Seluruh 27 temuan dikerjakan dalam 4 gelombang paralel (logika non-UI oleh `gemini-4-neon`, UI/UX oleh `claude-opus-5-5`) dan diverifikasi penuh.
+- **Keputusan PM yang dikunci (28 November 2026, dicatat di `.agent/PRD.md` §9.2, §10, §11, §16, §22, §23):**
+  1. **`B01` (Opsi 1B):** `GeofenceEngine` mendeteksi masuk pada pusat POI (≤20 m, keluar >25 m) **atau** titik akses `entrances[]` (≤10 m, keluar >15 m; jarak terdekat antar-pintu POI berbeda 20,0 m), tetap dengan dwell ≥5 detik dan akurasi ≤20 m; selain itu `DeviceTrailService` otomatis mencatat check-in saat `NavigationStatus.arrived` pada POI tujuan selama `SessionMode.trail`.
+  2. **`B08` (Navigasi dua tahap fasilitas dalam gedung):** Fasilitas luar ruang mandiri (`buildingId == null`) diarahkan langsung ke koordinat fasilitas; fasilitas dalam gedung (`buildingId != null`, 22 item) diarahkan ke titik akses gedung induk (`building.entrances[]`) dengan `locationHint` pada UI06 Preview dan UI07 `ArrivalCard`.
+  3. **`B10` (Kunci suara TTS `id-ID` offline):** `DeviceVoiceGuidance` memilih suara lokal/offline `id-ID`/`in-ID` via `getVoices()` + `setVoice(...)`, tidak pernah fallback ke aksen EN-US, menampilkan panduan inline yang dapat ditutup di UI06, dan menyegarkan status saat `resumed`.
+  4. **`B22` (Pemberitahuan privasi UI10):** `AuthScreen.consentText` diperbarui merinci email, peran, log aktivitas tertutup §15.5 (termasuk versi & model perangkat pada `appOpen`), dan tujuan evaluasi internal tim AGAM (redaksi akhir menunggu konfirmasi PM).
+- **Ringkasan perbaikan 27 temuan (`B01`–`B27`):**
+  - **Gelombang 1 (Core LA/LB — `W1-A` s.d. `W1-D` + wiring `la_bootstrap.dart` & `main.dart`):**
+    - `B01`, `B02`, `B11`, `B14`/`B15`, `B16`: geofence titik akses ≤10 m + histeresis >15 m (`geofence_engine.dart`), interval adaptif aman saat keluar kampus/dekat pintu (`adaptive_interval.dart`), penonaktifan trigger ganda untuk POI tujuan aktif (`device_session_controller.dart`), stream `dismissedPois` + auto-dismiss notifikasi latar belakang saat `resumed` (`trigger_responder.dart`, `la_bootstrap.dart`), penanganan GPS stream & izin (`device_location_service.dart`).
+    - `B03`, `B10`, `B19`: penguncian suara TTS Indonesia offline + `refreshAvailability()` (`device_voice_guidance.dart`), pembersihan antrean & penanganan audio/narasi (`device_audio_service.dart`), sinkronisasi announcer belokan & tiba (`navigation_announcer.dart`).
+    - `B05`, `B08` (model), `B09`: progresi langkah navigasi berbasis jarak kumulatif rute (`device_navigation_controller.dart`), `NavigationTarget.locationHint` & `NavigationTarget.facility(..., building:)` (`navigation.dart`), stabilisasi reroute & hysteresis off-route.
+    - `B04`, `B07`, `B20`, `B23`: fallback per-ID saat dokumen Firestore/cache rusak (`poi_repository_impl.dart`), pembersihan auth/hapus akun/timeout offline & logger aktivitas (`device_auth_service.dart`, `firestore_activity_logger.dart`, `account_bootstrap.dart`), serta pencatatan kunjungan `AccountVisitStore` pada `SessionMode.explore` dan `SessionMode.navigation` (`main.dart`).
+  - **Gelombang 2 (Trail & Rekomendasi — `W2-A`, `W2-B`):**
+    - `B01` (Trail), `B06`, `B12`, `B24`: auto check-in pada `NavigationStatus.arrived` + `previewFirstStopId` anti-hijack + penyelesaian 10/10 yang tidak menutup kartu tiba lebih awal + error safety (`device_trail_service.dart`, `trail_bootstrap.dart`).
+    - `B27` (logika): parameter opsional `afterFacilityId` pada `RecommendationService.recommend` agar fasilitas yang baru dituju tidak direkomendasikan kembali (`lb_services.dart`, `fake_lb_services.dart`, `repository_recommendation_service.dart`, `repository_facility_service.dart`).
+  - **Gelombang 3 (UI/UX — `W3-A` s.d. `W3-D` + wiring `main.dart`):**
+    - `W3-A` (`walking_navigation_screen.dart`, `arrival_card.dart`, `trip_status_card.dart`, `offline_campus_map.dart`): UI indoor hint `B08`, banner TTS inline `B10`, pil `Melewati ...` 4 detik `B11`, retensi `ArrivalCard` stop ke-10 `B12`, kartu trigger Trail saat navigasi `B13`, `_failStart` menjaga sesi Explore / rollback Trail baru `B17`, kamera ikuti pengguna + refit reroute + `onUserInteract` `B18`, `checkedIn` akurat `B25`, batas tinggi dinamis anti-overflow pada `ArrivalCard`.
+    - `W3-B` (`orientation_trail_screen.dart`): GPS hangat + `previewFirstStopId` + cek izin + tombol bawah membuka preview UI06 tanpa elipsis `B06`, `Akhiri rute` menjaga Trail tetap aktif vs `Akhiri Trail` `B17`, penanganan error stream `B24`.
+    - `W3-C` (`app.dart`, `explore_map_screen.dart`, `agam_poi_panel.dart`): integrasi `poiDismissed` `B14`/`B15`, kartu sesi sadar mode (`Explore` / `Explore aktif` / `Trail aktif` + `Buka` / `Navigasi aktif`) `B17`, navigasi aman tombol `Lihat` notifikasi `B21`, `inactive` mempertahankan titik lokasi & `hidden` membersihkan `B25`, gradasi tepi gulir `AgamScrollEdgeFade` pada panel POI `B27`.
+    - `W3-D` (`search_route_screen.dart`, `poi_detail_screen.dart`, `auth_screen.dart`): error hapus akun offline `B04`, `_buildingFor(facility)` + `afterFacilityId` `B08`/`B27`, perbaikan `_stopRoute()` `B17`, pembaruan `AuthScreen.consentText` `B22`, `checkedIn` akurat `B25`, kartu narasi responsif 320 dp / 1,4× `B26`.
+- **Pemeriksaan & Bukti Verifikasi (28 November 2026):**
+  - **Redesain `TripStatusCard` (UI06, 28 November 2026):** Kartu status navigasi aktif ([trip_status_card.dart](file:///Users/aben/Documents/Kuliah/Semester%207/Transformasi%20Digital/Tubes/AGAM/lib/ui/widgets/trip_status_card.dart)) dirancang ulang bergaya Google Maps oleh `claude-opus-5-5` dengan copywriting oleh `gemini-4-neon` (High): hero ETA `N menit` / `< 1 menit` (tanpa `~`, tanpa singkatan `mnt`), baris sekunder `{jarak} · Tiba HH.mm` (tanpa kata `Sisa`), destinasi akhir + petunjuk indoor fasilitas di bawah pembatas halus, tombol pill merah solid `Akhiri` (tooltip `Akhiri rute`), dan tidak lagi mengulang label `Tujuan perkiraan` saat berjalan (tetap tampil di Preview rute; dicatat di `.agent/PRD.md` §23).
+  - `fvm dart format lib test`: 153 file bersih (0 perubahan tersisa).
+  - `fvm flutter analyze --no-pub`: **No issues found!**
+  - `fvm flutter test --no-pub`: **610/610 lulus** (naik dari 507; termasuk 6 test baru `TripStatusCard` di `redesign_controls_test.dart`, serta `account_bootstrap_test.dart`, `trail_arrival_checkin_test.dart`, `orientation_trail_ux_test.dart`, dan skenario `B01`–`B27`).
+  - `git diff --check`: bersih.
+  - Build APK debug produk: `fvm flutter build apk --debug --no-pub` berhasil (`build/app/outputs/flutter-apk/app-debug.apk`, SHA-256 `073f7495cb01dfc3065c22d42240d71343aa0fb2d0904be62676660864be22a6`, cocok dengan APK terpasang di emulator).
+  - Uji live di Android Emulator `agam_lean` (Android 16 / API 36, cold start `Status: ok` 2.455 ms, **0 galat Flutter/RenderFlex di logcat**):
+    - **B08 + B27 (Fasilitas dalam gedung):** `Toilet Labtek V` preview menampilkan *"Di dalam Labtek V"*, rute ke pintu timur Labtek V (53 m dari pusat), tiba di pintu menampilkan `ArrivalCard` + *"Masuk ke gedung, lalu menuju lokasi ini."* + rekomendasi tanpa `Toilet Labtek V`.
+    - **B06 + B05 + B10 (Trail & Navigasi):** reset progres lokal via UI09 → Trail 0/10 memprediksi `Tujuan berikutnya: TVST` sesuai GPS hangat → `Mulai Trail` membuka preview UI06 untuk `TVST` (konsisten) → `Mulai rute` menampilkan langkah awal `Ikuti jalur pejalan kaki.` dan banner inline TTS Bahasa Indonesia tidak terpasang (tanpa fallback EN-US).
+    - **B01 (Arrival check-in + Opsi 1B pintu masuk):** tiba di pintu timur TVST (24,8 m dari pusat) menampilkan `ArrivalCard` dan mencatat check-in; dwell 10 dtk di pintu timur Labtek V (**53 m dari pusat**) memicu kartu trigger `Labtek V` + check-in out-of-order (`3/10`).
+    - **B17 + B27 (Sesi & panel):** tab Jelajah menampilkan kartu **`Trail aktif`** + **`Buka`** saat Trail berjalan; panel POI menampilkan gradasi halus tepi bawah chip fasilitas (`AgamScrollEdgeFade`).
+    - **B14 (Notifikasi latar belakang):** trigger `Labtek VIII` di latar belakang memunculkan notifikasi sistem dan otomatis dibersihkan saat aplikasi kembali ke foreground.
+- **Belum diuji (jujur, syarat UAT/rilis PB18–PB19):**
+  - Uji di perangkat Android fisik (GPS nyata, kompas, suara TTS `id-ID` terpasang, pemutaran audio/video nyata, optimasi baterai OEM, offline cold start & hapus akun dengan Firebase `agam-9e704`).
+  - Build APK **release** (`--release` / shrinker R8, audit manifest release).
+  - Uji rules emulator Firestore (`tools/firestore/rules.test.mjs`).
+  - Verifikasi lapangan titik akses gedung (`verified: false`) & selasar OSM, serta konfirmasi redaksi akhir `AuthScreen.consentText` oleh PM.
+
 ## Penyatuan build produk dan alur login/akun — 26 November 2026
 
 - **Branch:** `dev` (basis `b6426d8`).
